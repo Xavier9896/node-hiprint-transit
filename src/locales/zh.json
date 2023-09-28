@@ -1,0 +1,23 @@
+{
+	"Set serve port %s:": "设置服务端口号%s：",
+	"Port must be set between %s": "端口号必须设置在%s之间",
+	"Set service TOKEN (%s):": "设置服务 TOKEN(%s)：",
+	"For security reasons, the TOKEN length must be greater than 5": "出于安全考虑 TOKEN 长度必须大于5",
+	"Set SSL on or off y/n (%s):": "设置开启 SSL y/n (%s)：",
+	"Configuration file written successfully": "配置文件写入成功",
+	"Configuration file write failed": "配置文件写入失败",
+	"Serve is start": "服务已启动",
+	"Serve is closed": "服务已关闭",
+	"Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s": "服务器正运行在\n%s\n\n请确保安全组或防火墙已放行端口。\n令牌：%s",
+	"Authentication failed for %s": "身份验证失败：%s",
+	"Client connected: %s": "客户端已连接：%s",
+	"Client disconnected: %s": "客户端断开连接：%s",
+	"SSL certificate is missing": "缺少 SSL 证书",
+	"SSL certificate has expired": "SSL 证书已过期",
+	"%s send ippPrint to %s": "%s 发送 ippPrint 指令到 %s",
+	"%s send ippRequest to %s": "%s 发送 ippRequest 指令到 %s",
+	"%s send news to %s": "%s 发送 news 指令到 %s",
+	"Retrieve the client print list": "获取客户端打印列表",
+    "%s client: print success, templateId: %s": "%s 客户端：打印成功，模板ID：%s",
+	"%s client: print error, templateId: %s": "%s 客户端：打印失败，模板ID：%s"
+}

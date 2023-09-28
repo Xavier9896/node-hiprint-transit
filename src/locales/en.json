@@ -1,0 +1,23 @@
+{
+    "Set serve port %s:": "Set serve port %s:",
+    "Port must be set between %s": "Port must be set between %s",
+    "Set service TOKEN (%s):": "Set service TOKEN(%s):",
+    "For security reasons, the TOKEN length must be greater than 5": "For security reasons, the TOKEN length must be greater than 5",
+    "Set SSL on or off y/n (%s):": "Set SSL on or off y/n (%s):",
+    "Configuration file written successfully": "Configuration file written successfully",
+    "Configuration file write failed": "Configuration file write failed",
+    "Serve is start": "Serve is start",
+    "Serve is closed": "Serve is closed",
+	"Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s": "Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s",
+	"Authentication failed for %s": "Authentication failed for %s",
+    "Client connected: %s": "Client connected: %s",
+	"Client disconnected: %s": "Client disconnected: %s",
+    "SSL certificate is missing": "SSL certificate is missing",
+    "SSL certificate has expired": "SSL certificate has expired",
+    "%s send ippPrint to %s": "%s send ippPrint to %s",
+    "%s send ippRequest to %s": "%s send ippRequest to %s",
+    "%s send news to %s": "%s send news to %s",
+    "Retrieve the client print list": "Retrieve the client print list",
+    "%s client: print success, templateId: %s": "%s client: print success, templateId: %s",
+    "%s client: print error, templateId: %s": "%s client: print error, templateId: %s"
+}
