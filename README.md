@@ -96,7 +96,7 @@ Finally `应用` and there will be restarted
 
 When a web client (vue-plugin-hiprint) connects, there will be `clients` and `printerList` events emitted.
 
-### socket.on.getClients()
+### socket.on("getClients")
 ### socket.emit("clients", Object)
 
 This will display information about all connected `electron-hiprint` clients.
@@ -130,7 +130,7 @@ This will display information about all connected `electron-hiprint` clients.
 }
 ```
 
-### socket.on.refreshPrinterList()
+### socket.on("refreshPrinterList")
 ### socket.emit("printerList", Array)
 
 This will display information about all connected `electron-hiprint` client's printers.

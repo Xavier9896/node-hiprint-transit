@@ -96,7 +96,7 @@ hiprint.init({
 
 当 Web 客户端（vue-plugin-hiprint）连接时，将发出 `clients` 和 `printerList` 事件。
 
-### socket.on.getClients()
+### socket.on("getClients")
 ### socket.emit("clients", Object)
 
 这将显示所有连接的 `electron-hiprint` 客户端的信息。
@@ -130,7 +130,7 @@ hiprint.init({
 }
 ```
 
-### socket.on.refreshPrinterList()
+### socket.on("refreshPrinterList")
 ### socket.emit("printerList", Array)
 
 这将显示所有连接的 `electron-hiprint` 客户端的打印机信息。
