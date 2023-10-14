@@ -1,11 +1,12 @@
 /*
  * @Date: 2023-09-29 13:52:41
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2023-10-07 16:44:01
+ * @LastEditTime: 2023-10-14 19:30:03
  * @FilePath: \node-hiprint-transit\src\init.js
  */
 import path from "node:path";
 import readline from "node:readline";
+import inquirer from "inquirer";
 import { fileURLToPath } from "node:url";
 import { writeConfig } from "./config.js";
 import { I18n } from "i18n";
@@ -41,15 +42,29 @@ const i18n = new I18n({
  */
 function setLang() {
   return new Promise((resolve) => {
-    rl.question("Set language 设置语言\nen/zh(en): ", (input) => {
-      if (input && ["zh", "ZH"].includes(input)) {
-        CONFIG.lang = "zh";
-      } else {
-        CONFIG.lang = "en";
-      }
-      i18n.setLocale(CONFIG.lang);
-      resolve();
-    });
+    inquirer
+      .prompt([
+        {
+          name: "lang",
+          type: "list",
+          message: "Set language 设置语言 ",
+          choices: [
+            {
+              name: "English",
+              value: "en",
+            },
+            {
+              name: "简体中文",
+              value: "zh",
+            },
+          ],
+        },
+      ])
+      .then((answers) => {
+        CONFIG.lang = answers.lang;
+        i18n.setLocale(CONFIG.lang);
+        resolve();
+      });
   });
 }
 
@@ -59,23 +74,24 @@ function setLang() {
  */
 function setPort() {
   return new Promise((resolve) => {
-    rl.question(
-      i18n.__("Set serve port %s:", "10000~65535(17521)"),
-      (input) => {
+    inquirer.prompt([{
+      name: "port",
+      type: "input",
+      message: i18n.__("Set serve port %s:", "10000~65535"),
+      default: 17521,
+      validate: (input) => {
         if (input && /^\d+$/.test(input) && input >= 10000 && input <= 65535) {
-          CONFIG.port = input * 1;
-          resolve();
+          return true;
         } else if (!input) {
-          CONFIG.port = 17521;
-          resolve();
+          return true;
         } else {
-          console.warn(
-            i18n.__("Port must be set between %s", "10000 and 65535")
-          );
-          resolve(setPort());
+          return i18n.__("Port must be set between %s", "10000 and 65535");
         }
-      }
-    );
+      },
+    }]).then((answers) => {
+      CONFIG.port = answers.port * 1;
+      resolve();
+    });
   });
 }
 
@@ -85,25 +101,26 @@ function setPort() {
  */
 function setToken() {
   return new Promise((resolve) => {
-    rl.question(
-      i18n.__("Set service TOKEN (%s):", "vue-plugin-hiprint"),
-      (input) => {
+    inquirer.prompt([{
+      name: "token",
+      type: "input",
+      message: i18n.__("Set service TOKEN:"),
+      default: "vue-plugin-hiprint",
+      validate: (input) => {
         if (input && input.length >= 6) {
-          CONFIG.token = input;
-          resolve();
+          return true;
         } else if (!input) {
-          CONFIG.token = "vue-plugin-hiprint";
-          resolve();
+          return true;
         } else {
-          console.warn(
-            i18n.__(
-              "For security reasons, the TOKEN length must be greater than 5"
-            )
+          return i18n.__(
+            "For security reasons, the TOKEN length must be greater than 5"
           );
-          resolve(setToken());
         }
-      }
-    );
+      },
+    }]).then((answers) => {
+      CONFIG.token = answers.token;
+      resolve();
+    });
   });
 }
 
@@ -113,14 +130,14 @@ function setToken() {
  */
 function setSSL() {
   return new Promise((resolve) => {
-    rl.question(i18n.__("Set SSL on or off y/n (%s):", "n"), (input) => {
-      if (input && ["y", "Y"].includes(input)) {
-        CONFIG.useSSL = true;
-        resolve();
-      } else {
-        CONFIG.useSSL = false;
-        resolve();
-      }
+    inquirer.prompt([{
+      name: "ssl",
+      type: "confirm",
+      message: i18n.__("Use SSL:"),
+      default: false,
+    }]).then((answers) => {
+      CONFIG.useSSL = answers.ssl;
+      resolve();
     });
   });
 }
