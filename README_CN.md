@@ -1,8 +1,12 @@
+<a name="readme-top"></a>
+
 # node-hiprint-transit
 
 `node-hiprint-transit` 是一个基于 Node.js 的中转服务器，用于在 `electron-hiprint` 客户端和 `vue-plugin-hiprint` 库之间充当中转服务，实现这些组件之间的无缝连接和打印操作。
 
 [English](README.md)
+
+![node-hiprint-transit_cn.png](./res/node-hiprint-transit_cn.png)
 
 ## 特点
 
@@ -43,6 +47,8 @@ en/zh(en): zh # 这将设置为接下来的引导与项目语言
 
 - **SSL**: 启用或禁用安全连接的 SSL（默认：false）。
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 ## 使用方法
 
 ### 启动服务
@@ -72,6 +78,8 @@ hiprint.init({
 });
 ```
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 ### `electron-hiprint` 连接到 `node-hiprint-transit`
 
 右键单击托盘图标以访问设置并输入服务器地址、端口和令牌。
@@ -91,6 +99,8 @@ hiprint.init({
 最后 `应用` 重启即可
 
 ![electron-hiprint](./res/electron-hiprint.png)
+
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
 
 ## EVENTS
 
@@ -133,6 +143,8 @@ hiprint.init({
 ### socket.on("refreshPrinterList")
 ### socket.emit("printerList", Array)
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 这将显示所有连接的 `electron-hiprint` 客户端的打印机信息。
 
 ```js
@@ -159,6 +171,8 @@ hiprint.init({
 
 向 `electron-hiprint` 发出客户端打印。
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 ### socket.on("address")
 
 不支持该 api，应该使用 getClients。
@@ -177,6 +191,8 @@ hiprint.init({
 
   - socket.to(options.replyId).emit("ippPrinterConnected", options.printer)
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 ### socket.on("ippPrinterCallback", (options, res) => {})
 
 进行 IPP 打印机回调以回复客户端。
@@ -190,6 +206,8 @@ hiprint.init({
   - socket.emit("error", msg)
 
   - socket.to(options.client).emit("ippRequest", { ...options, replyId: socket.id })
+
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
 
 ### socket.on("ippRequestCallback", (options, res) => {})
 
@@ -205,6 +223,8 @@ hiprint.init({
 
   - socket.to(options.client).emit("news", { ...options, replyId: socket.id })
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 ### socket.on("success", (options) => {})
 
 进行成功回调以回复客户端。
@@ -217,6 +237,8 @@ hiprint.init({
 
   - socket.to(options.replyId).emit("error", options)
 
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
 ## 一些不重要的信息
 
 1. `node-hiprint-transit` 将会记录日志信息于 `./logs` 这个目录；
@@ -224,3 +246,5 @@ hiprint.init({
 2. 如果你开启了 SSL，你应该替换 `./src/ssl.key` 和 `./src/ssl.pem` 这两个文件；
 
 3. 每10分钟会向 `electron-hiprint` 请求一次打印机列表。
+
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>

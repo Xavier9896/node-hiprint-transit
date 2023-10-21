@@ -1,8 +1,12 @@
+<a name="readme-top"></a>
+
 # node-hiprint-transit
 
 `node-hiprint-transit` is a Node.js server that acts as a middleman between the `electron-hiprint` client and the `vue-plugin-hiprint` library. It facilitates seamless connections and printing operations between these components over the internet.
 
 [中文文档](README_CN.md)
+
+![node-hiprint-transit_en.png](./res/node-hiprint-transit_en.png)
 
 ## Features
 
@@ -43,6 +47,8 @@ The configuration wizard will prompt you to set the following options:
 
 - **useSSL**: Enable or disable SSL for secure connections (default: false).
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 ## Usage
 
 ### Run serve
@@ -72,6 +78,8 @@ hiprint.init({
 });
 ```
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 ### `electron-hiprint` connection to `node-hiprint-transit`
 
 Right-click on the tray icon to access the settings and enter the server address, port, and token.
@@ -91,6 +99,8 @@ You can click `测试` to test the connect.
 Finally `应用` and there will be restarted
 
 ![electron-hiprint](./res/electron-hiprint.png)
+
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
 
 ## EVENTS
 
@@ -133,6 +143,8 @@ This will display information about all connected `electron-hiprint` clients.
 ### socket.on("refreshPrinterList")
 ### socket.emit("printerList", Array)
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 This will display information about all connected `electron-hiprint` client's printers.
 
 ```js
@@ -159,6 +171,8 @@ Information of `electron-hiprint`.
 
 For `electron-hiprint` emit client prints.
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 ### socket.on("address")
 
 Is not supported in transit server, you should use getClients.
@@ -177,6 +191,8 @@ Make a ipp printer connected event to reply client.
 
   - socket.to(options.replyId).emit("ippPrinterConnected", options.printer)
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 ### socket.on("ippPrinterCallback", (options, res) => {})
 
 Make a ipp printer callback to reply client.
@@ -190,6 +206,8 @@ Make a ipp request to `electron-hiprint` client.
   - socket.emit("error", msg)
 
   - socket.to(options.client).emit("ippRequest", { ...options, replyId: socket.id })
+
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
 
 ### socket.on("ippRequestCallback", (options, res) => {})
 
@@ -205,6 +223,8 @@ Make a news to `electron-hiprint` client.
 
   - socket.to(options.client).emit("news", { ...options, replyId: socket.id })
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 ### socket.on("success", (options) => {})
 
 Make a success callback to reply client.
@@ -217,6 +237,8 @@ Make a error callback to reply client.
 
   - socket.to(options.replyId).emit("error", options)
 
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
+
 ## Something unimportant
 
 1. `node-hiprint-transit` will log information in the `./logs` directory;
@@ -224,3 +246,5 @@ Make a error callback to reply client.
 2. If you are using SSL, you should replace `./src/ssl.key` and `./src/ssl.pem`;
 
 3. Every 10 minutes, it will retrieve the print list from `electron-hiprint`.
+
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
