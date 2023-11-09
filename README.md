@@ -16,6 +16,18 @@
 
 - **Configuration**: `node-hiprint-transit` allows you to configure various settings, including port, token, SSL usage, and language preferences.
 
+## Scripts
+
+This script will assist you in installing `node-hiprint-transit` quickly.
+
+```bash
+wget https://raw.githubusercontent.com/Xavier9896/node-hiprint-transit/main/install.sh
+
+chmod +x install.sh
+
+./install.sh
+```
+
 ## Initial Setup
 
 Upon first usage, you'll need to perform an initial setup

@@ -16,6 +16,18 @@
 
 - **配置**: `node-hiprint-transit` 允许您配置各种设置，包括端口、令牌、是否使用 SSL 和语言首选项。
 
+## 脚本
+
+这个脚本将帮助你快速安装、初始化、运行 `node-hiprint-transit`。
+
+```bash
+wget https://raw.githubusercontent.com/Xavier9896/node-hiprint-transit/main/install.sh
+
+chmod +x install.sh
+
+./install.sh
+```
+
 ## 初始化设置
 
 首次使用时，您需要执行初始设置
