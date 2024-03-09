@@ -1,7 +1,7 @@
 /*
  * @Date: 2023-09-29 20:50:59
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2023-11-09 14:35:40
+ * @LastEditTime: 2024-03-09 11:29:03
  * @FilePath: \node-hiprint-transit\src\log.js
  */
 import { access, appendFile, constants, mkdir, writeFile } from "node:fs";
@@ -45,7 +45,7 @@ function checkLogFile() {
               if (err) {
                 reject(err);
               } else {
-                resolve;
+                resolve();
               }
             });
           } else {
