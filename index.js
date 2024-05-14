@@ -1,7 +1,7 @@
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2023-10-12 17:40:42
+ * @LastEditTime: 2024-05-15 00:02:45
  * @FilePath: \node-hiprint-transit\index.js
  */
 import path from "node:path";
@@ -96,6 +96,23 @@ readConfig().then((CONFIG) => {
     if (socket.handshake.query.test !== "true") {
       if (socket.handshake.query.client === "electron-hiprint") {
         log(i18n.__("Client connected: %s", socket.id + "(electron-hiprint)"));
+
+        // Send client list to web client
+        io.sockets.emit("clients", CLIENT);
+
+        // Send all printer list to web client
+        var allPrinterList = [];
+        Object.keys(CLIENT).forEach((key) => {
+          CLIENT[key].printerList.forEach((printer) => {
+            allPrinterList.push({
+              ...printer,
+              server: Object.assign({}, CLIENT[key], {
+                printerList: undefined,
+              }),
+            });
+          });
+        });
+        io.sockets.emit("printerList", allPrinterList);
       } else {
         log(i18n.__("Client connected: %s", socket.id + "(web-client)"));
 
