@@ -1,8 +1,8 @@
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-05-15 00:02:45
- * @FilePath: \node-hiprint-transit\index.js
+ * @LastEditTime: 2024-05-23 12:32:30
+ * @FilePath: /node-hiprint-transit/index.js
  */
 import path from "node:path";
 import http from "node:http";
@@ -72,6 +72,7 @@ readConfig().then((CONFIG) => {
 
   server.listen(port, () => {
     log(i18n.__("Serve is start"));
+    console.log(chalk.green(`node-hiprint-transit version: ${process.env.npm_package_version}\n`))
     console.log(
       i18n.__(
         "Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s",

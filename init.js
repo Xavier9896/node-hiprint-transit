@@ -8,7 +8,7 @@ import path from "node:path";
 import readline from "node:readline";
 import inquirer from "inquirer";
 import { fileURLToPath } from "node:url";
-import { writeConfig } from "./config.js";
+import { writeConfig } from "./src/config.js";
 import { I18n } from "i18n";
 
 // ES Module need use fileURLToPath to get __dirname
@@ -32,7 +32,7 @@ const CONFIG = {
 // Setup i18n
 const i18n = new I18n({
   locales: ["en", "zh"],
-  directory: path.join(__dirname, "locales"),
+  directory: path.join(__dirname, "./src/locales"),
   defaultLocale: "en",
 });
 

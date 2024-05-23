@@ -1,0 +1,6 @@
+{
+  "port": 17521,
+  "token": "vue-plugin-hiprint",
+  "useSSL": false,
+  "lang": "en"
+}
