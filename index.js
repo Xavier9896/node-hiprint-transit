@@ -97,9 +97,11 @@ readConfig().then((CONFIG) => {
     if (socket.handshake.query.test !== "true") {
       if (socket.handshake.query.client === "electron-hiprint") {
         log(i18n.__("Client connected: %s", socket.id + "(electron-hiprint)"));
+        // Join electron-hiprint room
+        socket.join("electron-hiprint");
 
         // Send client list to web client
-        io.sockets.emit("clients", CLIENT);
+        io.to("web-client").emit("clients", CLIENT);
 
         // Send all printer list to web client
         var allPrinterList = [];
@@ -116,6 +118,8 @@ readConfig().then((CONFIG) => {
         io.sockets.emit("printerList", allPrinterList);
       } else {
         log(i18n.__("Client connected: %s", socket.id + "(web-client)"));
+        // Join web-client room
+        socket.join("web-client");
 
         // Send client list to web client
         socket.emit("clients", CLIENT);
@@ -287,7 +291,12 @@ readConfig().then((CONFIG) => {
     socket.on("disconnect", () => {
       if (socket.handshake.query.test !== "true") {
         log(i18n.__("Client disconnected: %s", socket.id));
-        delete CLIENT[socket.id];
+        // Remove electron-hiprint client from CLIENT
+        if (socket.handshake.query.client === "electron-hiprint") {
+          delete CLIENT[socket.id];
+          // Send client list to web client
+          io.to("web-client").emit("clients", CLIENT);
+        }
       }
     });
   });
