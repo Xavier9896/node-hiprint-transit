@@ -1,31 +1,28 @@
-'use strict';
+import path$1 from 'node:path';
+import readline$1 from 'node:readline';
+import { c as commonjsGlobal, a as getDefaultExportFromCjs, b as chalk$4, r as requireSupportsColor, I as I18n } from './index_chunk.js';
+import process$3 from 'node:process';
+import require$$0$3 from 'assert';
+import require$$0$2 from 'events';
+import assert$1 from 'node:assert';
+import require$$0$4 from 'tty';
+import require$$0$8 from 'readline';
+import require$$0$5 from 'stream';
+import require$$0$6 from 'buffer';
+import require$$0$7 from 'util';
+import require$$1$1 from 'fs';
+import require$$1$4 from 'child_process';
+import require$$1$2 from 'string_decoder';
+import require$$1$3 from 'path';
+import require$$2$1 from 'crypto';
+import { fileURLToPath } from 'node:url';
+import { writeConfig } from './src/config.js';
+import 'node:os';
+import 'node:tty';
+import 'url';
+import 'os';
+import 'node:fs';
 
-var path$1 = require('node:path');
-var readline$1 = require('node:readline');
-var index = require('./index_chunk.js');
-var process$3 = require('node:process');
-var require$$0$3 = require('assert');
-var require$$0$2 = require('events');
-var assert$1 = require('node:assert');
-var require$$0$4 = require('tty');
-var require$$0$8 = require('readline');
-var require$$0$5 = require('stream');
-var require$$0$6 = require('buffer');
-var require$$0$7 = require('util');
-var require$$1$1 = require('fs');
-var require$$1$4 = require('child_process');
-var require$$1$2 = require('string_decoder');
-var require$$1$3 = require('path');
-var require$$2$1 = require('crypto');
-var node_url = require('node:url');
-var src_config = require('./src/config.js');
-require('node:os');
-require('node:tty');
-require('url');
-require('os');
-require('node:fs');
-
-var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
 function isUnicodeSupported$3() {
 	if (process$3.platform !== 'win32') {
 		return process$3.env.TERM !== 'linux'; // Linux console (kernel)
@@ -469,7 +466,7 @@ function requireSignals () {
 // that are in the direct sync flow of nyc's outputCoverage are
 // ignored, since we can never get coverage for them.
 // grab a reference to node's real process object right away
-var process$2 = index.commonjsGlobal.process;
+var process$2 = commonjsGlobal.process;
 
 const processOk = function (process) {
   return process &&
@@ -520,7 +517,7 @@ if (!processOk(process$2)) {
 
   signalExit$1.exports = function (cb, opts) {
     /* istanbul ignore if */
-    if (!processOk(index.commonjsGlobal.process)) {
+    if (!processOk(commonjsGlobal.process)) {
       return function () {}
     }
     assert.equal(typeof cb, 'function', 'a callback must be provided for exit handler');
@@ -547,7 +544,7 @@ if (!processOk(process$2)) {
   };
 
   var unload = function unload () {
-    if (!loaded || !processOk(index.commonjsGlobal.process)) {
+    if (!loaded || !processOk(commonjsGlobal.process)) {
       return
     }
     loaded = false;
@@ -577,7 +574,7 @@ if (!processOk(process$2)) {
   signals.forEach(function (sig) {
     sigListeners[sig] = function listener () {
       /* istanbul ignore if */
-      if (!processOk(index.commonjsGlobal.process)) {
+      if (!processOk(commonjsGlobal.process)) {
         return
       }
       // If there are no other listeners, an exit is coming!
@@ -609,7 +606,7 @@ if (!processOk(process$2)) {
   var loaded = false;
 
   var load = function load () {
-    if (loaded || !processOk(index.commonjsGlobal.process)) {
+    if (loaded || !processOk(commonjsGlobal.process)) {
       return
     }
     loaded = true;
@@ -637,7 +634,7 @@ if (!processOk(process$2)) {
   var originalProcessReallyExit = process$2.reallyExit;
   var processReallyExit = function processReallyExit (code) {
     /* istanbul ignore if */
-    if (!processOk(index.commonjsGlobal.process)) {
+    if (!processOk(commonjsGlobal.process)) {
       return
     }
     process$2.exitCode = code || /* istanbul ignore next */ 0;
@@ -650,7 +647,7 @@ if (!processOk(process$2)) {
 
   var originalProcessEmit = process$2.emit;
   var processEmit = function processEmit (ev, arg) {
-    if (ev === 'exit' && processOk(index.commonjsGlobal.process)) {
+    if (ev === 'exit' && processOk(commonjsGlobal.process)) {
       /* istanbul ignore else */
       if (arg !== undefined) {
         process$2.exitCode = arg;
@@ -716,7 +713,7 @@ var restoreCursor = onetime(() => {
 	}; 
 } (cliCursor$2));
 
-var cliCursor$1 = /*@__PURE__*/index.getDefaultExportFromCjs(cliCursor$2);
+var cliCursor$1 = /*@__PURE__*/getDefaultExportFromCjs(cliCursor$2);
 
 var runAsync$2 = {exports: {}};
 
@@ -842,7 +839,7 @@ runAsync.cb = function (func, cb) {
 };
 
 var runAsyncExports = runAsync$2.exports;
-var runAsync$1 = /*@__PURE__*/index.getDefaultExportFromCjs(runAsyncExports);
+var runAsync$1 = /*@__PURE__*/getDefaultExportFromCjs(runAsyncExports);
 
 var cjs = {};
 
@@ -905,7 +902,7 @@ function arrRemove(arr, item) {
 }
 arrRemove$1.arrRemove = arrRemove;
 
-var __values$8 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$8 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -916,7 +913,7 @@ var __values$8 = (index.commonjsGlobal && index.commonjsGlobal.__values) || func
     };
     throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
 };
-var __read$h = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$h = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -932,7 +929,7 @@ var __read$h = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$g = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$g = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -1099,7 +1096,7 @@ var reportUnhandledError$1 = {};
 var timeoutProvider = {};
 
 (function (exports) {
-	var __read = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+	var __read = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
 	    var m = typeof Symbol === "function" && o[Symbol.iterator];
 	    if (!m) return o;
 	    var i = m.call(o), r, ar = [], e;
@@ -1115,7 +1112,7 @@ var timeoutProvider = {};
 	    }
 	    return ar;
 	};
-	var __spreadArray = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+	var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
 	    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
 	        to[j] = from[i];
 	    return to;
@@ -1224,7 +1221,7 @@ function captureError(err) {
 errorContext$1.captureError = captureError;
 
 (function (exports) {
-	var __extends = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+	var __extends = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
 	    var extendStatics = function (d, b) {
 	        extendStatics = Object.setPrototypeOf ||
 	            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1603,7 +1600,7 @@ lift.operate = operate;
 
 var OperatorSubscriber$1 = {};
 
-var __extends$j = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$j = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1710,7 +1707,7 @@ function refCount() {
 }
 refCount$1.refCount = refCount;
 
-var __extends$i = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$i = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1808,7 +1805,7 @@ var performanceTimestampProvider = {};
 var animationFrameProvider = {};
 
 (function (exports) {
-	var __read = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+	var __read = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
 	    var m = typeof Symbol === "function" && o[Symbol.iterator];
 	    if (!m) return o;
 	    var i = m.call(o), r, ar = [], e;
@@ -1824,7 +1821,7 @@ var animationFrameProvider = {};
 	    }
 	    return ar;
 	};
-	var __spreadArray = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+	var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
 	    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
 	        to[j] = from[i];
 	    return to;
@@ -1920,7 +1917,7 @@ ObjectUnsubscribedError.ObjectUnsubscribedError = createErrorClass_1$4.createErr
     };
 });
 
-var __extends$h = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$h = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1935,7 +1932,7 @@ var __extends$h = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (f
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __values$7 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$7 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -2111,7 +2108,7 @@ Subject$1.AnonymousSubject = AnonymousSubject;
 
 var BehaviorSubject$1 = {};
 
-var __extends$g = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$g = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2179,7 +2176,7 @@ var dateTimestampProvider = {};
 	
 } (dateTimestampProvider));
 
-var __extends$f = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$f = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2255,7 +2252,7 @@ ReplaySubject$1.ReplaySubject = ReplaySubject;
 
 var AsyncSubject$1 = {};
 
-var __extends$e = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$e = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2318,7 +2315,7 @@ var AsyncAction$1 = {};
 
 var Action$1 = {};
 
-var __extends$d = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$d = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2351,7 +2348,7 @@ Action$1.Action = Action;
 var intervalProvider = {};
 
 (function (exports) {
-	var __read = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+	var __read = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
 	    var m = typeof Symbol === "function" && o[Symbol.iterator];
 	    if (!m) return o;
 	    var i = m.call(o), r, ar = [], e;
@@ -2367,7 +2364,7 @@ var intervalProvider = {};
 	    }
 	    return ar;
 	};
-	var __spreadArray = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+	var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
 	    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
 	        to[j] = from[i];
 	    return to;
@@ -2395,7 +2392,7 @@ var intervalProvider = {};
 	
 } (intervalProvider));
 
-var __extends$c = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$c = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2538,7 +2535,7 @@ Immediate.TestTools = {
 };
 
 (function (exports) {
-	var __read = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+	var __read = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
 	    var m = typeof Symbol === "function" && o[Symbol.iterator];
 	    if (!m) return o;
 	    var i = m.call(o), r, ar = [], e;
@@ -2554,7 +2551,7 @@ Immediate.TestTools = {
 	    }
 	    return ar;
 	};
-	var __spreadArray = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+	var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
 	    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
 	        to[j] = from[i];
 	    return to;
@@ -2581,7 +2578,7 @@ Immediate.TestTools = {
 	
 } (immediateProvider));
 
-var __extends$b = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$b = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2659,7 +2656,7 @@ var Scheduler = (function () {
 }());
 Scheduler$1.Scheduler = Scheduler;
 
-var __extends$a = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$a = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2711,7 +2708,7 @@ var AsyncScheduler = (function (_super) {
 }(Scheduler_1.Scheduler));
 AsyncScheduler$1.AsyncScheduler = AsyncScheduler;
 
-var __extends$9 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$9 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2784,7 +2781,7 @@ var queue = {};
 
 var QueueAction$1 = {};
 
-var __extends$8 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$8 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2837,7 +2834,7 @@ QueueAction$1.QueueAction = QueueAction;
 
 var QueueScheduler$1 = {};
 
-var __extends$7 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$7 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2878,7 +2875,7 @@ var animationFrame = {};
 
 var AnimationFrameAction$1 = {};
 
-var __extends$6 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$6 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2932,7 +2929,7 @@ AnimationFrameAction$1.AnimationFrameAction = AnimationFrameAction;
 
 var AnimationFrameScheduler$1 = {};
 
-var __extends$5 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$5 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2991,7 +2988,7 @@ AnimationFrameScheduler$1.AnimationFrameScheduler = AnimationFrameScheduler;
 
 var VirtualTimeScheduler$1 = {};
 
-var __extends$4 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$4 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -3243,7 +3240,7 @@ isIterable$1.isIterable = isIterable;
 
 var isReadableStreamLike$1 = {};
 
-var __generator$2 = (index.commonjsGlobal && index.commonjsGlobal.__generator) || function (thisArg, body) {
+var __generator$2 = (commonjsGlobal && commonjsGlobal.__generator) || function (thisArg, body) {
     var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
     return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
@@ -3270,8 +3267,8 @@ var __generator$2 = (index.commonjsGlobal && index.commonjsGlobal.__generator) |
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __await = (index.commonjsGlobal && index.commonjsGlobal.__await) || function (v) { return this instanceof __await ? (this.v = v, this) : new __await(v); };
-var __asyncGenerator = (index.commonjsGlobal && index.commonjsGlobal.__asyncGenerator) || function (thisArg, _arguments, generator) {
+var __await = (commonjsGlobal && commonjsGlobal.__await) || function (v) { return this instanceof __await ? (this.v = v, this) : new __await(v); };
+var __asyncGenerator = (commonjsGlobal && commonjsGlobal.__asyncGenerator) || function (thisArg, _arguments, generator) {
     if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
     var g = generator.apply(thisArg, _arguments || []), i, q = [];
     return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
@@ -3323,7 +3320,7 @@ function isReadableStreamLike(obj) {
 }
 isReadableStreamLike$1.isReadableStreamLike = isReadableStreamLike;
 
-var __awaiter = (index.commonjsGlobal && index.commonjsGlobal.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter = (commonjsGlobal && commonjsGlobal.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -3332,7 +3329,7 @@ var __awaiter = (index.commonjsGlobal && index.commonjsGlobal.__awaiter) || func
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __generator$1 = (index.commonjsGlobal && index.commonjsGlobal.__generator) || function (thisArg, body) {
+var __generator$1 = (commonjsGlobal && commonjsGlobal.__generator) || function (thisArg, body) {
     var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
     return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
@@ -3359,14 +3356,14 @@ var __generator$1 = (index.commonjsGlobal && index.commonjsGlobal.__generator) |
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __asyncValues = (index.commonjsGlobal && index.commonjsGlobal.__asyncValues) || function (o) {
+var __asyncValues = (commonjsGlobal && commonjsGlobal.__asyncValues) || function (o) {
     if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
     var m = o[Symbol.asyncIterator], i;
     return m ? m.call(o) : (o = typeof __values$6 === "function" ? __values$6(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
     function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
-var __values$6 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$6 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -4073,7 +4070,7 @@ function map$2(project, thisArg) {
 }
 map$3.map = map$2;
 
-var __read$g = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$g = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -4089,7 +4086,7 @@ var __read$g = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$f = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$f = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -4106,7 +4103,7 @@ function mapOneOrManyArgs(fn) {
 }
 mapOneOrManyArgs$1.mapOneOrManyArgs = mapOneOrManyArgs;
 
-var __read$f = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$f = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -4122,7 +4119,7 @@ var __read$f = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$e = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$e = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -4562,7 +4559,7 @@ forkJoin$1.forkJoin = forkJoin;
 
 var fromEvent$1 = {};
 
-var __read$e = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$e = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -4666,7 +4663,7 @@ fromEventPattern$1.fromEventPattern = fromEventPattern;
 
 var generate$1 = {};
 
-var __generator = (index.commonjsGlobal && index.commonjsGlobal.__generator) || function (thisArg, body) {
+var __generator = (commonjsGlobal && commonjsGlobal.__generator) || function (thisArg, body) {
     var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
     return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
@@ -5051,7 +5048,7 @@ using$1.using = using;
 
 var zip$3 = {};
 
-var __read$d = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$d = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -5067,7 +5064,7 @@ var __read$d = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$d = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$d = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -5208,7 +5205,7 @@ buffer$2.buffer = buffer$1;
 
 var bufferCount$1 = {};
 
-var __values$5 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$5 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -5294,7 +5291,7 @@ bufferCount$1.bufferCount = bufferCount;
 
 var bufferTime$1 = {};
 
-var __values$4 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$4 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -5386,7 +5383,7 @@ bufferTime$1.bufferTime = bufferTime;
 
 var bufferToggle$1 = {};
 
-var __values$3 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$3 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -5592,7 +5589,7 @@ var combineLatestWith$1 = {};
 
 var combineLatest$1 = {};
 
-var __read$c = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$c = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -5608,7 +5605,7 @@ var __read$c = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$c = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$c = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -5635,7 +5632,7 @@ function combineLatest() {
 }
 combineLatest$1.combineLatest = combineLatest;
 
-var __read$b = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$b = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -5651,7 +5648,7 @@ var __read$b = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$b = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$b = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -5694,7 +5691,7 @@ var concatWith$1 = {};
 
 var concat$1 = {};
 
-var __read$a = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$a = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -5710,7 +5707,7 @@ var __read$a = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$a = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$a = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -5733,7 +5730,7 @@ function concat() {
 }
 concat$1.concat = concat;
 
-var __read$9 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$9 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -5749,7 +5746,7 @@ var __read$9 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$9 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$9 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -6120,7 +6117,7 @@ elementAt$1.elementAt = elementAt;
 
 var endWith$1 = {};
 
-var __read$8 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$8 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -6136,7 +6133,7 @@ var __read$8 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$8 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$8 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -6408,7 +6405,7 @@ var last$1 = {};
 
 var takeLast$1 = {};
 
-var __values$2 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$2 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -6550,7 +6547,7 @@ var mergeWith$1 = {};
 
 var merge$1 = {};
 
-var __read$7 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$7 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -6566,7 +6563,7 @@ var __read$7 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$7 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$7 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -6592,7 +6589,7 @@ function merge() {
 }
 merge$1.merge = merge;
 
-var __read$6 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$6 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -6608,7 +6605,7 @@ var __read$6 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$6 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$6 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -6656,7 +6653,7 @@ multicast$1.multicast = multicast;
 
 var onErrorResumeNextWith$1 = {};
 
-var __read$5 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$5 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -6672,7 +6669,7 @@ var __read$5 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$5 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$5 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -6800,7 +6797,7 @@ publishReplay$1.publishReplay = publishReplay;
 
 var raceWith$1 = {};
 
-var __read$4 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$4 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -6816,7 +6813,7 @@ var __read$4 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$4 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$4 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -7165,7 +7162,7 @@ function createState() {
 
 var share$1 = {};
 
-var __read$3 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$3 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -7181,7 +7178,7 @@ var __read$3 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$3 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$3 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -7755,7 +7752,7 @@ window$2.window = window$1;
 
 var windowCount$1 = {};
 
-var __values$1 = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values$1 = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -7896,7 +7893,7 @@ windowTime$1.windowTime = windowTime;
 
 var windowToggle$1 = {};
 
-var __values = (index.commonjsGlobal && index.commonjsGlobal.__values) || function(o) {
+var __values = (commonjsGlobal && commonjsGlobal.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
     if (o && typeof o.length === "number") return {
@@ -8020,7 +8017,7 @@ windowWhen$1.windowWhen = windowWhen;
 
 var withLatestFrom$1 = {};
 
-var __read$2 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$2 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -8036,7 +8033,7 @@ var __read$2 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$2 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$2 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -8097,7 +8094,7 @@ var zipWith$1 = {};
 
 var zip$1 = {};
 
-var __read$1 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read$1 = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -8113,7 +8110,7 @@ var __read$1 = (index.commonjsGlobal && index.commonjsGlobal.__read) || function
     }
     return ar;
 };
-var __spreadArray$1 = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray$1 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -8133,7 +8130,7 @@ function zip() {
 }
 zip$1.zip = zip;
 
-var __read = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (o, n) {
+var __read = (commonjsGlobal && commonjsGlobal.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
     var i = m.call(o), r, ar = [], e;
@@ -8149,7 +8146,7 @@ var __read = (index.commonjsGlobal && index.commonjsGlobal.__read) || function (
     }
     return ar;
 };
-var __spreadArray = (index.commonjsGlobal && index.commonjsGlobal.__spreadArray) || function (to, from) {
+var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
@@ -8167,14 +8164,14 @@ function zipWith() {
 zipWith$1.zipWith = zipWith;
 
 (function (exports) {
-	var __createBinding = (index.commonjsGlobal && index.commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
 	    if (k2 === undefined) k2 = k;
 	    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 	}) : (function(o, m, k, k2) {
 	    if (k2 === undefined) k2 = k;
 	    o[k2] = m[k];
 	}));
-	var __exportStar = (index.commonjsGlobal && index.commonjsGlobal.__exportStar) || function(m, exports) {
+	var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
 	    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -8617,7 +8614,7 @@ class Paginator {
     return (
       visibleLines.join('\n') +
       '\n' +
-      index.chalk.dim('(Move up and down to reveal more choices)')
+      chalk$4.dim('(Move up and down to reveal more choices)')
     );
   }
 
@@ -8784,7 +8781,7 @@ var constant_1 = constant$1;
 
 /** Detect free variable `global` from Node.js. */
 
-var freeGlobal$1 = typeof index.commonjsGlobal == 'object' && index.commonjsGlobal && index.commonjsGlobal.Object === Object && index.commonjsGlobal;
+var freeGlobal$1 = typeof commonjsGlobal == 'object' && commonjsGlobal && commonjsGlobal.Object === Object && commonjsGlobal;
 
 var _freeGlobal = freeGlobal$1;
 
@@ -9960,7 +9957,7 @@ var defaults$2 = baseRest(function(object, sources) {
 
 var defaults_1 = defaults$2;
 
-var defaults$3 = /*@__PURE__*/index.getDefaultExportFromCjs(defaults_1);
+var defaults$3 = /*@__PURE__*/getDefaultExportFromCjs(defaults_1);
 
 /**
  * Removes all key-value entries from the list cache.
@@ -11776,7 +11773,7 @@ function clone$2(value) {
 
 var clone_1 = clone$2;
 
-var clone$3 = /*@__PURE__*/index.getDefaultExportFromCjs(clone_1);
+var clone$3 = /*@__PURE__*/getDefaultExportFromCjs(clone_1);
 
 /**
  * Creates a base function for methods like `_.forIn` and `_.forOwn`.
@@ -12987,7 +12984,7 @@ function get$1(object, path, defaultValue) {
 
 var get_1 = get$1;
 
-var get$2 = /*@__PURE__*/index.getDefaultExportFromCjs(get_1);
+var get$2 = /*@__PURE__*/getDefaultExportFromCjs(get_1);
 
 /**
  * The base implementation of `_.hasIn` without support for deep paths.
@@ -13264,7 +13261,7 @@ function filter(collection, predicate) {
 
 var filter_1 = filter;
 
-var filter$1 = /*@__PURE__*/index.getDefaultExportFromCjs(filter_1);
+var filter$1 = /*@__PURE__*/getDefaultExportFromCjs(filter_1);
 
 var baseEach = _baseEach,
     isArrayLike = isArrayLike_1;
@@ -13343,7 +13340,7 @@ function map(collection, iteratee) {
 
 var map_1 = map;
 
-var map$1 = /*@__PURE__*/index.getDefaultExportFromCjs(map_1);
+var map$1 = /*@__PURE__*/getDefaultExportFromCjs(map_1);
 
 /**
  * Separator object
@@ -13355,7 +13352,7 @@ var map$1 = /*@__PURE__*/index.getDefaultExportFromCjs(map_1);
 class Separator {
   constructor(line) {
     this.type = 'separator';
-    this.line = index.chalk.dim(line || new Array(15).join(figures.line));
+    this.line = chalk$4.dim(line || new Array(15).join(figures.line));
   }
 
   /**
@@ -13571,7 +13568,7 @@ function cliWidth(options) {
   return opts.defaultWidth;
 }
 
-var cliWidth$1 = /*@__PURE__*/index.getDefaultExportFromCjs(cliWidth_1);
+var cliWidth$1 = /*@__PURE__*/getDefaultExportFromCjs(cliWidth_1);
 
 var stringWidth$3 = {exports: {}};
 
@@ -13588,7 +13585,7 @@ const ansiRegex = ansiRegex$1;
 
 var stripAnsi$3 = string => typeof string === 'string' ? string.replace(ansiRegex(), '') : string;
 
-var stripAnsi$4 = /*@__PURE__*/index.getDefaultExportFromCjs(stripAnsi$3);
+var stripAnsi$4 = /*@__PURE__*/getDefaultExportFromCjs(stripAnsi$3);
 
 var isFullwidthCodePoint$2 = {exports: {}};
 
@@ -13697,7 +13694,7 @@ stringWidth$3.exports = stringWidth$1;
 stringWidth$3.exports.default = stringWidth$1;
 
 var stringWidthExports = stringWidth$3.exports;
-var stringWidth$2 = /*@__PURE__*/index.getDefaultExportFromCjs(stringWidthExports);
+var stringWidth$2 = /*@__PURE__*/getDefaultExportFromCjs(stringWidthExports);
 
 var ansiStyles$3 = {exports: {}};
 
@@ -15260,7 +15257,7 @@ var wrapAnsi_1 = (string, columns, options) => {
 		.join('\n');
 };
 
-var wrapAnsi$1 = /*@__PURE__*/index.getDefaultExportFromCjs(wrapAnsi_1);
+var wrapAnsi$1 = /*@__PURE__*/getDefaultExportFromCjs(wrapAnsi_1);
 
 var ora$1 = {exports: {}};
 
@@ -15445,7 +15442,7 @@ function requireTemplates$1 () {
 }
 
 const ansiStyles$1 = ansiStylesExports;
-const {stdout: stdoutColor$1, stderr: stderrColor$1} = index.requireSupportsColor();
+const {stdout: stdoutColor$1, stderr: stderrColor$1} = requireSupportsColor();
 const {
 	stringReplaceAll: stringReplaceAll$2,
 	stringEncaseCRLFWithFirstIndex: stringEncaseCRLFWithFirstIndex$2
@@ -17577,7 +17574,7 @@ function requireTemplates () {
 }
 
 const ansiStyles = ansiStylesExports;
-const {stdout: stdoutColor, stderr: stderrColor} = index.requireSupportsColor();
+const {stdout: stdoutColor, stderr: stderrColor} = requireSupportsColor();
 const {
 	stringReplaceAll,
 	stringEncaseCRLFWithFirstIndex
@@ -18744,7 +18741,7 @@ function require_stream_writable () {
 	/*</replacement>*/
 
 	var Buffer = require$$0$6.Buffer;
-	var OurUint8Array = (typeof index.commonjsGlobal !== 'undefined' ? index.commonjsGlobal : typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {}).Uint8Array || function () {};
+	var OurUint8Array = (typeof commonjsGlobal !== 'undefined' ? commonjsGlobal : typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {}).Uint8Array || function () {};
 	function _uint8ArrayToBuffer(chunk) {
 	  return Buffer.from(chunk);
 	}
@@ -20157,7 +20154,7 @@ function require_stream_readable () {
 	/*</replacement>*/
 
 	var Buffer = require$$0$6.Buffer;
-	var OurUint8Array = (typeof index.commonjsGlobal !== 'undefined' ? index.commonjsGlobal : typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {}).Uint8Array || function () {};
+	var OurUint8Array = (typeof commonjsGlobal !== 'undefined' ? commonjsGlobal : typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {}).Uint8Array || function () {};
 	function _uint8ArrayToBuffer(chunk) {
 	  return Buffer.from(chunk);
 	}
@@ -22299,7 +22296,7 @@ ora$1.exports.promise = (action, options) => {
 };
 
 var oraExports = ora$1.exports;
-var ora = /*@__PURE__*/index.getDefaultExportFromCjs(oraExports);
+var ora = /*@__PURE__*/getDefaultExportFromCjs(oraExports);
 
 var ansiEscapes$1 = {exports: {}};
 
@@ -22463,7 +22460,7 @@ var ansiEscapes$1 = {exports: {}};
 } (ansiEscapes$1));
 
 var ansiEscapesExports = ansiEscapes$1.exports;
-var ansiEscapes = /*@__PURE__*/index.getDefaultExportFromCjs(ansiEscapesExports);
+var ansiEscapes = /*@__PURE__*/getDefaultExportFromCjs(ansiEscapesExports);
 
 /**
  * Move cursor left by `x`
@@ -22706,7 +22703,7 @@ class Prompt {
       filteringText: '',
       when: () => true,
       suffix: '',
-      prefix: index.chalk.green('?'),
+      prefix: chalk$4.green('?'),
       transformer: (val) => val,
     });
 
@@ -22833,9 +22830,9 @@ class Prompt {
   getQuestion() {
     let message =
       (this.opt.prefix ? this.opt.prefix + ' ' : '') +
-      index.chalk.bold(this.opt.message) +
+      chalk$4.bold(this.opt.message) +
       this.opt.suffix +
-      index.chalk.reset(' ');
+      chalk$4.reset(' ');
 
     // Append the default if available, and if question isn't touched/answered
     if (
@@ -22845,9 +22842,9 @@ class Prompt {
     ) {
       // If default password is supplied, hide it
       if (this.opt.type === 'password') {
-        message += index.chalk.italic.dim('[hidden] ');
+        message += chalk$4.italic.dim('[hidden] ');
       } else {
-        message += index.chalk.dim('(' + this.opt.default + ') ');
+        message += chalk$4.dim('(' + this.opt.default + ') ');
       }
     }
 
@@ -22932,12 +22929,12 @@ class ListPrompt extends Prompt {
     let message = this.getQuestion();
 
     if (this.firstRender) {
-      message += index.chalk.dim('(Use arrow keys)');
+      message += chalk$4.dim('(Use arrow keys)');
     }
 
     // Render choices or answer depending on the state
     if (this.status === 'answered') {
-      message += index.chalk.cyan(this.opt.choices.getChoice(this.selected).short);
+      message += chalk$4.cyan(this.opt.choices.getChoice(this.selected).short);
     } else {
       const choicesStr = listRender(this.opt.choices, this.selected);
       const indexPosition = this.opt.choices.indexOf(
@@ -23043,7 +23040,7 @@ function listRender(choices, pointer) {
     const isSelected = i - separatorOffset === pointer;
     let line = (isSelected ? figures.pointer + ' ' : '  ') + choice.name;
     if (isSelected) {
-      line = index.chalk.cyan(line);
+      line = chalk$4.cyan(line);
     }
 
     output += line + ' \n';
@@ -23106,11 +23103,11 @@ class InputPrompt extends Prompt {
     if (transformer) {
       message += transformer(appendContent, this.answers, { isFinal });
     } else {
-      message += isFinal ? index.chalk.cyan(appendContent) : appendContent;
+      message += isFinal ? chalk$4.cyan(appendContent) : appendContent;
     }
 
     if (error) {
-      bottomContent = index.chalk.red('>> ') + error;
+      bottomContent = chalk$4.red('>> ') + error;
     }
 
     this.screen.render(message, bottomContent);
@@ -23240,7 +23237,7 @@ class ConfirmPrompt extends Prompt {
     let message = this.getQuestion();
 
     if (typeof answer === 'boolean') {
-      message += index.chalk.cyan(answer ? 'Yes' : 'No');
+      message += chalk$4.cyan(answer ? 'Yes' : 'No');
     } else if (answer) {
       message += answer;
     } else {
@@ -23366,7 +23363,7 @@ class RawListPrompt extends Prompt {
     let bottomContent = '';
 
     if (this.status === 'answered') {
-      message += index.chalk.cyan(this.opt.choices.getChoice(this.selected).short);
+      message += chalk$4.cyan(this.opt.choices.getChoice(this.selected).short);
     } else {
       const choicesStr = renderChoices$2(this.opt.choices, this.selected);
       message +=
@@ -23376,7 +23373,7 @@ class RawListPrompt extends Prompt {
     message += this.rl.line;
 
     if (error) {
-      bottomContent = '\n' + index.chalk.red('>> ') + error;
+      bottomContent = '\n' + chalk$4.red('>> ') + error;
     }
 
     this.screen.render(message, bottomContent);
@@ -23485,10 +23482,10 @@ function renderChoices$2(choices, pointer) {
       return;
     }
 
-    const index$1 = i - separatorOffset;
-    let display = index$1 + 1 + ') ' + choice.name;
-    if (index$1 === pointer) {
-      display = index.chalk.cyan(display);
+    const index = i - separatorOffset;
+    let display = index + 1 + ') ' + choice.name;
+    if (index === pointer) {
+      display = chalk$4.cyan(display);
     }
 
     output += display;
@@ -23569,7 +23566,7 @@ class ExpandPrompt extends Prompt {
     let bottomContent = '';
 
     if (this.status === 'answered') {
-      message += index.chalk.cyan(this.answer);
+      message += chalk$4.cyan(this.answer);
     } else if (this.status === 'expanded') {
       const choicesStr = renderChoices$1(this.opt.choices, this.selectedKey);
       message += this.paginator.paginate(choicesStr, this.selectedKey, this.opt.pageSize);
@@ -23579,11 +23576,11 @@ class ExpandPrompt extends Prompt {
     message += this.rl.line;
 
     if (error) {
-      bottomContent = index.chalk.red('>> ') + error;
+      bottomContent = chalk$4.red('>> ') + error;
     }
 
     if (hint) {
-      bottomContent = index.chalk.cyan('>> ') + hint;
+      bottomContent = chalk$4.cyan('>> ') + hint;
     }
 
     this.screen.render(message, bottomContent);
@@ -23620,7 +23617,7 @@ class ExpandPrompt extends Prompt {
 
       let choiceStr = choice.key + ') ' + choice.name;
       if (this.selectedKey === choice.key) {
-        choiceStr = index.chalk.cyan(choiceStr);
+        choiceStr = chalk$4.cyan(choiceStr);
       }
 
       output += choiceStr;
@@ -23753,7 +23750,7 @@ function renderChoices$1(choices, pointer) {
 
     let choiceStr = choice.key + ') ' + choice.name;
     if (pointer === choice.key) {
-      choiceStr = index.chalk.cyan(choiceStr);
+      choiceStr = chalk$4.cyan(choiceStr);
     }
 
     output += choiceStr;
@@ -23845,19 +23842,19 @@ class CheckboxPrompt extends Prompt {
     if (!this.dontShowHints) {
       message +=
         '(Press ' +
-        index.chalk.cyan.bold('<space>') +
+        chalk$4.cyan.bold('<space>') +
         ' to select, ' +
-        index.chalk.cyan.bold('<a>') +
+        chalk$4.cyan.bold('<a>') +
         ' to toggle all, ' +
-        index.chalk.cyan.bold('<i>') +
+        chalk$4.cyan.bold('<i>') +
         ' to invert selection, and ' +
-        index.chalk.cyan.bold('<enter>') +
+        chalk$4.cyan.bold('<enter>') +
         ' to proceed)';
     }
 
     // Render choices or answer depending on the state
     if (this.status === 'answered') {
-      message += index.chalk.cyan(this.selection.join(', '));
+      message += chalk$4.cyan(this.selection.join(', '));
     } else {
       const choicesStr = renderChoices(this.opt.choices, this.pointer);
       const indexPosition = this.opt.choices.indexOf(
@@ -23889,7 +23886,7 @@ class CheckboxPrompt extends Prompt {
     }
 
     if (error) {
-      bottomContent = index.chalk.red('>> ') + error;
+      bottomContent = chalk$4.red('>> ') + error;
     }
 
     this.screen.render(message, bottomContent);
@@ -24005,7 +24002,7 @@ function renderChoices(choices, pointer) {
     } else {
       const line = getCheckbox(choice.checked) + ' ' + choice.name;
       if (i - separatorOffset === pointer) {
-        output += index.chalk.cyan(figures.pointer + line);
+        output += chalk$4.cyan(figures.pointer + line);
       } else {
         output += ' ' + line;
       }
@@ -24024,7 +24021,7 @@ function renderChoices(choices, pointer) {
  */
 
 function getCheckbox(checked) {
-  return checked ? index.chalk.green(figures.radioOn) : figures.radioOff;
+  return checked ? chalk$4.green(figures.radioOn) : figures.radioOff;
 }
 
 /**
@@ -24087,7 +24084,7 @@ class PasswordPrompt extends Prompt {
     }
 
     if (error) {
-      bottomContent = '\n' + index.chalk.red('>> ') + error;
+      bottomContent = '\n' + chalk$4.red('>> ') + error;
     }
 
     this.screen.render(message, bottomContent);
@@ -24096,12 +24093,12 @@ class PasswordPrompt extends Prompt {
   getMaskedValue(value) {
     if (this.status === 'answered') {
       return this.opt.mask
-        ? index.chalk.cyan(mask(value, this.opt.mask))
-        : index.chalk.italic.dim('[hidden]');
+        ? chalk$4.cyan(mask(value, this.opt.mask))
+        : chalk$4.italic.dim('[hidden]');
     }
     return this.opt.mask
       ? mask(value, this.opt.mask)
-      : index.chalk.italic.dim('[input is hidden] ');
+      : chalk$4.italic.dim('[input is hidden] ');
   }
 
   /**
@@ -25926,7 +25923,7 @@ var utf8  = utf8$1,
   sbcs    = sbcsExports,
   iso2022 = iso2022Exports;
 
-var self$1 = index.commonjsGlobal;
+var self$1 = commonjsGlobal;
 
 var recognisers = [
   new utf8,
@@ -37801,7 +37798,7 @@ var CreateFileError$1 = {};
  * Kevin Gravier <kevin@mrkmg.com>
  * MIT 2018
  */
-var __extends$3 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$3 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -37842,7 +37839,7 @@ var LaunchEditorError$1 = {};
  * Kevin Gravier <kevin@mrkmg.com>
  * MIT 2018
  */
-var __extends$2 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$2 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -37883,7 +37880,7 @@ var ReadFileError$1 = {};
  * Kevin Gravier <kevin@mrkmg.com>
  * MIT 2018
  */
-var __extends$1 = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends$1 = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -37924,7 +37921,7 @@ var RemoveFileError$1 = {};
  * Kevin Gravier <kevin@mrkmg.com>
  * MIT 2018
  */
-var __extends = (index.commonjsGlobal && index.commonjsGlobal.__extends) || (function () {
+var __extends = (commonjsGlobal && commonjsGlobal.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -38202,13 +38199,13 @@ class EditorPrompt extends Prompt {
     let message = this.getQuestion();
 
     if (this.status === 'answered') {
-      message += index.chalk.dim('Received');
+      message += chalk$4.dim('Received');
     } else {
-      message += index.chalk.dim('Press <enter> to launch your preferred editor.');
+      message += chalk$4.dim('Press <enter> to launch your preferred editor.');
     }
 
     if (error) {
-      bottomContent = index.chalk.red('>> ') + error;
+      bottomContent = chalk$4.red('>> ') + error;
     }
 
     this.screen.render(message, bottomContent);
@@ -39080,7 +39077,7 @@ function through(write, end, opts) {
 var through_1 = through;
 through.through = through;
 
-var through$1 = /*@__PURE__*/index.getDefaultExportFromCjs(through_1);
+var through$1 = /*@__PURE__*/getDefaultExportFromCjs(through_1);
 
 const Stream = require$$0$5;
 
@@ -39225,7 +39222,7 @@ class MuteStream extends Stream {
 
 var lib = MuteStream;
 
-var MuteStream$1 = /*@__PURE__*/index.getDefaultExportFromCjs(lib);
+var MuteStream$1 = /*@__PURE__*/getDefaultExportFromCjs(lib);
 
 /**
  * Base interface class other can inherits from
@@ -39468,7 +39465,7 @@ function isPlainObject(value) {
 
 var isPlainObject_1 = isPlainObject;
 
-var isPlainObject$1 = /*@__PURE__*/index.getDefaultExportFromCjs(isPlainObject_1);
+var isPlainObject$1 = /*@__PURE__*/getDefaultExportFromCjs(isPlainObject_1);
 
 var assignValue = _assignValue,
     castPath = _castPath,
@@ -39558,7 +39555,7 @@ function set(object, path, value) {
 
 var set_1 = set;
 
-var set$1 = /*@__PURE__*/index.getDefaultExportFromCjs(set_1);
+var set$1 = /*@__PURE__*/getDefaultExportFromCjs(set_1);
 
 /**
  * Resolve a question property value if it is passed as a function.
@@ -39819,8 +39816,8 @@ const inquirer = {
  */
 
 // ES Module need use fileURLToPath to get __dirname
-const __filename$1 = node_url.fileURLToPath((typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.src || new URL('init.js', document.baseURI).href)));
-const __dirname$1 = path$1.dirname(__filename$1);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path$1.dirname(__filename);
 
 // Setup readline
 const rl = readline$1.createInterface({
@@ -39837,9 +39834,9 @@ const CONFIG = {
 };
 
 // Setup i18n
-const i18n = new index.I18n({
+const i18n = new I18n({
   locales: ["en", "zh"],
-  directory: path$1.join(__dirname$1, "./src/locales"),
+  directory: path$1.join(__dirname, "./src/locales"),
   defaultLocale: "en",
 });
 
@@ -39953,7 +39950,7 @@ setLang().then(() => {
   setPort().then(() => {
     setToken().then(() => {
       setSSL().then(() => {
-        src_config.writeConfig(CONFIG)
+        writeConfig(CONFIG)
           .then(() => {
             console.log(i18n.__("Configuration file written successfully"));
           })

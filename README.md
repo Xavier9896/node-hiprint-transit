@@ -260,3 +260,7 @@ Make a error callback to reply client.
 3. Every 10 minutes, it will retrieve the print list from `electron-hiprint`.
 
 <p align="right"><a href="#readme-top">↑ back to top</a></p>
+
+### If this project helps you, please give me a star, thank you!
+
+<a href="https://www.buymeacoffee.com/xavier9896" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>

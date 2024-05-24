@@ -1,7 +1,7 @@
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-05-23 12:32:30
+ * @LastEditTime: 2024-05-24 11:22:15
  * @FilePath: /node-hiprint-transit/index.js
  */
 import path from "node:path";
@@ -16,6 +16,7 @@ import forge from "node-forge";
 import { toUnicode } from "punycode";
 import log from "./src/log.js";
 import { readConfig, getIPAddress } from "./src/config.js";
+import packageJson from "./package.json" assert { type: 'json' };
 
 // ES Module need use fileURLToPath to get __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -72,7 +73,7 @@ readConfig().then((CONFIG) => {
 
   server.listen(port, () => {
     log(i18n.__("Serve is start"));
-    console.log(chalk.green(`node-hiprint-transit version: ${process.env.npm_package_version}\n`))
+    console.log(chalk.green(`node-hiprint-transit version: ${packageJson.version}\n`))
     console.log(
       i18n.__(
         "Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s",

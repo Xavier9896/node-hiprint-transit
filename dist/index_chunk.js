@@ -1,14 +1,12 @@
-'use strict';
-
-var process$1 = require('node:process');
-var os = require('node:os');
-var tty = require('node:tty');
-var require$$1$1 = require('fs');
-var require$$3 = require('url');
-var require$$1$2 = require('path');
-var require$$0 = require('tty');
-var require$$0$2 = require('util');
-var require$$0$1 = require('os');
+import process$1 from 'node:process';
+import os from 'node:os';
+import tty from 'node:tty';
+import require$$1$1 from 'fs';
+import require$$3 from 'url';
+import require$$1$2 from 'path';
+import require$$0 from 'tty';
+import require$$0$2 from 'util';
+import require$$0$1 from 'os';
 
 const ANSI_BACKGROUND_OFFSET = 10;
 
@@ -4398,7 +4396,7 @@ var Runtime = runtime;
 var Formatters = formatters;
 var safeIdentifier$1 = safeIdentifier$2;
 
-function _interopNamespaceDefault$2(e) {
+function _interopNamespaceDefault$1(e) {
     var n = Object.create(null);
     if (e) {
         Object.keys(e).forEach(function (k) {
@@ -4415,8 +4413,8 @@ function _interopNamespaceDefault$2(e) {
     return Object.freeze(n);
 }
 
-var Runtime__namespace = /*#__PURE__*/_interopNamespaceDefault$2(Runtime);
-var Formatters__namespace = /*#__PURE__*/_interopNamespaceDefault$2(Formatters);
+var Runtime__namespace = /*#__PURE__*/_interopNamespaceDefault$1(Runtime);
+var Formatters__namespace = /*#__PURE__*/_interopNamespaceDefault$1(Formatters);
 
 /**
  * Parent class for errors.
@@ -8354,7 +8352,7 @@ var PluralCategories = pluralCategoriesExports;
 var Plurals = pluralsExports;
 var safeIdentifier = safeIdentifier$2;
 
-function _interopNamespaceDefault$1(e) {
+function _interopNamespaceDefault(e) {
     var n = Object.create(null);
     if (e) {
         Object.keys(e).forEach(function (k) {
@@ -8371,9 +8369,9 @@ function _interopNamespaceDefault$1(e) {
     return Object.freeze(n);
 }
 
-var Cardinals__namespace = /*#__PURE__*/_interopNamespaceDefault$1(Cardinals);
-var PluralCategories__namespace = /*#__PURE__*/_interopNamespaceDefault$1(PluralCategories);
-var Plurals__namespace = /*#__PURE__*/_interopNamespaceDefault$1(Plurals);
+var Cardinals__namespace = /*#__PURE__*/_interopNamespaceDefault(Cardinals);
+var PluralCategories__namespace = /*#__PURE__*/_interopNamespaceDefault(PluralCategories);
+var Plurals__namespace = /*#__PURE__*/_interopNamespaceDefault(Plurals);
 
 function normalize(locale) {
     if (typeof locale !== 'string' || locale.length < 2)
@@ -9962,10 +9960,4 @@ i18n$2.exports = i18n();
  */
 var I18n = i18n$2.exports.I18n = i18n;
 
-exports.I18n = I18n;
-exports.chalk = chalk;
-exports.commonjsGlobal = commonjsGlobal;
-exports.getAugmentedNamespace = getAugmentedNamespace;
-exports.getDefaultExportFromCjs = getDefaultExportFromCjs;
-exports.requireSupportsColor = requireSupportsColor;
-exports.srcExports = srcExports;
+export { I18n as I, getDefaultExportFromCjs as a, chalk as b, commonjsGlobal as c, getAugmentedNamespace as g, requireSupportsColor as r, srcExports as s };

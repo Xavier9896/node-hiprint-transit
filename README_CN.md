@@ -260,3 +260,7 @@ hiprint.init({
 3. 每10分钟会向 `electron-hiprint` 请求一次打印机列表。
 
 <p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
+
+### 如果该项目对你有所帮助，请给我一个 star，谢谢！
+
+![赞赏我](./res/WechatAppreciate.jpg)

@@ -1,34 +1,31 @@
-'use strict';
+import path from 'node:path';
+import http$2 from 'node:http';
+import https$1 from 'node:https';
+import { appendFile, access, constants as constants$1, writeFile, mkdir, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { s as srcExports, g as getAugmentedNamespace, c as commonjsGlobal, a as getDefaultExportFromCjs, I as I18n, b as chalk } from './index_chunk.js';
+import require$$0$4 from 'http';
+import require$$1$4 from 'fs';
+import require$$1$1 from 'zlib';
+import require$$1 from 'path';
+import require$$0$3 from 'stream';
+import require$$1$2 from 'querystring';
+import require$$3$1 from 'url';
+import require$$2 from 'crypto';
+import require$$0$2 from 'events';
+import require$$2$1 from 'timers';
+import require$$1$3 from 'https';
+import require$$3 from 'net';
+import require$$4 from 'tls';
+import { toUnicode } from 'punycode';
+import { readConfig, getIPAddress } from './src/config.js';
+import 'node:process';
+import 'node:os';
+import 'node:tty';
+import 'tty';
+import 'util';
+import 'os';
 
-var path = require('node:path');
-var http$2 = require('node:http');
-var https$1 = require('node:https');
-var node_fs = require('node:fs');
-var node_url = require('node:url');
-var index = require('./index_chunk.js');
-var require$$0$4 = require('http');
-var require$$1$4 = require('fs');
-var require$$1$1 = require('zlib');
-var require$$1 = require('path');
-var require$$0$3 = require('stream');
-var require$$1$2 = require('querystring');
-var require$$3$1 = require('url');
-var require$$2 = require('crypto');
-var require$$0$2 = require('events');
-var require$$2$1 = require('timers');
-var require$$1$3 = require('https');
-var require$$3 = require('net');
-var require$$4 = require('tls');
-var punycode = require('punycode');
-var src_config = require('./src/config.js');
-require('node:process');
-require('node:os');
-require('node:tty');
-require('tty');
-require('util');
-require('os');
-
-var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
 var dist$1 = {exports: {}};
 
 var negotiator = {exports: {}};
@@ -13123,7 +13120,7 @@ transport.Transport = void 0;
 const events_1$4 = require$$0$2;
 const parser_v4 = cjs$1;
 const parser_v3 = parserV3;
-const debug_1$a = index.srcExports;
+const debug_1$a = srcExports;
 const debug$b = (0, debug_1$a.default)("engine:transport");
 /**
  * Noop function.
@@ -13238,7 +13235,7 @@ polling$2.Polling = void 0;
 const transport_1$4 = transport;
 const zlib_1$1 = require$$1$1;
 const accepts$1 = accepts$2;
-const debug_1$9 = index.srcExports;
+const debug_1$9 = srcExports;
 const debug$a = (0, debug_1$9.default)("engine:polling");
 const compressionMethods$1 = {
     gzip: zlib_1$1.createGzip,
@@ -13639,7 +13636,7 @@ var websocket$2 = {};
 Object.defineProperty(websocket$2, "__esModule", { value: true });
 websocket$2.WebSocket = void 0;
 const transport_1$3 = transport;
-const debug_1$8 = index.srcExports;
+const debug_1$8 = srcExports;
 const debug$9 = (0, debug_1$8.default)("engine:ws");
 let WebSocket$5 = class WebSocket extends transport_1$3.Transport {
     /**
@@ -13762,7 +13759,7 @@ var webtransport = {};
 Object.defineProperty(webtransport, "__esModule", { value: true });
 webtransport.WebTransport = void 0;
 const transport_1$2 = transport;
-const debug_1$7 = index.srcExports;
+const debug_1$7 = srcExports;
 const engine_io_parser_1$1 = cjs$1;
 const debug$8 = (0, debug_1$7.default)("engine:webtransport");
 /**
@@ -13854,7 +13851,7 @@ var socket$1 = {};
 Object.defineProperty(socket$1, "__esModule", { value: true });
 socket$1.Socket = void 0;
 const events_1$3 = require$$0$2;
-const debug_1$6 = index.srcExports;
+const debug_1$6 = srcExports;
 const timers_1 = require$$2$1;
 const debug$7 = (0, debug_1$6.default)("engine:socket");
 let Socket$1 = class Socket extends events_1$3.EventEmitter {
@@ -19502,7 +19499,7 @@ const base64id = base64idExports;
 const transports_1 = transports;
 const events_1$2 = require$$0$2;
 const socket_1 = socket$1;
-const debug_1$5 = index.srcExports;
+const debug_1$5 = srcExports;
 const cookie_1 = cookie;
 const ws_1 = ws;
 const webtransport_1 = webtransport;
@@ -20302,7 +20299,7 @@ polling.Polling = void 0;
 const transport_1$1 = transport;
 const zlib_1 = require$$1$1;
 const accepts = accepts$2;
-const debug_1$4 = index.srcExports;
+const debug_1$4 = srcExports;
 const debug$5 = (0, debug_1$4.default)("engine:polling");
 const compressionMethods = {
     gzip: zlib_1.createGzip,
@@ -20672,7 +20669,7 @@ var websocket = {};
 Object.defineProperty(websocket, "__esModule", { value: true });
 websocket.WebSocket = void 0;
 const transport_1 = transport;
-const debug_1$3 = index.srcExports;
+const debug_1$3 = srcExports;
 const debug$4 = (0, debug_1$3.default)("engine:ws");
 let WebSocket$1 = class WebSocket extends transport_1.Transport {
     /**
@@ -20764,7 +20761,7 @@ transportsUws.default = {
 
 Object.defineProperty(userver, "__esModule", { value: true });
 userver.uServer = void 0;
-const debug_1$2 = index.srcExports;
+const debug_1$2 = srcExports;
 const server_1 = server;
 const transports_uws_1 = transportsUws;
 const debug$3 = (0, debug_1$2.default)("engine:uws");
@@ -21273,7 +21270,7 @@ var componentEmitter = /*#__PURE__*/Object.freeze({
   Emitter: Emitter
 });
 
-var require$$0 = /*@__PURE__*/index.getAugmentedNamespace(componentEmitter);
+var require$$0 = /*@__PURE__*/getAugmentedNamespace(componentEmitter);
 
 var binary = {};
 
@@ -21428,7 +21425,7 @@ function _reconstructPacket(data, buffers) {
 	const component_emitter_1 = require$$0;
 	const binary_js_1 = binary;
 	const is_binary_js_1 = isBinary$1;
-	const debug_1 = index.srcExports; // debug()
+	const debug_1 = srcExports; // debug()
 	const debug = (0, debug_1.default)("socket.io-parser"); // debug()
 	/**
 	 * These strings must not be used as event names, as they have a special meaning.
@@ -21748,7 +21745,7 @@ function _reconstructPacket(data, buffers) {
 Object.defineProperty(client, "__esModule", { value: true });
 client.Client = void 0;
 const socket_io_parser_1 = cjs;
-const debugModule = index.srcExports;
+const debugModule = srcExports;
 const url = require$$3$1;
 const debug$2 = debugModule("socket.io:client");
 class Client {
@@ -22552,13 +22549,13 @@ function requireSocket () {
 	if (hasRequiredSocket) return socket;
 	hasRequiredSocket = 1;
 	(function (exports) {
-		var __importDefault = (index.commonjsGlobal && index.commonjsGlobal.__importDefault) || function (mod) {
+		var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
 		    return (mod && mod.__esModule) ? mod : { "default": mod };
 		};
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.Socket = exports.RESERVED_EVENTS = void 0;
 		const socket_io_parser_1 = cjs;
-		const debug_1 = __importDefault(index.srcExports);
+		const debug_1 = __importDefault(srcExports);
 		const typed_events_1 = typedEvents;
 		const base64id_1 = __importDefault(base64idExports);
 		const broadcast_operator_1 = requireBroadcastOperator();
@@ -23540,14 +23537,14 @@ function requireSocket () {
 }
 
 (function (exports) {
-	var __importDefault = (index.commonjsGlobal && index.commonjsGlobal.__importDefault) || function (mod) {
+	var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
 	    return (mod && mod.__esModule) ? mod : { "default": mod };
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.Namespace = exports.RESERVED_EVENTS = void 0;
 	const socket_1 = requireSocket();
 	const typed_events_1 = typedEvents;
-	const debug_1 = __importDefault(index.srcExports);
+	const debug_1 = __importDefault(srcExports);
 	const broadcast_operator_1 = requireBroadcastOperator();
 	const debug = (0, debug_1.default)("socket.io:namespace");
 	exports.RESERVED_EVENTS = new Set(["connect", "connection", "new_namespace"]);
@@ -24136,13 +24133,13 @@ function requireSocket () {
 
 var parentNamespace = {};
 
-var __importDefault$1 = (index.commonjsGlobal && index.commonjsGlobal.__importDefault) || function (mod) {
+var __importDefault$1 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(parentNamespace, "__esModule", { value: true });
 parentNamespace.ParentNamespace = void 0;
 const namespace_1 = namespace;
-const debug_1$1 = __importDefault$1(index.srcExports);
+const debug_1$1 = __importDefault$1(srcExports);
 const debug$1 = (0, debug_1$1.default)("socket.io:parent-namespace");
 /**
  * A parent namespace is a special {@link Namespace} that holds a list of child namespaces which were created either
@@ -24672,14 +24669,14 @@ function shouldIncludePacket(sessionRooms, opts) {
 
 var uws = {};
 
-var __importDefault = (index.commonjsGlobal && index.commonjsGlobal.__importDefault) || function (mod) {
+var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(uws, "__esModule", { value: true });
 uws.serveFile = uws.restoreAdapter = uws.patchAdapter = void 0;
 const socket_io_adapter_1 = dist;
 const fs_1 = require$$1$4;
-const debug_1 = __importDefault(index.srcExports);
+const debug_1 = __importDefault(srcExports);
 const debug = (0, debug_1.default)("socket.io:adapter-uws");
 const SEPARATOR = "\x1f"; // see https://en.wikipedia.org/wiki/Delimiter#ASCII_delimited_text
 const { addAll, del, broadcast } = socket_io_adapter_1.Adapter.prototype;
@@ -24807,10 +24804,10 @@ function serveFile(res /* : HttpResponse */, filepath) {
 }
 uws.serveFile = serveFile;
 
-var name = "socket.io";
-var version = "4.7.2";
-var description = "node.js realtime framework server";
-var keywords = [
+var name$1 = "socket.io";
+var version$1 = "4.7.2";
+var description$1 = "node.js realtime framework server";
+var keywords$1 = [
 	"realtime",
 	"framework",
 	"websocket",
@@ -24831,20 +24828,20 @@ var directories = {
 	lib: "lib/",
 	test: "test/"
 };
-var type = "commonjs";
-var main = "./dist/index.js";
-var exports$1 = {
+var type$1 = "commonjs";
+var main$1 = "./dist/index.js";
+var exports = {
 	types: "./dist/index.d.ts",
 	"import": "./wrapper.mjs",
 	require: "./dist/index.js"
 };
 var types = "./dist/index.d.ts";
-var license = "MIT";
-var repository = {
+var license$1 = "MIT";
+var repository$1 = {
 	type: "git",
 	url: "git://github.com/socketio/socket.io"
 };
-var scripts = {
+var scripts$1 = {
 	compile: "rimraf ./dist && tsc",
 	test: "npm run format:check && npm run compile && npm run test:types && npm run test:unit",
 	"test:types": "tsd",
@@ -24853,7 +24850,7 @@ var scripts = {
 	"format:fix": "prettier --write \"lib/**/*.ts\" \"test/**/*.ts\"",
 	prepack: "npm run compile"
 };
-var dependencies = {
+var dependencies$1 = {
 	accepts: "~1.3.4",
 	base64id: "~2.0.0",
 	cors: "~2.8.5",
@@ -24862,7 +24859,7 @@ var dependencies = {
 	"socket.io-adapter": "~2.5.2",
 	"socket.io-parser": "~4.2.4"
 };
-var devDependencies = {
+var devDependencies$1 = {
 	"@types/mocha": "^9.0.0",
 	"expect.js": "0.3.1",
 	mocha: "^10.0.0",
@@ -24903,28 +24900,28 @@ var tsd = {
 	directory: "test"
 };
 var require$$18 = {
-	name: name,
-	version: version,
-	description: description,
-	keywords: keywords,
+	name: name$1,
+	version: version$1,
+	description: description$1,
+	keywords: keywords$1,
 	files: files,
 	directories: directories,
-	type: type,
-	main: main,
-	exports: exports$1,
+	type: type$1,
+	main: main$1,
+	exports: exports,
 	types: types,
-	license: license,
-	repository: repository,
-	scripts: scripts,
-	dependencies: dependencies,
-	devDependencies: devDependencies,
+	license: license$1,
+	repository: repository$1,
+	scripts: scripts$1,
+	dependencies: dependencies$1,
+	devDependencies: devDependencies$1,
 	contributors: contributors,
 	engines: engines,
 	tsd: tsd
 };
 
 (function (module, exports) {
-	var __createBinding = (index.commonjsGlobal && index.commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
 	    if (k2 === undefined) k2 = k;
 	    var desc = Object.getOwnPropertyDescriptor(m, k);
 	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -24935,19 +24932,19 @@ var require$$18 = {
 	    if (k2 === undefined) k2 = k;
 	    o[k2] = m[k];
 	}));
-	var __setModuleDefault = (index.commonjsGlobal && index.commonjsGlobal.__setModuleDefault) || (Object.create ? (function(o, v) {
+	var __setModuleDefault = (commonjsGlobal && commonjsGlobal.__setModuleDefault) || (Object.create ? (function(o, v) {
 	    Object.defineProperty(o, "default", { enumerable: true, value: v });
 	}) : function(o, v) {
 	    o["default"] = v;
 	});
-	var __importStar = (index.commonjsGlobal && index.commonjsGlobal.__importStar) || function (mod) {
+	var __importStar = (commonjsGlobal && commonjsGlobal.__importStar) || function (mod) {
 	    if (mod && mod.__esModule) return mod;
 	    var result = {};
 	    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
 	    __setModuleDefault(result, mod);
 	    return result;
 	};
-	var __importDefault = (index.commonjsGlobal && index.commonjsGlobal.__importDefault) || function (mod) {
+	var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
 	    return (mod && mod.__esModule) ? mod : { "default": mod };
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -24966,7 +24963,7 @@ var require$$18 = {
 	const parent_namespace_1 = parentNamespace;
 	const socket_io_adapter_1 = dist;
 	const parser = __importStar(cjs);
-	const debug_1 = __importDefault(index.srcExports);
+	const debug_1 = __importDefault(srcExports);
 	const socket_1 = requireSocket();
 	Object.defineProperty(exports, "Socket", { enumerable: true, get: function () { return socket_1.Socket; } });
 	const typed_events_1 = typedEvents;
@@ -25739,7 +25736,7 @@ var require$$18 = {
 } (dist$1, dist$1.exports));
 
 var distExports = dist$1.exports;
-var io = /*@__PURE__*/index.getDefaultExportFromCjs(distExports);
+var io = /*@__PURE__*/getDefaultExportFromCjs(distExports);
 
 const {Server, Namespace, Socket} = io;
 
@@ -26066,7 +26063,7 @@ util$1.isNodejs =
 // is not available.
 util$1.globalScope = (function() {
   if(util$1.isNodejs) {
-    return index.commonjsGlobal;
+    return commonjsGlobal;
   }
 
   return typeof self === 'undefined' ? window : self;
@@ -53731,16 +53728,16 @@ function _sha1() {
 
 var lib = forge$D;
 
-var forge = /*@__PURE__*/index.getDefaultExportFromCjs(lib);
+var forge = /*@__PURE__*/getDefaultExportFromCjs(lib);
 
 var dayjs_min = {exports: {}};
 
 (function (module, exports) {
-	!function(t,e){module.exports=e();}(index.commonjsGlobal,(function(){var t=1e3,e=6e4,n=36e5,r="millisecond",i="second",s="minute",u="hour",a="day",o="week",c="month",f="quarter",h="year",d="date",l="Invalid Date",$=/^(\d{4})[-/]?(\d{1,2})?[-/]?(\d{0,2})[Tt\s]*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?[.:]?(\d+)?$/,y=/\[([^\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS/g,M={name:"en",weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_"),ordinal:function(t){var e=["th","st","nd","rd"],n=t%100;return "["+t+(e[(n-20)%10]||e[n]||e[0])+"]"}},m=function(t,e,n){var r=String(t);return !r||r.length>=e?t:""+Array(e+1-r.length).join(n)+t},v={s:m,z:function(t){var e=-t.utcOffset(),n=Math.abs(e),r=Math.floor(n/60),i=n%60;return (e<=0?"+":"-")+m(r,2,"0")+":"+m(i,2,"0")},m:function t(e,n){if(e.date()<n.date())return -t(n,e);var r=12*(n.year()-e.year())+(n.month()-e.month()),i=e.clone().add(r,c),s=n-i<0,u=e.clone().add(r+(s?-1:1),c);return +(-(r+(n-i)/(s?i-u:u-i))||0)},a:function(t){return t<0?Math.ceil(t)||0:Math.floor(t)},p:function(t){return {M:c,y:h,w:o,d:a,D:d,h:u,m:s,s:i,ms:r,Q:f}[t]||String(t||"").toLowerCase().replace(/s$/,"")},u:function(t){return void 0===t}},g="en",D={};D[g]=M;var p="$isDayjsObject",S=function(t){return t instanceof _||!(!t||!t[p])},w=function t(e,n,r){var i;if(!e)return g;if("string"==typeof e){var s=e.toLowerCase();D[s]&&(i=s),n&&(D[s]=n,i=s);var u=e.split("-");if(!i&&u.length>1)return t(u[0])}else {var a=e.name;D[a]=e,i=a;}return !r&&i&&(g=i),i||!r&&g},O=function(t,e){if(S(t))return t.clone();var n="object"==typeof e?e:{};return n.date=t,n.args=arguments,new _(n)},b=v;b.l=w,b.i=S,b.w=function(t,e){return O(t,{locale:e.$L,utc:e.$u,x:e.$x,$offset:e.$offset})};var _=function(){function M(t){this.$L=w(t.locale,null,!0),this.parse(t),this.$x=this.$x||t.x||{},this[p]=!0;}var m=M.prototype;return m.parse=function(t){this.$d=function(t){var e=t.date,n=t.utc;if(null===e)return new Date(NaN);if(b.u(e))return new Date;if(e instanceof Date)return new Date(e);if("string"==typeof e&&!/Z$/i.test(e)){var r=e.match($);if(r){var i=r[2]-1||0,s=(r[7]||"0").substring(0,3);return n?new Date(Date.UTC(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)):new Date(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)}}return new Date(e)}(t),this.init();},m.init=function(){var t=this.$d;this.$y=t.getFullYear(),this.$M=t.getMonth(),this.$D=t.getDate(),this.$W=t.getDay(),this.$H=t.getHours(),this.$m=t.getMinutes(),this.$s=t.getSeconds(),this.$ms=t.getMilliseconds();},m.$utils=function(){return b},m.isValid=function(){return !(this.$d.toString()===l)},m.isSame=function(t,e){var n=O(t);return this.startOf(e)<=n&&n<=this.endOf(e)},m.isAfter=function(t,e){return O(t)<this.startOf(e)},m.isBefore=function(t,e){return this.endOf(e)<O(t)},m.$g=function(t,e,n){return b.u(t)?this[e]:this.set(n,t)},m.unix=function(){return Math.floor(this.valueOf()/1e3)},m.valueOf=function(){return this.$d.getTime()},m.startOf=function(t,e){var n=this,r=!!b.u(e)||e,f=b.p(t),l=function(t,e){var i=b.w(n.$u?Date.UTC(n.$y,e,t):new Date(n.$y,e,t),n);return r?i:i.endOf(a)},$=function(t,e){return b.w(n.toDate()[t].apply(n.toDate("s"),(r?[0,0,0,0]:[23,59,59,999]).slice(e)),n)},y=this.$W,M=this.$M,m=this.$D,v="set"+(this.$u?"UTC":"");switch(f){case h:return r?l(1,0):l(31,11);case c:return r?l(1,M):l(0,M+1);case o:var g=this.$locale().weekStart||0,D=(y<g?y+7:y)-g;return l(r?m-D:m+(6-D),M);case a:case d:return $(v+"Hours",0);case u:return $(v+"Minutes",1);case s:return $(v+"Seconds",2);case i:return $(v+"Milliseconds",3);default:return this.clone()}},m.endOf=function(t){return this.startOf(t,!1)},m.$set=function(t,e){var n,o=b.p(t),f="set"+(this.$u?"UTC":""),l=(n={},n[a]=f+"Date",n[d]=f+"Date",n[c]=f+"Month",n[h]=f+"FullYear",n[u]=f+"Hours",n[s]=f+"Minutes",n[i]=f+"Seconds",n[r]=f+"Milliseconds",n)[o],$=o===a?this.$D+(e-this.$W):e;if(o===c||o===h){var y=this.clone().set(d,1);y.$d[l]($),y.init(),this.$d=y.set(d,Math.min(this.$D,y.daysInMonth())).$d;}else l&&this.$d[l]($);return this.init(),this},m.set=function(t,e){return this.clone().$set(t,e)},m.get=function(t){return this[b.p(t)]()},m.add=function(r,f){var d,l=this;r=Number(r);var $=b.p(f),y=function(t){var e=O(l);return b.w(e.date(e.date()+Math.round(t*r)),l)};if($===c)return this.set(c,this.$M+r);if($===h)return this.set(h,this.$y+r);if($===a)return y(1);if($===o)return y(7);var M=(d={},d[s]=e,d[u]=n,d[i]=t,d)[$]||1,m=this.$d.getTime()+r*M;return b.w(m,this)},m.subtract=function(t,e){return this.add(-1*t,e)},m.format=function(t){var e=this,n=this.$locale();if(!this.isValid())return n.invalidDate||l;var r=t||"YYYY-MM-DDTHH:mm:ssZ",i=b.z(this),s=this.$H,u=this.$m,a=this.$M,o=n.weekdays,c=n.months,f=n.meridiem,h=function(t,n,i,s){return t&&(t[n]||t(e,r))||i[n].slice(0,s)},d=function(t){return b.s(s%12||12,t,"0")},$=f||function(t,e,n){var r=t<12?"AM":"PM";return n?r.toLowerCase():r};return r.replace(y,(function(t,r){return r||function(t){switch(t){case"YY":return String(e.$y).slice(-2);case"YYYY":return b.s(e.$y,4,"0");case"M":return a+1;case"MM":return b.s(a+1,2,"0");case"MMM":return h(n.monthsShort,a,c,3);case"MMMM":return h(c,a);case"D":return e.$D;case"DD":return b.s(e.$D,2,"0");case"d":return String(e.$W);case"dd":return h(n.weekdaysMin,e.$W,o,2);case"ddd":return h(n.weekdaysShort,e.$W,o,3);case"dddd":return o[e.$W];case"H":return String(s);case"HH":return b.s(s,2,"0");case"h":return d(1);case"hh":return d(2);case"a":return $(s,u,!0);case"A":return $(s,u,!1);case"m":return String(u);case"mm":return b.s(u,2,"0");case"s":return String(e.$s);case"ss":return b.s(e.$s,2,"0");case"SSS":return b.s(e.$ms,3,"0");case"Z":return i}return null}(t)||i.replace(":","")}))},m.utcOffset=function(){return 15*-Math.round(this.$d.getTimezoneOffset()/15)},m.diff=function(r,d,l){var $,y=this,M=b.p(d),m=O(r),v=(m.utcOffset()-this.utcOffset())*e,g=this-m,D=function(){return b.m(y,m)};switch(M){case h:$=D()/12;break;case c:$=D();break;case f:$=D()/3;break;case o:$=(g-v)/6048e5;break;case a:$=(g-v)/864e5;break;case u:$=g/n;break;case s:$=g/e;break;case i:$=g/t;break;default:$=g;}return l?$:b.a($)},m.daysInMonth=function(){return this.endOf(c).$D},m.$locale=function(){return D[this.$L]},m.locale=function(t,e){if(!t)return this.$L;var n=this.clone(),r=w(t,e,!0);return r&&(n.$L=r),n},m.clone=function(){return b.w(this.$d,this)},m.toDate=function(){return new Date(this.valueOf())},m.toJSON=function(){return this.isValid()?this.toISOString():null},m.toISOString=function(){return this.$d.toISOString()},m.toString=function(){return this.$d.toUTCString()},M}(),k=_.prototype;return O.prototype=k,[["$ms",r],["$s",i],["$m",s],["$H",u],["$W",a],["$M",c],["$y",h],["$D",d]].forEach((function(t){k[t[1]]=function(e){return this.$g(e,t[0],t[1])};})),O.extend=function(t,e){return t.$i||(t(e,_,O),t.$i=!0),O},O.locale=w,O.isDayjs=S,O.unix=function(t){return O(1e3*t)},O.en=D[g],O.Ls=D,O.p={},O})); 
+	!function(t,e){module.exports=e();}(commonjsGlobal,(function(){var t=1e3,e=6e4,n=36e5,r="millisecond",i="second",s="minute",u="hour",a="day",o="week",c="month",f="quarter",h="year",d="date",l="Invalid Date",$=/^(\d{4})[-/]?(\d{1,2})?[-/]?(\d{0,2})[Tt\s]*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?[.:]?(\d+)?$/,y=/\[([^\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS/g,M={name:"en",weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_"),ordinal:function(t){var e=["th","st","nd","rd"],n=t%100;return "["+t+(e[(n-20)%10]||e[n]||e[0])+"]"}},m=function(t,e,n){var r=String(t);return !r||r.length>=e?t:""+Array(e+1-r.length).join(n)+t},v={s:m,z:function(t){var e=-t.utcOffset(),n=Math.abs(e),r=Math.floor(n/60),i=n%60;return (e<=0?"+":"-")+m(r,2,"0")+":"+m(i,2,"0")},m:function t(e,n){if(e.date()<n.date())return -t(n,e);var r=12*(n.year()-e.year())+(n.month()-e.month()),i=e.clone().add(r,c),s=n-i<0,u=e.clone().add(r+(s?-1:1),c);return +(-(r+(n-i)/(s?i-u:u-i))||0)},a:function(t){return t<0?Math.ceil(t)||0:Math.floor(t)},p:function(t){return {M:c,y:h,w:o,d:a,D:d,h:u,m:s,s:i,ms:r,Q:f}[t]||String(t||"").toLowerCase().replace(/s$/,"")},u:function(t){return void 0===t}},g="en",D={};D[g]=M;var p="$isDayjsObject",S=function(t){return t instanceof _||!(!t||!t[p])},w=function t(e,n,r){var i;if(!e)return g;if("string"==typeof e){var s=e.toLowerCase();D[s]&&(i=s),n&&(D[s]=n,i=s);var u=e.split("-");if(!i&&u.length>1)return t(u[0])}else {var a=e.name;D[a]=e,i=a;}return !r&&i&&(g=i),i||!r&&g},O=function(t,e){if(S(t))return t.clone();var n="object"==typeof e?e:{};return n.date=t,n.args=arguments,new _(n)},b=v;b.l=w,b.i=S,b.w=function(t,e){return O(t,{locale:e.$L,utc:e.$u,x:e.$x,$offset:e.$offset})};var _=function(){function M(t){this.$L=w(t.locale,null,!0),this.parse(t),this.$x=this.$x||t.x||{},this[p]=!0;}var m=M.prototype;return m.parse=function(t){this.$d=function(t){var e=t.date,n=t.utc;if(null===e)return new Date(NaN);if(b.u(e))return new Date;if(e instanceof Date)return new Date(e);if("string"==typeof e&&!/Z$/i.test(e)){var r=e.match($);if(r){var i=r[2]-1||0,s=(r[7]||"0").substring(0,3);return n?new Date(Date.UTC(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)):new Date(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)}}return new Date(e)}(t),this.init();},m.init=function(){var t=this.$d;this.$y=t.getFullYear(),this.$M=t.getMonth(),this.$D=t.getDate(),this.$W=t.getDay(),this.$H=t.getHours(),this.$m=t.getMinutes(),this.$s=t.getSeconds(),this.$ms=t.getMilliseconds();},m.$utils=function(){return b},m.isValid=function(){return !(this.$d.toString()===l)},m.isSame=function(t,e){var n=O(t);return this.startOf(e)<=n&&n<=this.endOf(e)},m.isAfter=function(t,e){return O(t)<this.startOf(e)},m.isBefore=function(t,e){return this.endOf(e)<O(t)},m.$g=function(t,e,n){return b.u(t)?this[e]:this.set(n,t)},m.unix=function(){return Math.floor(this.valueOf()/1e3)},m.valueOf=function(){return this.$d.getTime()},m.startOf=function(t,e){var n=this,r=!!b.u(e)||e,f=b.p(t),l=function(t,e){var i=b.w(n.$u?Date.UTC(n.$y,e,t):new Date(n.$y,e,t),n);return r?i:i.endOf(a)},$=function(t,e){return b.w(n.toDate()[t].apply(n.toDate("s"),(r?[0,0,0,0]:[23,59,59,999]).slice(e)),n)},y=this.$W,M=this.$M,m=this.$D,v="set"+(this.$u?"UTC":"");switch(f){case h:return r?l(1,0):l(31,11);case c:return r?l(1,M):l(0,M+1);case o:var g=this.$locale().weekStart||0,D=(y<g?y+7:y)-g;return l(r?m-D:m+(6-D),M);case a:case d:return $(v+"Hours",0);case u:return $(v+"Minutes",1);case s:return $(v+"Seconds",2);case i:return $(v+"Milliseconds",3);default:return this.clone()}},m.endOf=function(t){return this.startOf(t,!1)},m.$set=function(t,e){var n,o=b.p(t),f="set"+(this.$u?"UTC":""),l=(n={},n[a]=f+"Date",n[d]=f+"Date",n[c]=f+"Month",n[h]=f+"FullYear",n[u]=f+"Hours",n[s]=f+"Minutes",n[i]=f+"Seconds",n[r]=f+"Milliseconds",n)[o],$=o===a?this.$D+(e-this.$W):e;if(o===c||o===h){var y=this.clone().set(d,1);y.$d[l]($),y.init(),this.$d=y.set(d,Math.min(this.$D,y.daysInMonth())).$d;}else l&&this.$d[l]($);return this.init(),this},m.set=function(t,e){return this.clone().$set(t,e)},m.get=function(t){return this[b.p(t)]()},m.add=function(r,f){var d,l=this;r=Number(r);var $=b.p(f),y=function(t){var e=O(l);return b.w(e.date(e.date()+Math.round(t*r)),l)};if($===c)return this.set(c,this.$M+r);if($===h)return this.set(h,this.$y+r);if($===a)return y(1);if($===o)return y(7);var M=(d={},d[s]=e,d[u]=n,d[i]=t,d)[$]||1,m=this.$d.getTime()+r*M;return b.w(m,this)},m.subtract=function(t,e){return this.add(-1*t,e)},m.format=function(t){var e=this,n=this.$locale();if(!this.isValid())return n.invalidDate||l;var r=t||"YYYY-MM-DDTHH:mm:ssZ",i=b.z(this),s=this.$H,u=this.$m,a=this.$M,o=n.weekdays,c=n.months,f=n.meridiem,h=function(t,n,i,s){return t&&(t[n]||t(e,r))||i[n].slice(0,s)},d=function(t){return b.s(s%12||12,t,"0")},$=f||function(t,e,n){var r=t<12?"AM":"PM";return n?r.toLowerCase():r};return r.replace(y,(function(t,r){return r||function(t){switch(t){case"YY":return String(e.$y).slice(-2);case"YYYY":return b.s(e.$y,4,"0");case"M":return a+1;case"MM":return b.s(a+1,2,"0");case"MMM":return h(n.monthsShort,a,c,3);case"MMMM":return h(c,a);case"D":return e.$D;case"DD":return b.s(e.$D,2,"0");case"d":return String(e.$W);case"dd":return h(n.weekdaysMin,e.$W,o,2);case"ddd":return h(n.weekdaysShort,e.$W,o,3);case"dddd":return o[e.$W];case"H":return String(s);case"HH":return b.s(s,2,"0");case"h":return d(1);case"hh":return d(2);case"a":return $(s,u,!0);case"A":return $(s,u,!1);case"m":return String(u);case"mm":return b.s(u,2,"0");case"s":return String(e.$s);case"ss":return b.s(e.$s,2,"0");case"SSS":return b.s(e.$ms,3,"0");case"Z":return i}return null}(t)||i.replace(":","")}))},m.utcOffset=function(){return 15*-Math.round(this.$d.getTimezoneOffset()/15)},m.diff=function(r,d,l){var $,y=this,M=b.p(d),m=O(r),v=(m.utcOffset()-this.utcOffset())*e,g=this-m,D=function(){return b.m(y,m)};switch(M){case h:$=D()/12;break;case c:$=D();break;case f:$=D()/3;break;case o:$=(g-v)/6048e5;break;case a:$=(g-v)/864e5;break;case u:$=g/n;break;case s:$=g/e;break;case i:$=g/t;break;default:$=g;}return l?$:b.a($)},m.daysInMonth=function(){return this.endOf(c).$D},m.$locale=function(){return D[this.$L]},m.locale=function(t,e){if(!t)return this.$L;var n=this.clone(),r=w(t,e,!0);return r&&(n.$L=r),n},m.clone=function(){return b.w(this.$d,this)},m.toDate=function(){return new Date(this.valueOf())},m.toJSON=function(){return this.isValid()?this.toISOString():null},m.toISOString=function(){return this.$d.toISOString()},m.toString=function(){return this.$d.toUTCString()},M}(),k=_.prototype;return O.prototype=k,[["$ms",r],["$s",i],["$m",s],["$H",u],["$W",a],["$M",c],["$y",h],["$D",d]].forEach((function(t){k[t[1]]=function(e){return this.$g(e,t[0],t[1])};})),O.extend=function(t,e){return t.$i||(t(e,_,O),t.$i=!0),O},O.locale=w,O.isDayjs=S,O.unix=function(t){return O(1e3*t)},O.en=D[g],O.Ls=D,O.p={},O})); 
 } (dayjs_min));
 
 var dayjs_minExports = dayjs_min.exports;
-var dayjs = /*@__PURE__*/index.getDefaultExportFromCjs(dayjs_minExports);
+var dayjs = /*@__PURE__*/getDefaultExportFromCjs(dayjs_minExports);
 
 /*
  * @Date: 2023-09-29 20:50:59
@@ -53756,9 +53753,9 @@ var dayjs = /*@__PURE__*/index.getDefaultExportFromCjs(dayjs_minExports);
 function checkDir() {
   const dirPath = "./logs";
   return new Promise((resolve, reject) => {
-    node_fs.access(dirPath, node_fs.constants.F_OK, (err) => {
+    access(dirPath, constants$1.F_OK, (err) => {
       if (err) {
-        node_fs.mkdir(dirPath, (err) => {
+        mkdir(dirPath, (err) => {
           if (err) {
             reject(err);
           } else {
@@ -53781,9 +53778,9 @@ function checkLogFile() {
   return new Promise((resolve, reject) => {
     checkDir()
       .then(() => {
-        node_fs.access(filePath, node_fs.constants.F_OK, (err) => {
+        access(filePath, constants$1.F_OK, (err) => {
           if (err) {
-            node_fs.writeFile(filePath, "", (err) => {
+            writeFile(filePath, "", (err) => {
               if (err) {
                 reject(err);
               } else {
@@ -53814,7 +53811,7 @@ function log(message) {
         const logMessage = `${dayjs().format(
           "YYYY/MM/DD HH:mm:ss"
         )}: ${message}\n`;
-        node_fs.appendFile(filePath, logMessage, (err) => {
+        appendFile(filePath, logMessage, (err) => {
           if (err) {
             reject(err);
           } else {
@@ -53828,19 +53825,78 @@ function log(message) {
   });
 }
 
+var name = "node-hiprint-transit";
+var version = "0.0.3";
+var description = "A nodejs server for hiprint transit";
+var main = "index.js";
+var type = "module";
+var scripts = {
+	init: "npm install && node ./src/init.js",
+	serve: "node ./index.js",
+	build: "rollup -c"
+};
+var repository = {
+	type: "git",
+	url: "git+https://github.com/Xavier9896/node-hiprint-transit.git"
+};
+var keywords = [
+	"hiprint",
+	"transit",
+	"node"
+];
+var author = "xavier";
+var license = "MIT";
+var bugs = {
+	url: "https://github.com/Xavier9896/node-hiprint-transit/issues"
+};
+var homepage = "https://github.com/Xavier9896/node-hiprint-transit#readme";
+var dependencies = {
+	chalk: "^5.3.0",
+	dayjs: "^1.11.10",
+	i18n: "^0.15.1",
+	inquirer: "^9.2.11",
+	"node-forge": "^1.3.1",
+	punycode: "^2.3.0",
+	"socket.io": "^4.7.2"
+};
+var devDependencies = {
+	"@rollup/plugin-commonjs": "^25.0.8",
+	"@rollup/plugin-json": "^6.1.0",
+	"@rollup/plugin-node-resolve": "^15.2.3",
+	rollup: "^4.18.0",
+	"rollup-plugin-copy": "^3.5.0",
+	"rollup-plugin-delete": "^2.0.0"
+};
+var packageJson = {
+	name: name,
+	version: version,
+	description: description,
+	main: main,
+	type: type,
+	scripts: scripts,
+	repository: repository,
+	keywords: keywords,
+	author: author,
+	license: license,
+	bugs: bugs,
+	homepage: homepage,
+	dependencies: dependencies,
+	devDependencies: devDependencies
+};
+
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-05-23 12:32:30
+ * @LastEditTime: 2024-05-24 11:22:15
  * @FilePath: /node-hiprint-transit/index.js
  */
 
 // ES Module need use fileURLToPath to get __dirname
-const __filename$1 = node_url.fileURLToPath((typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.src || new URL('index.js', document.baseURI).href)));
-const __dirname$1 = path.dirname(__filename$1);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname$1 = path.dirname(__filename);
 
 // Setup i18n
-const i18n = new index.I18n({
+const i18n = new I18n({
   locales: ["en", "zh"],
   directory: path.join(__dirname$1, "./src/locales"),
   defaultLocale: "en",
@@ -53849,23 +53905,23 @@ const i18n = new index.I18n({
 const CLIENT = {};
 
 // Read config first and then start serve
-src_config.readConfig().then((CONFIG) => {
+readConfig().then((CONFIG) => {
   const { port, token, useSSL, lang } = CONFIG;
-  var ipAddress = `http://${src_config.getIPAddress()}:${port}`;
+  var ipAddress = `http://${getIPAddress()}:${port}`;
   i18n.setLocale(lang);
   var server;
   if (useSSL) {
-    const key = node_fs.readFileSync("./src/ssl.key", "utf-8");
-    const cert = node_fs.readFileSync("./src/ssl.pem", "utf-8");
+    const key = readFileSync("./src/ssl.key", "utf-8");
+    const cert = readFileSync("./src/ssl.pem", "utf-8");
     // Check SSL certificate
     if (!key || !cert) {
-      console.error(index.chalk.red(i18n.__("SSL certificate is missing")));
+      console.error(chalk.red(i18n.__("SSL certificate is missing")));
       process.exit(1);
     }
     const certificate = forge.pki.certificateFromPem(cert);
     // Check SSL certificate is expired
     if (new Date(certificate.validity.notAfter) < new Date()) {
-      console.warn(index.chalk.red(i18n.__("SSL certificate has expired")));
+      console.warn(chalk.red(i18n.__("SSL certificate has expired")));
     }
     server = https$1.createServer({
       key,
@@ -53874,7 +53930,7 @@ src_config.readConfig().then((CONFIG) => {
     // Get all domains from certificate
     const domains = certificate.extensions
       .find(({ name }) => name === "subjectAltName")
-      .altNames.map(({ value }) => punycode.toUnicode(value));
+      .altNames.map(({ value }) => toUnicode(value));
     ipAddress = domains.map((value) => `https://${value}:${port}`).join("\n");
   } else {
     server = http$2.createServer();
@@ -53890,12 +53946,12 @@ src_config.readConfig().then((CONFIG) => {
 
   server.listen(port, () => {
     log(i18n.__("Serve is start"));
-    console.log(index.chalk.green(`node-hiprint-transit version: ${process.env.npm_package_version}\n`));
+    console.log(chalk.green(`node-hiprint-transit version: ${packageJson.version}\n`));
     console.log(
       i18n.__(
         "Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s",
-        index.chalk.green.underline(ipAddress),
-        index.chalk.green(token)
+        chalk.green.underline(ipAddress),
+        chalk.green(token)
       )
     );
   });
@@ -53915,9 +53971,11 @@ src_config.readConfig().then((CONFIG) => {
     if (socket.handshake.query.test !== "true") {
       if (socket.handshake.query.client === "electron-hiprint") {
         log(i18n.__("Client connected: %s", socket.id + "(electron-hiprint)"));
+        // Join electron-hiprint room
+        socket.join("electron-hiprint");
 
         // Send client list to web client
-        io.sockets.emit("clients", CLIENT);
+        io.to("web-client").emit("clients", CLIENT);
 
         // Send all printer list to web client
         var allPrinterList = [];
@@ -53934,6 +53992,8 @@ src_config.readConfig().then((CONFIG) => {
         io.sockets.emit("printerList", allPrinterList);
       } else {
         log(i18n.__("Client connected: %s", socket.id + "(web-client)"));
+        // Join web-client room
+        socket.join("web-client");
 
         // Send client list to web client
         socket.emit("clients", CLIENT);
@@ -54105,7 +54165,12 @@ src_config.readConfig().then((CONFIG) => {
     socket.on("disconnect", () => {
       if (socket.handshake.query.test !== "true") {
         log(i18n.__("Client disconnected: %s", socket.id));
-        delete CLIENT[socket.id];
+        // Remove electron-hiprint client from CLIENT
+        if (socket.handshake.query.client === "electron-hiprint") {
+          delete CLIENT[socket.id];
+          // Send client list to web client
+          io.to("web-client").emit("clients", CLIENT);
+        }
       }
     });
   });

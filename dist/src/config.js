@@ -1,13 +1,8 @@
-'use strict';
+import os from 'node:os';
+import path from 'node:path';
+import { readFile, writeFile } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-Object.defineProperty(exports, '__esModule', { value: true });
-
-var os = require('node:os');
-var path = require('node:path');
-var node_fs = require('node:fs');
-var node_url = require('node:url');
-
-var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
 /*
  * @Date: 2023-09-28 19:32:35
  * @LastEditors: admin@54xavier.cn
@@ -16,10 +11,10 @@ var _documentCurrentScript = typeof document !== 'undefined' ? document.currentS
  */
 
 // ES Module need use fileURLToPath to get __dirname
-const __filename$1 = node_url.fileURLToPath((typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.src || new URL('src/config.js', document.baseURI).href)));
-const __dirname$1 = path.dirname(__filename$1);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const configPath = path.join(__dirname$1, "../", "config.json");
+const configPath = path.join(__dirname, "../", "config.json");
 
 // Default config
 const CONFIG = {
@@ -35,7 +30,7 @@ const CONFIG = {
  */
 function readConfig() {
   return new Promise((resolve, reject) => {
-    node_fs.readFile(configPath, "utf-8", (err, data) => {
+    readFile(configPath, "utf-8", (err, data) => {
       if (err) {
         reject(err);
       } else if (data) {
@@ -82,7 +77,7 @@ function writeConfig(_CONFIG) {
   // Check lang need in ["zh", "en"]
   _CONFIG.lang = ["zh", "en"].includes(_CONFIG.lang) ? _CONFIG.lang : "en";
   return new Promise((resolve, reject) => {
-    node_fs.writeFile(configPath, JSON.stringify(_CONFIG, null, 2), (err) => {
+    writeFile(configPath, JSON.stringify(_CONFIG, null, 2), (err) => {
       if (err) {
         reject(err);
       } else {
@@ -113,7 +108,4 @@ var config = {
   getIPAddress,
 };
 
-exports.default = config;
-exports.getIPAddress = getIPAddress;
-exports.readConfig = readConfig;
-exports.writeConfig = writeConfig;
+export { config as default, getIPAddress, readConfig, writeConfig };

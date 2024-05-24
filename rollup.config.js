@@ -1,7 +1,7 @@
 /*
  * @Date: 2024-05-23 10:01:00
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-05-23 12:42:43
+ * @LastEditTime: 2024-05-24 10:56:53
  * @FilePath: /node-hiprint-transit/rollup.config.js
  */
 import commonjs from "@rollup/plugin-commonjs";
@@ -17,7 +17,7 @@ export default {
   },
   output: {
     dir: "dist",
-    format: "cjs",
+    format: "esm",
     chunkFileNames: "[name]_chunk.js",
     exports: "named",
   },
