@@ -16,6 +16,8 @@
 
 - **配置**: `node-hiprint-transit` 允许您配置各种设置，包括端口、令牌、是否使用 SSL 和语言首选项。
 
+- **易用性**: `node-hiprint-transit` 一般安装在公网服务器，服务器 ip、端口 相对固定，也可通过域名访问，`electron-hiprint` 和 `vue-plugin-hiprint` 中只需配置一次地址，不像 `electron-hiprint` 一样容易受到 DHCP 自动分配变更地址。
+
 ## 脚本
 
 这个脚本将帮助你快速安装、初始化、运行 `node-hiprint-transit`。
@@ -32,10 +34,10 @@ chmod +x install.sh
 
 首次使用时，您需要执行初始设置
 
-这将会为你安装 npm 依赖，并且一步步引导你初始化
+这将会引导你一步步完成初始化
 
 ```bash
-npm run init
+node run ./dist/init
 
 Set language 设置语言
 en/zh(en): zh # 这将设置为接下来的引导与项目语言
@@ -44,8 +46,6 @@ en/zh(en): zh # 这将设置为接下来的引导与项目语言
 设置开启 SSL y/n (n)：n # 如果你设置为开启，你将需要安装你的 ssl 证书
 配置文件写入成功
 ```
-
-此命令将安装必要的 npm 依赖项并启动配置向导。
 
 ## 配置
 
@@ -66,9 +66,7 @@ en/zh(en): zh # 这将设置为接下来的引导与项目语言
 ### 启动服务
 
 ```bash
-npm run serve
-# or
-node index.js
+node ./dist/index
 
 服务器正运行在
 https://printjs.cn:17521

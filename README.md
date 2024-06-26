@@ -16,6 +16,8 @@
 
 - **Configuration**: `node-hiprint-transit` allows you to configure various settings, including port, token, SSL usage, and language preferences.
 
+- **Ease of Use**: `node-hiprint-transit` is typically installed on a public server with a relatively fixed IP address and port. It can also be accessed through a domain name. Unlike `electron-hiprint`, which is prone to address changes due to DHCP automatic allocation, `node-hiprint-transit` only requires the address to be configured once in both `electron-hiprint` and `vue-plugin-hiprint`.
+
 ## Scripts
 
 This script will assist you in installing `node-hiprint-transit` quickly.
@@ -32,10 +34,10 @@ chmod +x install.sh
 
 Upon first usage, you'll need to perform an initial setup
 
-This will install npm dependencies for you and walk you through the initial setup
+This will walk you through the initial setup
 
 ```bash
-npm run init
+node ./dist/init
 
 Set language 设置语言
 en/zh(en): en # This will be set for guid and project
@@ -44,8 +46,6 @@ Set service TOKEN(vue-plugin-hiprint): vue-plugin-hiprint
 Set SSL on or off y/n (n): y # If you set on, you should install your ssl file
 Configuration file written successfully
 ```
-
-This command will install any necessary npm dependencies and launch the configuration wizard.
 
 ## Configuration
 
@@ -66,9 +66,7 @@ The configuration wizard will prompt you to set the following options:
 ### Run serve
 
 ```bash
-npm run serve
-# or
-node index.js
+node ./dist/index
 
 Serve is running on
 https://printjs.cn:17521
