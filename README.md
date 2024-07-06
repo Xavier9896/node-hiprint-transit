@@ -72,7 +72,7 @@ Serve is running on
 https://printjs.cn:17521
 
 Please make sure that the ports have been opened in the security group or firewall.
-token: vue-plugin-hiprint
+token: vue-plugin-hiprint*
 ```
 
 ### `Web` project connecting to `node-hiprint-transit`

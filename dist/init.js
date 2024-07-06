@@ -39908,7 +39908,7 @@ function setToken() {
     inquirer.prompt([{
       name: "token",
       type: "input",
-      message: i18n.__("Set service TOKEN:"),
+      message: i18n.__("Set service TOKEN (Use the wildcard character (*) to match any character):"),
       default: "vue-plugin-hiprint",
       validate: (input) => {
         if (input && input.length >= 6) {

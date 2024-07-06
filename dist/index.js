@@ -53826,7 +53826,7 @@ function log(message) {
 }
 
 var name = "node-hiprint-transit";
-var version = "0.0.3";
+var version = "0.0.4";
 var description = "A nodejs server for hiprint transit";
 var main = "index.js";
 var type = "module";
@@ -53887,7 +53887,7 @@ var packageJson = {
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-05-24 11:22:15
+ * @LastEditTime: 2024-07-06 14:19:42
  * @FilePath: /node-hiprint-transit/index.js
  */
 
@@ -53902,7 +53902,7 @@ const i18n = new I18n({
   defaultLocale: "en",
 });
 
-const CLIENT = {};
+const CLIENT = new Map();
 
 // Read config first and then start serve
 readConfig().then((CONFIG) => {
@@ -53946,7 +53946,9 @@ readConfig().then((CONFIG) => {
 
   server.listen(port, () => {
     log(i18n.__("Serve is start"));
-    console.log(chalk.green(`node-hiprint-transit version: ${packageJson.version}\n`));
+    console.log(
+      chalk.green(`node-hiprint-transit version: ${packageJson.version}\n`)
+    );
     console.log(
       i18n.__(
         "Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s",
@@ -53958,7 +53960,8 @@ readConfig().then((CONFIG) => {
 
   // Authentication
   io.use((socket, next) => {
-    if (token && socket.handshake.auth.token === token) {
+    const tokenRegex = new RegExp(`^${token.replace(/\*/g, "\\S+")}$`);
+    if (token && tokenRegex.test(socket.handshake.auth.token)) {
       next();
     } else {
       log(i18n.__("Authentication failed for %s", socket.id));
@@ -53968,43 +53971,58 @@ readConfig().then((CONFIG) => {
 
   // Socket.io Add event listener
   io.on("connection", (socket) => {
+    const sToken = socket.handshake.auth.token;
+    if (!CLIENT.has(sToken)) {
+      CLIENT.set(sToken, new Map());
+    }
+
     if (socket.handshake.query.test !== "true") {
       if (socket.handshake.query.client === "electron-hiprint") {
-        log(i18n.__("Client connected: %s", socket.id + "(electron-hiprint)"));
+        log(
+          i18n.__(
+            "Client connected: %s",
+            `${socket.id} | ${sToken} | (electron-hiprint)`
+          )
+        );
         // Join electron-hiprint room
-        socket.join("electron-hiprint");
+        socket.join(`${sToken}_electron-hiprint`);
 
-        // Send client list to web client
-        io.to("web-client").emit("clients", CLIENT);
+        // Send client list to current token web client
+        io.to(`${sToken}_web-client`).emit("clients", Array.from(CLIENT.get(sToken).values()));
 
         // Send all printer list to web client
         var allPrinterList = [];
-        Object.keys(CLIENT).forEach((key) => {
-          CLIENT[key].printerList.forEach((printer) => {
+        CLIENT.get(sToken).forEach((client) => {
+          client.printerList.forEach((printer) => {
             allPrinterList.push({
               ...printer,
-              server: Object.assign({}, CLIENT[key], {
+              server: Object.assign({}, client, {
                 printerList: undefined,
               }),
             });
           });
         });
-        io.sockets.emit("printerList", allPrinterList);
+        io.to(`${sToken}_web-client`).emit("printerList", allPrinterList);
       } else {
-        log(i18n.__("Client connected: %s", socket.id + "(web-client)"));
+        log(
+          i18n.__(
+            "Client connected: %s",
+            `${socket.id} | ${sToken} | (web-client)`
+          )
+        );
         // Join web-client room
-        socket.join("web-client");
+        socket.join(`${token}_web-client`);
 
         // Send client list to web client
-        socket.emit("clients", CLIENT);
+        socket.emit("clients", Array.from(CLIENT.get(sToken).values()));
 
         // Send all printer list to web client
         var allPrinterList = [];
-        Object.keys(CLIENT).forEach((key) => {
-          CLIENT[key].printerList.forEach((printer) => {
+        CLIENT.get(sToken).forEach((client) => {
+          client.printerList.forEach((printer) => {
             allPrinterList.push({
               ...printer,
-              server: Object.assign({}, CLIENT[key], {
+              server: Object.assign({}, client, {
                 printerList: undefined,
               }),
             });
@@ -54013,40 +54031,45 @@ readConfig().then((CONFIG) => {
         socket.emit("printerList", allPrinterList);
       }
     } else {
-      log(i18n.__("Client connected: %s", socket.id + " (test)"));
+      log(i18n.__("Client connected: %s", `${socket.id} | ${sToken} | (test)`));
     }
 
     // Get client info
     socket.on("clientInfo", (data) => {
-      CLIENT[socket.id] = Object.assign({}, CLIENT[socket.id], data);
+      CLIENT.get(sToken).set(
+        socket.id,
+        Object.assign({}, CLIENT.get(sToken).get(socket.id), data)
+      );
     });
 
     // Get client printer list
     socket.on("printerList", (printerList) => {
-      CLIENT[socket.id] = Object.assign({}, CLIENT[socket.id], { printerList });
+      CLIENT.get(sToken).set(
+        socket.id,
+        Object.assign({}, CLIENT.get(sToken).get(socket.id), { printerList })
+      );
     });
 
     // Get all client list
     socket.on("getClients", () => {
-      socket.emit("clients", CLIENT);
+      socket.emit("clients", Array.from(CLIENT.get(sToken).values()));
     });
 
     // Get all clients printer list
     socket.on("refreshPrinterList", () => {
-      io.to("electron-hiprint").emit("refreshPrinterList");
+      io.to(`${sToken}_electron-hiprint`).emit("refreshPrinterList");
 
       // Just wait 2 seconds for the client to update the printer list
       // Of course, this is not a good way to do it. But it’s not like it can’t be used 🤪
       setTimeout(() => {
         var allPrinterList = [];
-        Object.keys(CLIENT).forEach((key) => {
-          CLIENT[key].printerList.forEach((printer) => {
+        CLIENT.get(sToken).forEach((client) => {
+          client.printerList.forEach((printer) => {
             allPrinterList.push({
               ...printer,
-              server: Object.assign({}, CLIENT[key], {
+              server: Object.assign({}, client, {
                 printerList: undefined,
               }),
-              clientId: key,
             });
           });
         });
@@ -54065,9 +54088,9 @@ readConfig().then((CONFIG) => {
     // Make a ipp print to electron-hiprint client
     socket.on("ippPrint", (options) => {
       if (options.client) {
-        if (!CLIENT[options.client]) {
+        if (!CLIENT.get(sToken).get(options.client)) {
           socket.emit("error", {
-            msg: "Client is not exist."
+            msg: "Client is not exist.",
           });
           return;
         }
@@ -54077,7 +54100,7 @@ readConfig().then((CONFIG) => {
         log(i18n.__("%s send ippPrint to %s", socket.id, options.client));
       } else {
         socket.emit("error", {
-          msg: "Client must be specified."
+          msg: "Client must be specified.",
         });
       }
     });
@@ -54099,9 +54122,9 @@ readConfig().then((CONFIG) => {
     // Make a ipp request to electron-hiprint client
     socket.on("ippRequest", (options) => {
       if (options.client) {
-        if (!CLIENT[options.client]) {
+        if (!CLIENT.get(sToken).get(options.client)) {
           socket.emit("error", {
-            msg: "Client is not exist."
+            msg: "Client is not exist.",
           });
           return;
         }
@@ -54111,7 +54134,7 @@ readConfig().then((CONFIG) => {
         log(i18n.__("%s send ippRequest to %s", socket.id, options.client));
       } else {
         socket.emit("error", {
-          msg: "Client must be specified."
+          msg: "Client must be specified.",
         });
       }
     });
@@ -54126,7 +54149,7 @@ readConfig().then((CONFIG) => {
     // Make a news to electron-hiprint client
     socket.on("news", (options) => {
       if (options.client) {
-        if (!CLIENT[options.client]) {
+        if (!CLIENT.get(sToken).get(options.client)) {
           socket.emit("error", {
             msg: "Client is not exist.",
             templateId: options.templateId,
@@ -54149,7 +54172,13 @@ readConfig().then((CONFIG) => {
     socket.on("success", (options) => {
       if (options.replyId) {
         socket.to(options.replyId).emit("success", options);
-        log(i18n.__("%s client: print success, templateId: %s", socket.id, options.templateId));
+        log(
+          i18n.__(
+            "%s client: print success, templateId: %s",
+            socket.id,
+            options.templateId
+          )
+        );
       }
     });
 
@@ -54157,7 +54186,13 @@ readConfig().then((CONFIG) => {
     socket.on("error", (options) => {
       if (options.replyId) {
         socket.to(options.replyId).emit("error", options);
-        log(i18n.__("%s client: print error, templateId: %s", socket.id, options.templateId));
+        log(
+          i18n.__(
+            "%s client: print error, templateId: %s",
+            socket.id,
+            options.templateId
+          )
+        );
       }
     });
 
@@ -54167,9 +54202,9 @@ readConfig().then((CONFIG) => {
         log(i18n.__("Client disconnected: %s", socket.id));
         // Remove electron-hiprint client from CLIENT
         if (socket.handshake.query.client === "electron-hiprint") {
-          delete CLIENT[socket.id];
+          CLIENT.get(sToken).delete(socket.id);
           // Send client list to web client
-          io.to("web-client").emit("clients", CLIENT);
+          io.to("web-client").emit("clients", Array.from(CLIENT.get(sToken).values()));
         }
       }
     });
@@ -54178,7 +54213,9 @@ readConfig().then((CONFIG) => {
   // Retrieve the client print list every 10 minutes.
   setInterval(() => {
     log(i18n.__("Retrieve the client print list"));
-    io.to("electron-hiprint").emit("refreshPrinterList");
+    CLIENT.forEach((_, key) => {
+      io.to(`${key}_electron-hiprint`).emit("refreshPrinterList");
+    });
   }, 1000 * 60 * 10);
 });
 

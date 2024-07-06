@@ -72,7 +72,7 @@ node ./dist/index
 https://printjs.cn:17521
 
 请确保安全组或防火墙已放行端口。
-令牌：vue-plugin-hiprint
+令牌：vue-plugin-hiprint*
 ```
 
 ### `Web` 项目连接 `node-hiprint-transit`

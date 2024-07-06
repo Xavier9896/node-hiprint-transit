@@ -1,7 +1,7 @@
 {
   "Set serve port %s:": "设置服务端口号%s：",
   "Port must be set between %s": "端口号必须设置在%s之间",
-  "Set service TOKEN:": "设置服务 TOKEN：",
+  "Set service TOKEN (Use the wildcard character (*) to match any character):": "设置服务 TOKEN （使用通配符(*)匹配任意字符）：",
   "For security reasons, the TOKEN length must be greater than 5": "出于安全考虑 TOKEN 长度必须大于5",
   "Use SSL:": "使用 SSL：",
   "Configuration file written successfully": "配置文件写入成功",

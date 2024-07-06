@@ -1,7 +1,7 @@
 {
   "Set serve port %s:": "Set serve port %s:",
   "Port must be set between %s": "Port must be set between %s",
-  "Set service TOKEN:": "Set service TOKEN:",
+  "Set service TOKEN (Use the wildcard character (*) to match any character):": "Set service TOKEN (Use the wildcard character (*) to match any character):",
   "For security reasons, the TOKEN length must be greater than 5": "For security reasons, the TOKEN length must be greater than 5",
   "Use SSL:": "Use SSL:",
   "Configuration file written successfully": "Configuration file written successfully",
