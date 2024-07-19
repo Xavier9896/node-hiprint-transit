@@ -6293,8 +6293,12 @@ let Compiler$1 = class Compiler {
                 this.setLocale(id, false);
                 this.setRuntimeFn('plural');
                 break;
-            case 'function':
-                if (!this.options.customFormatters[token.key]) {
+            case 'function': {
+                const formatter = this.options.customFormatters[token.key];
+                const isModuleFn = formatter &&
+                    'module' in formatter &&
+                    typeof formatter.module === 'function';
+                if (!formatter) {
                     if (token.key === 'date') {
                         fn = this.setDateFormatter(token, args, pluralToken);
                         break;
@@ -6312,9 +6316,12 @@ let Compiler$1 = class Compiler {
                     if (arg)
                         args.push(arg);
                 }
-                fn = token.key;
-                this.setFormatter(fn);
+                fn = isModuleFn
+                    ? safeIdentifier$1.identifier(`${token.key}__${this.plural.locale}`)
+                    : token.key;
+                this.setFormatter(fn, token.key);
                 break;
+            }
             case 'octothorpe':
                 if (!pluralToken)
                     return '"#"';
@@ -6424,15 +6431,19 @@ let Compiler$1 = class Compiler {
             return s ? `(${s}).trim()` : '""';
         }
     }
-    setFormatter(key) {
+    setFormatter(key, parentKey) {
         if (this.runtimeIncludes(key, 'formatter'))
             return;
-        let cf = this.options.customFormatters[key];
+        const cf = this.options.customFormatters[parentKey || key];
         if (cf) {
-            if (typeof cf === 'function')
-                cf = { formatter: cf };
-            this.runtime[key] = Object.assign(cf.formatter, { type: 'formatter' }, 'module' in cf && cf.module && cf.id
-                ? { id: safeIdentifier$1.identifier(cf.id), module: cf.module }
+            const cfo = typeof cf === 'function' ? { formatter: cf } : cf;
+            this.runtime[key] = Object.assign(cfo.formatter.bind({}), Object.assign(Object.assign({}, cfo.formatter.prototype), { toString: () => String(cfo.formatter) }), { type: 'formatter' }, 'module' in cf && cf.module && cf.id
+                ? {
+                    id: safeIdentifier$1.identifier(cf.id),
+                    module: typeof cf.module === 'function'
+                        ? cf.module(this.plural.locale)
+                        : cf.module
+                }
                 : { id: null, module: null });
         }
         else if (isFormatterKey(key)) {
@@ -6600,6 +6611,10 @@ var cardinals = {exports: {}};
 	bg: a,
 
 	bho: b,
+
+	blo: (n) => n == 0 ? 'zero'
+	    : n == 1 ? 'one'
+	    : 'other',
 
 	bm: e,
 
@@ -7251,6 +7266,7 @@ var pluralCategories = {exports: {}};
 	bez: a,
 	bg: a,
 	bho: a,
+	blo: {cardinal:[z,o,x],ordinal:[z,o,f,x]},
 	bm: c,
 	bn: {cardinal:[o,x],ordinal:[o,t,f,m,x]},
 	bo: c,
@@ -7558,6 +7574,17 @@ var plurals = {exports: {}};
 	bg: a,
 
 	bho: b,
+
+	blo: (n, ord) => {
+	  const s = String(n).split('.'), i = s[0];
+	  if (ord) return i == 0 ? 'zero'
+	    : i == 1 ? 'one'
+	    : (i == 2 || i == 3 || i == 4 || i == 5 || i == 6) ? 'few'
+	    : 'other';
+	  return n == 0 ? 'zero'
+	    : n == 1 ? 'one'
+	    : 'other';
+	},
 
 	bm: e,
 

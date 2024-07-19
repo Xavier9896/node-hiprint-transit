@@ -1,8 +1,8 @@
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-07-06 14:19:42
- * @FilePath: /node-hiprint-transit/index.js
+ * @LastEditTime: 2024-07-19 20:10:05
+ * @FilePath: \node-hiprint-transit\index.js
  */
 import path from "node:path";
 import http from "node:http";
@@ -100,7 +100,7 @@ readConfig().then((CONFIG) => {
   io.on("connection", (socket) => {
     const sToken = socket.handshake.auth.token;
     if (!CLIENT.has(sToken)) {
-      CLIENT.set(sToken, new Map());
+      CLIENT.set(sToken, {});
     }
 
     if (socket.handshake.query.test !== "true") {
@@ -113,23 +113,6 @@ readConfig().then((CONFIG) => {
         );
         // Join electron-hiprint room
         socket.join(`${sToken}_electron-hiprint`);
-
-        // Send client list to current token web client
-        io.to(`${sToken}_web-client`).emit("clients", Array.from(CLIENT.get(sToken).values()));
-
-        // Send all printer list to web client
-        var allPrinterList = [];
-        CLIENT.get(sToken).forEach((client) => {
-          client.printerList.forEach((printer) => {
-            allPrinterList.push({
-              ...printer,
-              server: Object.assign({}, client, {
-                printerList: undefined,
-              }),
-            });
-          });
-        });
-        io.to(`${sToken}_web-client`).emit("printerList", allPrinterList);
       } else {
         log(
           i18n.__(
@@ -141,15 +124,18 @@ readConfig().then((CONFIG) => {
         socket.join(`${token}_web-client`);
 
         // Send client list to web client
-        socket.emit("clients", Array.from(CLIENT.get(sToken).values()));
+        socket.emit("clients", CLIENT.get(sToken));
 
         // Send all printer list to web client
-        var allPrinterList = [];
-        CLIENT.get(sToken).forEach((client) => {
+        const allPrinterList = [];
+        const clients = CLIENT.get(sToken);
+        Object.keys(clients).forEach((key) => {
+          const client = clients[key];
           client.printerList.forEach((printer) => {
             allPrinterList.push({
               ...printer,
               server: Object.assign({}, client, {
+                clientId: key,
                 printerList: undefined,
               }),
             });
@@ -163,23 +149,28 @@ readConfig().then((CONFIG) => {
 
     // Get client info
     socket.on("clientInfo", (data) => {
-      CLIENT.get(sToken).set(
-        socket.id,
-        Object.assign({}, CLIENT.get(sToken).get(socket.id), data)
+      CLIENT.get(sToken)[socket.id] = Object.assign(
+        {
+          clientId: socket.id,
+        },
+        CLIENT.get(sToken)[socket.id],
+        data,
       );
+      io.to(`${sToken}_web-client`).emit("clients", CLIENT.get(sToken));
     });
 
     // Get client printer list
     socket.on("printerList", (printerList) => {
-      CLIENT.get(sToken).set(
-        socket.id,
-        Object.assign({}, CLIENT.get(sToken).get(socket.id), { printerList })
+      CLIENT.get(sToken)[socket.id] = Object.assign(
+        {},
+        CLIENT.get(sToken)[socket.id],
+        { printerList }
       );
     });
 
     // Get all client list
     socket.on("getClients", () => {
-      socket.emit("clients", Array.from(CLIENT.get(sToken).values()));
+      socket.emit("clients", CLIENT.get(sToken));
     });
 
     // Get all clients printer list
@@ -189,12 +180,15 @@ readConfig().then((CONFIG) => {
       // Just wait 2 seconds for the client to update the printer list
       // Of course, this is not a good way to do it. But it’s not like it can’t be used 🤪
       setTimeout(() => {
-        var allPrinterList = [];
-        CLIENT.get(sToken).forEach((client) => {
+        const allPrinterList = [];
+        const clients = CLIENT.get(sToken);
+        Object.keys(clients).forEach((key) => {
+          const client = clients[key];
           client.printerList.forEach((printer) => {
             allPrinterList.push({
               ...printer,
               server: Object.assign({}, client, {
+                clientId: key,
                 printerList: undefined,
               }),
             });
@@ -215,7 +209,7 @@ readConfig().then((CONFIG) => {
     // Make a ipp print to electron-hiprint client
     socket.on("ippPrint", (options) => {
       if (options.client) {
-        if (!CLIENT.get(sToken).get(options.client)) {
+        if (!CLIENT.get(sToken)[options.client]) {
           socket.emit("error", {
             msg: "Client is not exist.",
           });
@@ -249,7 +243,7 @@ readConfig().then((CONFIG) => {
     // Make a ipp request to electron-hiprint client
     socket.on("ippRequest", (options) => {
       if (options.client) {
-        if (!CLIENT.get(sToken).get(options.client)) {
+        if (!CLIENT.get(sToken)[options.client]) {
           socket.emit("error", {
             msg: "Client is not exist.",
           });
@@ -276,7 +270,7 @@ readConfig().then((CONFIG) => {
     // Make a news to electron-hiprint client
     socket.on("news", (options) => {
       if (options.client) {
-        if (!CLIENT.get(sToken).get(options.client)) {
+        if (!CLIENT.get(sToken)[options.client]) {
           socket.emit("error", {
             msg: "Client is not exist.",
             templateId: options.templateId,
@@ -329,9 +323,9 @@ readConfig().then((CONFIG) => {
         log(i18n.__("Client disconnected: %s", socket.id));
         // Remove electron-hiprint client from CLIENT
         if (socket.handshake.query.client === "electron-hiprint") {
-          CLIENT.get(sToken).delete(socket.id);
+          delete CLIENT.get(sToken)[socket.id];
           // Send client list to web client
-          io.to("web-client").emit("clients", Array.from(CLIENT.get(sToken).values()));
+          io.to("web-client").emit("clients", CLIENT.get(sToken));
         }
       }
     });

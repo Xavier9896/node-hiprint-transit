@@ -39,23 +39,26 @@ chmod +x install.sh
 ```bash
 node run ./dist/init
 
-Set language 设置语言
-en/zh(en): zh # 这将设置为接下来的引导与项目语言
-设置服务端口号10000~65535(17521)：17521
-设置服务 TOKEN(vue-plugin-hiprint)：vue-plugin-hiprint
-设置开启 SSL y/n (n)：n # 如果你设置为开启，你将需要安装你的 ssl 证书
-配置文件写入成功
+# ? Set language 设置语言 (Use arrow keys)
+# > English
+#   简体中文
+# ? 设置服务端口号 10000~65535： 17521
+# ? 设置服务 TOKEN （使用通配符(*)匹配任意字符）：vue-plugin-hiprint*
+# ? 使用 SSL：(y/N)
+# 配置文件写入成功
 ```
+
+如果你的配置有误，只需要重新执行一次脚本即可。
 
 ## 配置
 
 配置向导将提示您设置以下选项：
 
-- **语言**: 选择您的首选语言（默认：en）。
+- **语言**: 选择您的首选语言（默认：English）。
 
 - **端口**: 通信使用的端口号（默认：17521）。
 
-- **令牌**: 用于身份验证的安全令牌（6 个或更多字符）（默认：vue-plugin-hiiprint）。
+- **令牌**: 用于身份验证的安全令牌（6 个或更多字符，可使用一个或多个 * 作为通配符）（默认：vue-plugin-hiiprint）。
 
 - **SSL**: 启用或禁用安全连接的 SSL（默认：false）。
 
@@ -255,7 +258,11 @@ hiprint.init({
 
 2. 如果你开启了 SSL，你应该替换 `./src/ssl.key` 和 `./src/ssl.pem` 这两个文件；
 
-3. 每10分钟会向 `electron-hiprint` 请求一次打印机列表。
+3. 每 10 分钟中转服务会主动向 `electron-hiprint` 请求一次打印机列表以更新打印机信息；
+
+4. https://printjs.cn:17521 为演示地址，可以用于快速验证方案可行性，服务器为 1C1G3M 香港服务器，不保证能够提供稳定可靠服务，有需要请自行部署。
+
+5. 为什么选择 Node 开发？因为我纯前端，只能选择 Node 开发；vue-plugin-hiprint 是一个前端插件，多数用户都是前端；杀鸡焉用牛刀？Node 就能轻松实现好吧！
 
 <p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
 
