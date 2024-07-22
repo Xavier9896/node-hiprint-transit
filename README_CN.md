@@ -18,6 +18,26 @@
 
 - **易用性**: `node-hiprint-transit` 一般安装在公网服务器，服务器 ip、端口 相对固定，也可通过域名访问，`electron-hiprint` 和 `vue-plugin-hiprint` 中只需配置一次地址，不像 `electron-hiprint` 一样容易受到 DHCP 自动分配变更地址。
 
+## 免费服务-用爱发电
+
+| 版本 | 服务器信息 | 服务商 | 地域 | 有效期 | 服务器地址 | Token |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0.0.4 | 2C2G4M 300G/m | Tencent Cloud | GZ | 2026-07-16 | https://v4.printjs.cn:17521 | hiprint* |
+| 0.0.4 | 2C2G3M | Aliyun | GZ | 2024-11-8 | https://v4-b.printjs.cn:17521 | hiprint* |
+| 0.0.3 | 1C1G3M 1000G/m | Yisu Cloud | HK | 2025-07-17 | https://printjs.cn:17521 | vue-plugin-hiprint |
+
+以上服务免费开放，0.0.3 版本未进行 token 隔离，仅推荐用于开发测试。
+
+本项目免费开源，承诺不会窃取以上免费服务运行中产生的任何数据，但不能保证服务过程中不会受到黑客攻击而导致数据泄露问题。
+
+如果你的服务追求更高的 **稳定性、安全性、可靠性**，建议自行独立部署，有自研能力的团队可以使用后端语言重新编写。
+
+> !!! ⚠️ 在 web 端使用时请做到即用即走，不要长时间连接该服务，为服务器减轻压力。
+
+> !!! ⚠️ 请勿使用弱口令，如 “hiprint-123”，因使用弱口令导致的任何问题，本项目概不负责。
+
+> **！本人纯前端，对于服务器、运维、攻防了解较少，请各位大佬高抬贵手，不要对免费开源服务下手**
+
 ## 脚本
 
 这个脚本将帮助你快速安装、初始化、运行 `node-hiprint-transit`。
@@ -39,23 +59,26 @@ chmod +x install.sh
 ```bash
 node run ./dist/init
 
-Set language 设置语言
-en/zh(en): zh # 这将设置为接下来的引导与项目语言
-设置服务端口号10000~65535(17521)：17521
-设置服务 TOKEN(vue-plugin-hiprint)：vue-plugin-hiprint
-设置开启 SSL y/n (n)：n # 如果你设置为开启，你将需要安装你的 ssl 证书
-配置文件写入成功
+# ? Set language 设置语言 (Use arrow keys)
+# > English
+#   简体中文
+# ? 设置服务端口号 10000~65535： 17521
+# ? 设置服务 TOKEN （使用通配符(*)匹配任意字符）：hiprint*
+# ? 使用 SSL：(y/N)
+# 配置文件写入成功
 ```
+
+如果你的配置有误，只需要重新执行一次脚本即可。
 
 ## 配置
 
 配置向导将提示您设置以下选项：
 
-- **语言**: 选择您的首选语言（默认：en）。
+- **语言**: 选择您的首选语言（默认：English）。
 
 - **端口**: 通信使用的端口号（默认：17521）。
 
-- **令牌**: 用于身份验证的安全令牌（6 个或更多字符）（默认：vue-plugin-hiiprint）。
+- **令牌**: 用于身份验证的安全令牌（6 个或更多字符，可使用一个或多个 * 作为通配符）（默认：hiiprint）。
 
 - **SSL**: 启用或禁用安全连接的 SSL（默认：false）。
 
@@ -72,7 +95,7 @@ node ./dist/index
 https://printjs.cn:17521
 
 请确保安全组或防火墙已放行端口。
-令牌：vue-plugin-hiprint
+令牌：hiprint*
 ```
 
 ### `Web` 项目连接 `node-hiprint-transit`
@@ -84,7 +107,7 @@ import { hiprint } from 'vue-plugin-hiprint'
 
 hiprint.init({
     host: 'https://printjs.cn:17521', // 此处输入服务启动后的地址
-    token: 'vue-plugin-hiprint',     // 用于鉴权的token
+    token: 'hiprint-1',     // 用于鉴权的token
 });
 ```
 
@@ -114,7 +137,30 @@ hiprint.init({
 
 ## EVENTS
 
-当 Web 客户端（vue-plugin-hiprint）连接时，将发出 `clients` 和 `printerList` 事件。
+当 Web 客户端（vue-plugin-hiprint）连接时，将发出 `serverInfo`、 `clients` 和 `printerList` 事件。
+
+### socket.emit("serverInfo", Object) ↑ v0.0.4
+
+这将返回中转服务端的一些信息
+
+```js
+{
+  // 中转服务版本号
+  version: "0.0.4",
+  // 当前 TOKEN 连接的客户端数量
+  currentClients: 1,
+  // 所有连接的客户端数量
+  allClients: 1
+  // 当前 TOKEN 连接的网页数量
+  webClients: 1,
+  // 所有连接的网页数量
+  allWebClients: 1,
+  // 服务器总内存
+  totalmem: 2147483648,
+  // 服务器空闲内存
+  freemem: 1073741824,
+}
+```
 
 ### socket.on("getClients")
 ### socket.emit("clients", Object)
@@ -255,7 +301,11 @@ hiprint.init({
 
 2. 如果你开启了 SSL，你应该替换 `./src/ssl.key` 和 `./src/ssl.pem` 这两个文件；
 
-3. 每10分钟会向 `electron-hiprint` 请求一次打印机列表。
+3. 每 10 分钟中转服务会主动向 `electron-hiprint` 请求一次打印机列表以更新打印机信息；
+
+4. https://printjs.cn:17521 为 0.0.3 演示地址，可以用于快速验证方案可行性，服务器为 1C1G3M 香港服务器，不保证能够提供稳定可靠服务，有需要请自行部署。
+
+5. 为什么选择 Node 开发？因为我纯前端，只能选择 Node 开发；vue-plugin-hiprint 是一个前端插件，多数用户都是前端；杀鸡焉用牛刀？Node 就能轻松实现好吧！
 
 <p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
 

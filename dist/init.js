@@ -23,309 +23,297 @@ import 'url';
 import 'os';
 import 'node:fs';
 
+// process.env dot-notation access prints:
+// Property 'TERM' comes from an index signature, so it must be accessed with ['TERM'].ts(4111)
+/* eslint dot-notation: ["off"] */
+// Ported from is-unicode-supported
 function isUnicodeSupported$3() {
-	if (process$3.platform !== 'win32') {
-		return process$3.env.TERM !== 'linux'; // Linux console (kernel)
-	}
-
-	return Boolean(process$3.env.CI)
-		|| Boolean(process$3.env.WT_SESSION) // Windows Terminal
-		|| Boolean(process$3.env.TERMINUS_SUBLIME) // Terminus (<0.2.27)
-		|| process$3.env.ConEmuTask === '{cmd::Cmder}' // ConEmu and cmder
-		|| process$3.env.TERM_PROGRAM === 'Terminus-Sublime'
-		|| process$3.env.TERM_PROGRAM === 'vscode'
-		|| process$3.env.TERM === 'xterm-256color'
-		|| process$3.env.TERM === 'alacritty'
-		|| process$3.env.TERMINAL_EMULATOR === 'JetBrains-JediTerm';
+    if (process$3.platform !== 'win32') {
+        return process$3.env['TERM'] !== 'linux'; // Linux console (kernel)
+    }
+    return (Boolean(process$3.env['WT_SESSION']) || // Windows Terminal
+        Boolean(process$3.env['TERMINUS_SUBLIME']) || // Terminus (<0.2.27)
+        process$3.env['ConEmuTask'] === '{cmd::Cmder}' || // ConEmu and cmder
+        process$3.env['TERM_PROGRAM'] === 'Terminus-Sublime' ||
+        process$3.env['TERM_PROGRAM'] === 'vscode' ||
+        process$3.env['TERM'] === 'xterm-256color' ||
+        process$3.env['TERM'] === 'alacritty' ||
+        process$3.env['TERMINAL_EMULATOR'] === 'JetBrains-JediTerm');
 }
-
-const {platform} = process$3;
-
+// Ported from figures
 const common = {
-	square: '█',
-	squareDarkShade: '▓',
-	squareMediumShade: '▒',
-	squareLightShade: '░',
-	squareTop: '▀',
-	squareBottom: '▄',
-	squareLeft: '▌',
-	squareRight: '▐',
-	squareCenter: '■',
-	bullet: '●',
-	dot: '․',
-	ellipsis: '…',
-	pointerSmall: '›',
-	triangleUp: '▲',
-	triangleUpSmall: '▴',
-	triangleDown: '▼',
-	triangleDownSmall: '▾',
-	triangleLeftSmall: '◂',
-	triangleRightSmall: '▸',
-	home: '⌂',
-	heart: '♥',
-	musicNote: '♪',
-	musicNoteBeamed: '♫',
-	arrowUp: '↑',
-	arrowDown: '↓',
-	arrowLeft: '←',
-	arrowRight: '→',
-	arrowLeftRight: '↔',
-	arrowUpDown: '↕',
-	almostEqual: '≈',
-	notEqual: '≠',
-	lessOrEqual: '≤',
-	greaterOrEqual: '≥',
-	identical: '≡',
-	infinity: '∞',
-	subscriptZero: '₀',
-	subscriptOne: '₁',
-	subscriptTwo: '₂',
-	subscriptThree: '₃',
-	subscriptFour: '₄',
-	subscriptFive: '₅',
-	subscriptSix: '₆',
-	subscriptSeven: '₇',
-	subscriptEight: '₈',
-	subscriptNine: '₉',
-	oneHalf: '½',
-	oneThird: '⅓',
-	oneQuarter: '¼',
-	oneFifth: '⅕',
-	oneSixth: '⅙',
-	oneEighth: '⅛',
-	twoThirds: '⅔',
-	twoFifths: '⅖',
-	threeQuarters: '¾',
-	threeFifths: '⅗',
-	threeEighths: '⅜',
-	fourFifths: '⅘',
-	fiveSixths: '⅚',
-	fiveEighths: '⅝',
-	sevenEighths: '⅞',
-	line: '─',
-	lineBold: '━',
-	lineDouble: '═',
-	lineDashed0: '┄',
-	lineDashed1: '┅',
-	lineDashed2: '┈',
-	lineDashed3: '┉',
-	lineDashed4: '╌',
-	lineDashed5: '╍',
-	lineDashed6: '╴',
-	lineDashed7: '╶',
-	lineDashed8: '╸',
-	lineDashed9: '╺',
-	lineDashed10: '╼',
-	lineDashed11: '╾',
-	lineDashed12: '−',
-	lineDashed13: '–',
-	lineDashed14: '‐',
-	lineDashed15: '⁃',
-	lineVertical: '│',
-	lineVerticalBold: '┃',
-	lineVerticalDouble: '║',
-	lineVerticalDashed0: '┆',
-	lineVerticalDashed1: '┇',
-	lineVerticalDashed2: '┊',
-	lineVerticalDashed3: '┋',
-	lineVerticalDashed4: '╎',
-	lineVerticalDashed5: '╏',
-	lineVerticalDashed6: '╵',
-	lineVerticalDashed7: '╷',
-	lineVerticalDashed8: '╹',
-	lineVerticalDashed9: '╻',
-	lineVerticalDashed10: '╽',
-	lineVerticalDashed11: '╿',
-	lineDownLeft: '┐',
-	lineDownLeftArc: '╮',
-	lineDownBoldLeftBold: '┓',
-	lineDownBoldLeft: '┒',
-	lineDownLeftBold: '┑',
-	lineDownDoubleLeftDouble: '╗',
-	lineDownDoubleLeft: '╖',
-	lineDownLeftDouble: '╕',
-	lineDownRight: '┌',
-	lineDownRightArc: '╭',
-	lineDownBoldRightBold: '┏',
-	lineDownBoldRight: '┎',
-	lineDownRightBold: '┍',
-	lineDownDoubleRightDouble: '╔',
-	lineDownDoubleRight: '╓',
-	lineDownRightDouble: '╒',
-	lineUpLeft: '┘',
-	lineUpLeftArc: '╯',
-	lineUpBoldLeftBold: '┛',
-	lineUpBoldLeft: '┚',
-	lineUpLeftBold: '┙',
-	lineUpDoubleLeftDouble: '╝',
-	lineUpDoubleLeft: '╜',
-	lineUpLeftDouble: '╛',
-	lineUpRight: '└',
-	lineUpRightArc: '╰',
-	lineUpBoldRightBold: '┗',
-	lineUpBoldRight: '┖',
-	lineUpRightBold: '┕',
-	lineUpDoubleRightDouble: '╚',
-	lineUpDoubleRight: '╙',
-	lineUpRightDouble: '╘',
-	lineUpDownLeft: '┤',
-	lineUpBoldDownBoldLeftBold: '┫',
-	lineUpBoldDownBoldLeft: '┨',
-	lineUpDownLeftBold: '┥',
-	lineUpBoldDownLeftBold: '┩',
-	lineUpDownBoldLeftBold: '┪',
-	lineUpDownBoldLeft: '┧',
-	lineUpBoldDownLeft: '┦',
-	lineUpDoubleDownDoubleLeftDouble: '╣',
-	lineUpDoubleDownDoubleLeft: '╢',
-	lineUpDownLeftDouble: '╡',
-	lineUpDownRight: '├',
-	lineUpBoldDownBoldRightBold: '┣',
-	lineUpBoldDownBoldRight: '┠',
-	lineUpDownRightBold: '┝',
-	lineUpBoldDownRightBold: '┡',
-	lineUpDownBoldRightBold: '┢',
-	lineUpDownBoldRight: '┟',
-	lineUpBoldDownRight: '┞',
-	lineUpDoubleDownDoubleRightDouble: '╠',
-	lineUpDoubleDownDoubleRight: '╟',
-	lineUpDownRightDouble: '╞',
-	lineDownLeftRight: '┬',
-	lineDownBoldLeftBoldRightBold: '┳',
-	lineDownLeftBoldRightBold: '┯',
-	lineDownBoldLeftRight: '┰',
-	lineDownBoldLeftBoldRight: '┱',
-	lineDownBoldLeftRightBold: '┲',
-	lineDownLeftRightBold: '┮',
-	lineDownLeftBoldRight: '┭',
-	lineDownDoubleLeftDoubleRightDouble: '╦',
-	lineDownDoubleLeftRight: '╥',
-	lineDownLeftDoubleRightDouble: '╤',
-	lineUpLeftRight: '┴',
-	lineUpBoldLeftBoldRightBold: '┻',
-	lineUpLeftBoldRightBold: '┷',
-	lineUpBoldLeftRight: '┸',
-	lineUpBoldLeftBoldRight: '┹',
-	lineUpBoldLeftRightBold: '┺',
-	lineUpLeftRightBold: '┶',
-	lineUpLeftBoldRight: '┵',
-	lineUpDoubleLeftDoubleRightDouble: '╩',
-	lineUpDoubleLeftRight: '╨',
-	lineUpLeftDoubleRightDouble: '╧',
-	lineUpDownLeftRight: '┼',
-	lineUpBoldDownBoldLeftBoldRightBold: '╋',
-	lineUpDownBoldLeftBoldRightBold: '╈',
-	lineUpBoldDownLeftBoldRightBold: '╇',
-	lineUpBoldDownBoldLeftRightBold: '╊',
-	lineUpBoldDownBoldLeftBoldRight: '╉',
-	lineUpBoldDownLeftRight: '╀',
-	lineUpDownBoldLeftRight: '╁',
-	lineUpDownLeftBoldRight: '┽',
-	lineUpDownLeftRightBold: '┾',
-	lineUpBoldDownBoldLeftRight: '╂',
-	lineUpDownLeftBoldRightBold: '┿',
-	lineUpBoldDownLeftBoldRight: '╃',
-	lineUpBoldDownLeftRightBold: '╄',
-	lineUpDownBoldLeftBoldRight: '╅',
-	lineUpDownBoldLeftRightBold: '╆',
-	lineUpDoubleDownDoubleLeftDoubleRightDouble: '╬',
-	lineUpDoubleDownDoubleLeftRight: '╫',
-	lineUpDownLeftDoubleRightDouble: '╪',
-	lineCross: '╳',
-	lineBackslash: '╲',
-	lineSlash: '╱',
+    circleQuestionMark: '(?)',
+    questionMarkPrefix: '(?)',
+    square: '█',
+    squareDarkShade: '▓',
+    squareMediumShade: '▒',
+    squareLightShade: '░',
+    squareTop: '▀',
+    squareBottom: '▄',
+    squareLeft: '▌',
+    squareRight: '▐',
+    squareCenter: '■',
+    bullet: '●',
+    dot: '․',
+    ellipsis: '…',
+    pointerSmall: '›',
+    triangleUp: '▲',
+    triangleUpSmall: '▴',
+    triangleDown: '▼',
+    triangleDownSmall: '▾',
+    triangleLeftSmall: '◂',
+    triangleRightSmall: '▸',
+    home: '⌂',
+    heart: '♥',
+    musicNote: '♪',
+    musicNoteBeamed: '♫',
+    arrowUp: '↑',
+    arrowDown: '↓',
+    arrowLeft: '←',
+    arrowRight: '→',
+    arrowLeftRight: '↔',
+    arrowUpDown: '↕',
+    almostEqual: '≈',
+    notEqual: '≠',
+    lessOrEqual: '≤',
+    greaterOrEqual: '≥',
+    identical: '≡',
+    infinity: '∞',
+    subscriptZero: '₀',
+    subscriptOne: '₁',
+    subscriptTwo: '₂',
+    subscriptThree: '₃',
+    subscriptFour: '₄',
+    subscriptFive: '₅',
+    subscriptSix: '₆',
+    subscriptSeven: '₇',
+    subscriptEight: '₈',
+    subscriptNine: '₉',
+    oneHalf: '½',
+    oneThird: '⅓',
+    oneQuarter: '¼',
+    oneFifth: '⅕',
+    oneSixth: '⅙',
+    oneEighth: '⅛',
+    twoThirds: '⅔',
+    twoFifths: '⅖',
+    threeQuarters: '¾',
+    threeFifths: '⅗',
+    threeEighths: '⅜',
+    fourFifths: '⅘',
+    fiveSixths: '⅚',
+    fiveEighths: '⅝',
+    sevenEighths: '⅞',
+    line: '─',
+    lineBold: '━',
+    lineDouble: '═',
+    lineDashed0: '┄',
+    lineDashed1: '┅',
+    lineDashed2: '┈',
+    lineDashed3: '┉',
+    lineDashed4: '╌',
+    lineDashed5: '╍',
+    lineDashed6: '╴',
+    lineDashed7: '╶',
+    lineDashed8: '╸',
+    lineDashed9: '╺',
+    lineDashed10: '╼',
+    lineDashed11: '╾',
+    lineDashed12: '−',
+    lineDashed13: '–',
+    lineDashed14: '‐',
+    lineDashed15: '⁃',
+    lineVertical: '│',
+    lineVerticalBold: '┃',
+    lineVerticalDouble: '║',
+    lineVerticalDashed0: '┆',
+    lineVerticalDashed1: '┇',
+    lineVerticalDashed2: '┊',
+    lineVerticalDashed3: '┋',
+    lineVerticalDashed4: '╎',
+    lineVerticalDashed5: '╏',
+    lineVerticalDashed6: '╵',
+    lineVerticalDashed7: '╷',
+    lineVerticalDashed8: '╹',
+    lineVerticalDashed9: '╻',
+    lineVerticalDashed10: '╽',
+    lineVerticalDashed11: '╿',
+    lineDownLeft: '┐',
+    lineDownLeftArc: '╮',
+    lineDownBoldLeftBold: '┓',
+    lineDownBoldLeft: '┒',
+    lineDownLeftBold: '┑',
+    lineDownDoubleLeftDouble: '╗',
+    lineDownDoubleLeft: '╖',
+    lineDownLeftDouble: '╕',
+    lineDownRight: '┌',
+    lineDownRightArc: '╭',
+    lineDownBoldRightBold: '┏',
+    lineDownBoldRight: '┎',
+    lineDownRightBold: '┍',
+    lineDownDoubleRightDouble: '╔',
+    lineDownDoubleRight: '╓',
+    lineDownRightDouble: '╒',
+    lineUpLeft: '┘',
+    lineUpLeftArc: '╯',
+    lineUpBoldLeftBold: '┛',
+    lineUpBoldLeft: '┚',
+    lineUpLeftBold: '┙',
+    lineUpDoubleLeftDouble: '╝',
+    lineUpDoubleLeft: '╜',
+    lineUpLeftDouble: '╛',
+    lineUpRight: '└',
+    lineUpRightArc: '╰',
+    lineUpBoldRightBold: '┗',
+    lineUpBoldRight: '┖',
+    lineUpRightBold: '┕',
+    lineUpDoubleRightDouble: '╚',
+    lineUpDoubleRight: '╙',
+    lineUpRightDouble: '╘',
+    lineUpDownLeft: '┤',
+    lineUpBoldDownBoldLeftBold: '┫',
+    lineUpBoldDownBoldLeft: '┨',
+    lineUpDownLeftBold: '┥',
+    lineUpBoldDownLeftBold: '┩',
+    lineUpDownBoldLeftBold: '┪',
+    lineUpDownBoldLeft: '┧',
+    lineUpBoldDownLeft: '┦',
+    lineUpDoubleDownDoubleLeftDouble: '╣',
+    lineUpDoubleDownDoubleLeft: '╢',
+    lineUpDownLeftDouble: '╡',
+    lineUpDownRight: '├',
+    lineUpBoldDownBoldRightBold: '┣',
+    lineUpBoldDownBoldRight: '┠',
+    lineUpDownRightBold: '┝',
+    lineUpBoldDownRightBold: '┡',
+    lineUpDownBoldRightBold: '┢',
+    lineUpDownBoldRight: '┟',
+    lineUpBoldDownRight: '┞',
+    lineUpDoubleDownDoubleRightDouble: '╠',
+    lineUpDoubleDownDoubleRight: '╟',
+    lineUpDownRightDouble: '╞',
+    lineDownLeftRight: '┬',
+    lineDownBoldLeftBoldRightBold: '┳',
+    lineDownLeftBoldRightBold: '┯',
+    lineDownBoldLeftRight: '┰',
+    lineDownBoldLeftBoldRight: '┱',
+    lineDownBoldLeftRightBold: '┲',
+    lineDownLeftRightBold: '┮',
+    lineDownLeftBoldRight: '┭',
+    lineDownDoubleLeftDoubleRightDouble: '╦',
+    lineDownDoubleLeftRight: '╥',
+    lineDownLeftDoubleRightDouble: '╤',
+    lineUpLeftRight: '┴',
+    lineUpBoldLeftBoldRightBold: '┻',
+    lineUpLeftBoldRightBold: '┷',
+    lineUpBoldLeftRight: '┸',
+    lineUpBoldLeftBoldRight: '┹',
+    lineUpBoldLeftRightBold: '┺',
+    lineUpLeftRightBold: '┶',
+    lineUpLeftBoldRight: '┵',
+    lineUpDoubleLeftDoubleRightDouble: '╩',
+    lineUpDoubleLeftRight: '╨',
+    lineUpLeftDoubleRightDouble: '╧',
+    lineUpDownLeftRight: '┼',
+    lineUpBoldDownBoldLeftBoldRightBold: '╋',
+    lineUpDownBoldLeftBoldRightBold: '╈',
+    lineUpBoldDownLeftBoldRightBold: '╇',
+    lineUpBoldDownBoldLeftRightBold: '╊',
+    lineUpBoldDownBoldLeftBoldRight: '╉',
+    lineUpBoldDownLeftRight: '╀',
+    lineUpDownBoldLeftRight: '╁',
+    lineUpDownLeftBoldRight: '┽',
+    lineUpDownLeftRightBold: '┾',
+    lineUpBoldDownBoldLeftRight: '╂',
+    lineUpDownLeftBoldRightBold: '┿',
+    lineUpBoldDownLeftBoldRight: '╃',
+    lineUpBoldDownLeftRightBold: '╄',
+    lineUpDownBoldLeftBoldRight: '╅',
+    lineUpDownBoldLeftRightBold: '╆',
+    lineUpDoubleDownDoubleLeftDoubleRightDouble: '╬',
+    lineUpDoubleDownDoubleLeftRight: '╫',
+    lineUpDownLeftDoubleRightDouble: '╪',
+    lineCross: '╳',
+    lineBackslash: '╲',
+    lineSlash: '╱',
 };
-
-const mainSymbols = {
-	...common,
-	// The main symbols for those do not look that good on Ubuntu.
-	...(
-		platform === 'linux'
-			? {
-				circleQuestionMark: '?⃝',
-				questionMarkPrefix: '?⃝',
-			}
-			: {
-				circleQuestionMark: '?',
-				questionMarkPrefix: '?',
-			}
-	),
-	tick: '✔',
-	info: 'ℹ',
-	warning: '⚠',
-	cross: '✘',
-	squareSmall: '◻',
-	squareSmallFilled: '◼',
-	circle: '◯',
-	circleFilled: '◉',
-	circleDotted: '◌',
-	circleDouble: '◎',
-	circleCircle: 'ⓞ',
-	circleCross: 'ⓧ',
-	circlePipe: 'Ⓘ',
-	radioOn: '◉',
-	radioOff: '◯',
-	checkboxOn: '☒',
-	checkboxOff: '☐',
-	checkboxCircleOn: 'ⓧ',
-	checkboxCircleOff: 'Ⓘ',
-	pointer: '❯',
-	triangleUpOutline: '△',
-	triangleLeft: '◀',
-	triangleRight: '▶',
-	lozenge: '◆',
-	lozengeOutline: '◇',
-	hamburger: '☰',
-	smiley: '㋡',
-	mustache: '෴',
-	star: '★',
-	play: '▶',
-	nodejs: '⬢',
-	oneSeventh: '⅐',
-	oneNinth: '⅑',
-	oneTenth: '⅒',
+const specialMainSymbols = {
+    tick: '✔',
+    info: 'ℹ',
+    warning: '⚠',
+    cross: '✘',
+    squareSmall: '◻',
+    squareSmallFilled: '◼',
+    circle: '◯',
+    circleFilled: '◉',
+    circleDotted: '◌',
+    circleDouble: '◎',
+    circleCircle: 'ⓞ',
+    circleCross: 'ⓧ',
+    circlePipe: 'Ⓘ',
+    radioOn: '◉',
+    radioOff: '◯',
+    checkboxOn: '☒',
+    checkboxOff: '☐',
+    checkboxCircleOn: 'ⓧ',
+    checkboxCircleOff: 'Ⓘ',
+    pointer: '❯',
+    triangleUpOutline: '△',
+    triangleLeft: '◀',
+    triangleRight: '▶',
+    lozenge: '◆',
+    lozengeOutline: '◇',
+    hamburger: '☰',
+    smiley: '㋡',
+    mustache: '෴',
+    star: '★',
+    play: '▶',
+    nodejs: '⬢',
+    oneSeventh: '⅐',
+    oneNinth: '⅑',
+    oneTenth: '⅒',
 };
-
+const specialFallbackSymbols = {
+    tick: '√',
+    info: 'i',
+    warning: '‼',
+    cross: '×',
+    squareSmall: '□',
+    squareSmallFilled: '■',
+    circle: '( )',
+    circleFilled: '(*)',
+    circleDotted: '( )',
+    circleDouble: '( )',
+    circleCircle: '(○)',
+    circleCross: '(×)',
+    circlePipe: '(│)',
+    radioOn: '(*)',
+    radioOff: '( )',
+    checkboxOn: '[×]',
+    checkboxOff: '[ ]',
+    checkboxCircleOn: '(×)',
+    checkboxCircleOff: '( )',
+    pointer: '>',
+    triangleUpOutline: '∆',
+    triangleLeft: '◄',
+    triangleRight: '►',
+    lozenge: '♦',
+    lozengeOutline: '◊',
+    hamburger: '≡',
+    smiley: '☺',
+    mustache: '┌─┐',
+    star: '✶',
+    play: '►',
+    nodejs: '♦',
+    oneSeventh: '1/7',
+    oneNinth: '1/9',
+    oneTenth: '1/10',
+};
+const mainSymbols = { ...common, ...specialMainSymbols };
 const fallbackSymbols = {
-	...common,
-	tick: '√',
-	info: 'i',
-	warning: '‼',
-	cross: '×',
-	squareSmall: '□',
-	squareSmallFilled: '■',
-	circle: '( )',
-	circleFilled: '(*)',
-	circleDotted: '( )',
-	circleDouble: '( )',
-	circleCircle: '(○)',
-	circleCross: '(×)',
-	circlePipe: '(│)',
-	circleQuestionMark: '(?)',
-	radioOn: '(*)',
-	radioOff: '( )',
-	checkboxOn: '[×]',
-	checkboxOff: '[ ]',
-	checkboxCircleOn: '(×)',
-	checkboxCircleOff: '( )',
-	questionMarkPrefix: '？',
-	pointer: '>',
-	triangleUpOutline: '∆',
-	triangleLeft: '◄',
-	triangleRight: '►',
-	lozenge: '♦',
-	lozengeOutline: '◊',
-	hamburger: '≡',
-	smiley: '☺',
-	mustache: '┌─┐',
-	star: '✶',
-	play: '►',
-	nodejs: '♦',
-	oneSeventh: '1/7',
-	oneNinth: '1/9',
-	oneTenth: '1/10',
+    ...common,
+    ...specialFallbackSymbols,
 };
-
 const shouldUseMain = isUnicodeSupported$3();
 const figures = shouldUseMain ? mainSymbols : fallbackSymbols;
 
@@ -4984,13 +4972,13 @@ function raceInit(sources) {
 }
 race$1.raceInit = raceInit;
 
-var range$1 = {};
+var range$2 = {};
 
-Object.defineProperty(range$1, "__esModule", { value: true });
-range$1.range = void 0;
+Object.defineProperty(range$2, "__esModule", { value: true });
+range$2.range = void 0;
 var Observable_1$4 = Observable$1;
 var empty_1$5 = empty;
-function range(start, count, scheduler) {
+function range$1(start, count, scheduler) {
     if (count == null) {
         count = start;
         start = 0;
@@ -5022,7 +5010,7 @@ function range(start, count, scheduler) {
                 subscriber.complete();
             });
 }
-range$1.range = range;
+range$2.range = range$1;
 
 var using$1 = {};
 
@@ -8287,7 +8275,7 @@ zipWith$1.zipWith = zipWith;
 	Object.defineProperty(exports, "partition", { enumerable: true, get: function () { return partition_1.partition; } });
 	var race_1 = race$1;
 	Object.defineProperty(exports, "race", { enumerable: true, get: function () { return race_1.race; } });
-	var range_1 = range$1;
+	var range_1 = range$2;
 	Object.defineProperty(exports, "range", { enumerable: true, get: function () { return range_1.range; } });
 	var throwError_1 = throwError$1;
 	Object.defineProperty(exports, "throwError", { enumerable: true, get: function () { return throwError_1.throwError; } });
@@ -8527,7 +8515,7 @@ function normalizeKeypressEvents(value, key) {
   return { value, key: key || {} };
 }
 
-function observe (rl) {
+function observe(rl) {
   const keypress = cjs.fromEvent(rl.input, 'keypress', normalizeKeypressEvents)
     .pipe(cjs.takeUntil(cjs.fromEvent(rl, 'close')))
     // Ignore `enter` key. On the readline, we only care about the `line` event.
@@ -8554,7 +8542,7 @@ function observe (rl) {
     ),
 
     numberKey: keypress.pipe(
-      cjs.filter((e) => e.value && '123456789'.indexOf(e.value) >= 0),
+      cjs.filter((e) => e.value && '123456789'.includes(e.value)),
       cjs.map((e) => Number(e.value)),
       cjs.share(),
     ),
@@ -8591,7 +8579,7 @@ class Paginator {
   }
 
   paginate(output, active, pageSize) {
-    pageSize = pageSize || 7;
+    pageSize ||= 7;
     let lines = output.split('\n');
 
     if (this.screen) {
@@ -13352,7 +13340,7 @@ var map$1 = /*@__PURE__*/getDefaultExportFromCjs(map_1);
 class Separator {
   constructor(line) {
     this.type = 'separator';
-    this.line = chalk$4.dim(line || new Array(15).join(figures.line));
+    this.line = chalk$4.dim(line || Array.from({ length: 15 }).join(figures.line));
   }
 
   /**
@@ -13385,7 +13373,6 @@ class Choice {
   constructor(val, answers) {
     // Don't process Choice and Separator object
     if (val instanceof Choice || val.type === 'separator') {
-      // eslint-disable-next-line no-constructor-return
       return val;
     }
 
@@ -13401,11 +13388,8 @@ class Choice {
       });
     }
 
-    if (typeof val.disabled === 'function') {
-      this.disabled = val.disabled(answers);
-    } else {
-      this.disabled = val.disabled;
-    }
+    this.disabled =
+      typeof val.disabled === 'function' ? val.disabled(answers) : val.disabled;
   }
 }
 
@@ -13449,6 +13433,15 @@ class Choices {
         throw new Error('Cannot set `realLength` of a Choices collection');
       },
     });
+  }
+
+  [Symbol.iterator]() {
+    const data = this.choices;
+    let index = -1;
+
+    return {
+      next: () => ({ value: data[++index], done: !(index in data) }),
+    };
   }
 
   /**
@@ -13508,6 +13501,10 @@ class Choices {
 
   find(func) {
     return this.choices.find(func);
+  }
+
+  some(func) {
+    return this.choices.some(func);
   }
 
   push(...args) {
@@ -22573,7 +22570,7 @@ class ScreenManager {
     // rl.line (mainly because of the password prompt), so just rely on it's
     // length.
     let prompt = rawPromptLine;
-    if (this.rl.line.length) {
+    if (this.rl.line.length > 0) {
       prompt = prompt.slice(0, -this.rl.line.length);
     }
 
@@ -22584,9 +22581,7 @@ class ScreenManager {
     const width = this.normalizedCliWidth();
 
     content = this.forceLineReturn(content, width);
-    if (bottomContent) {
-      bottomContent = this.forceLineReturn(bottomContent, width);
-    }
+    bottomContent &&= this.forceLineReturn(bottomContent, width);
 
     // Manually insert an extra line if we're at the end of the line.
     // This prevent the cursor from appearing at the beginning of the
@@ -22713,9 +22708,7 @@ class Prompt {
     }
 
     // Set default message if no message defined
-    if (!this.opt.message) {
-      this.opt.message = this.opt.name + ':';
-    }
+    this.opt.message ||= this.opt.name + ':';
 
     // Normalize choices
     if (Array.isArray(this.opt.choices)) {
@@ -22768,21 +22761,20 @@ class Prompt {
    * @return {Object}        Object containing two observables: `success` and `error`
    */
   handleSubmitEvents(submit) {
-    const self = this;
     const validate = runAsync$1(this.opt.validate);
     const asyncFilter = runAsync$1(this.opt.filter);
     const validation = submit.pipe(
       cjs.flatMap((value) => {
         this.startSpinner(value, this.opt.filteringText);
-        return asyncFilter(value, self.answers).then(
+        return asyncFilter(value, this.answers).then(
           (filteredValue) => {
             this.startSpinner(filteredValue, this.opt.validatingText);
-            return validate(filteredValue, self.answers).then(
+            return validate(filteredValue, this.answers).then(
               (isValid) => ({ isValid, value: filteredValue }),
-              (err) => ({ isValid: err, value: filteredValue }),
+              (error_) => ({ isValid: error_, value: filteredValue }),
             );
           },
-          (err) => ({ isValid: err }),
+          (error_) => ({ isValid: error_ }),
         );
       }),
       cjs.share(),
@@ -22841,11 +22833,10 @@ class Prompt {
       this.status !== 'answered'
     ) {
       // If default password is supplied, hide it
-      if (this.opt.type === 'password') {
-        message += chalk$4.italic.dim('[hidden] ');
-      } else {
-        message += chalk$4.dim('(' + this.opt.default + ') ');
-      }
+      message +=
+        this.opt.type === 'password'
+          ? chalk$4.italic.dim('[hidden] ')
+          : chalk$4.dim('(' + this.opt.default + ') ');
     }
 
     return message;
@@ -22894,8 +22885,6 @@ class ListPrompt extends Prompt {
   _run(cb) {
     this.done = cb;
 
-    const self = this;
-
     const events = observe(this.rl);
     events.normalizedUpKey.pipe(cjs.takeUntil(events.line)).forEach(this.onUpKey.bind(this));
     events.normalizedDownKey
@@ -22907,7 +22896,7 @@ class ListPrompt extends Prompt {
         cjs.take(1),
         cjs.map(this.getCurrentValue.bind(this)),
         cjs.flatMap((value) =>
-          runAsync$1(self.opt.filter)(value, self.answers).catch((err) => err),
+          runAsync$1(this.opt.filter)(value, this.answers).catch((error) => error),
         ),
       )
       .forEach(this.onSubmit.bind(this));
@@ -23046,7 +23035,7 @@ function listRender(choices, pointer) {
     output += line + ' \n';
   });
 
-  return output.replace(/\n$/, '');
+  return output.replaceAll(/\n$/g, '');
 }
 
 /**
@@ -23094,11 +23083,7 @@ class InputPrompt extends Prompt {
     const { transformer } = this.opt;
     const isFinal = this.status === 'answered';
 
-    if (isFinal) {
-      appendContent = this.answer;
-    } else {
-      appendContent = this.rl.line;
-    }
+    appendContent = isFinal ? this.answer : this.rl.line;
 
     if (transformer) {
       message += transformer(appendContent, this.answers, { isFinal });
@@ -23175,7 +23160,7 @@ class NumberPrompt extends InputPrompt {
     }
 
     // If the input was invalid return the default value.
-    return this.opt.default == null ? NaN : this.opt.default;
+    return this.opt.default == null ? Number.NaN : this.opt.default;
   }
 }
 
@@ -23420,17 +23405,13 @@ class RawListPrompt extends Prompt {
     let index;
 
     if (this.lastKey === 'arrow') {
-      index = this.hiddenLine.length ? Number(this.hiddenLine) - 1 : 0;
+      index = this.hiddenLine.length > 0 ? Number(this.hiddenLine) - 1 : 0;
     } else {
-      index = this.rl.line.length ? Number(this.rl.line) - 1 : 0;
+      index = this.rl.line.length > 0 ? Number(this.rl.line) - 1 : 0;
     }
     this.lastKey = '';
 
-    if (this.opt.choices.getChoice(index)) {
-      this.selected = index;
-    } else {
-      this.selected = undefined;
-    }
+    this.selected = this.opt.choices.getChoice(index) ? index : undefined;
     this.render();
   }
 
@@ -23587,9 +23568,7 @@ class ExpandPrompt extends Prompt {
   }
 
   getCurrentValue(input) {
-    if (!input) {
-      input = this.rawDefault;
-    }
+    input ||= this.rawDefault;
 
     const selected = this.opt.choices.where({ key: input.toLowerCase().trim() })[0];
     if (!selected) {
@@ -23701,7 +23680,7 @@ class ExpandPrompt extends Prompt {
       );
     }
 
-    if (errors.length) {
+    if (errors.length > 0) {
       throw new Error(
         'Duplicate key error: `key` param must be unique. Duplicates: ' +
           [...new Set(errors)].join(','),
@@ -23773,11 +23752,11 @@ class CheckboxPrompt extends Prompt {
     }
 
     if (Array.isArray(this.opt.default)) {
-      this.opt.choices.forEach(function (choice) {
-        if (this.opt.default.indexOf(choice.value) >= 0) {
+      for (const choice of this.opt.choices) {
+        if (this.opt.default.includes(choice.value)) {
           choice.checked = true;
         }
-      }, this);
+      }
     }
 
     this.pointer = 0;
@@ -23945,8 +23924,8 @@ class CheckboxPrompt extends Prompt {
   }
 
   onAllKey() {
-    const shouldBeChecked = Boolean(
-      this.opt.choices.find((choice) => choice.type !== 'separator' && !choice.checked),
+    const shouldBeChecked = this.opt.choices.some(
+      (choice) => choice.type !== 'separator' && !choice.checked,
     );
 
     this.opt.choices.forEach((choice) => {
@@ -24001,17 +23980,14 @@ function renderChoices(choices, pointer) {
       })`;
     } else {
       const line = getCheckbox(choice.checked) + ' ' + choice.name;
-      if (i - separatorOffset === pointer) {
-        output += chalk$4.cyan(figures.pointer + line);
-      } else {
-        output += ' ' + line;
-      }
+      output +=
+        i - separatorOffset === pointer ? chalk$4.cyan(figures.pointer + line) : ' ' + line;
     }
 
     output += '\n';
   });
 
-  return output.replace(/\n$/, '');
+  return output.replaceAll(/\n$/g, '');
 }
 
 /**
@@ -24036,7 +24012,7 @@ function mask(input, maskChar) {
     return '';
   }
 
-  return new Array(input.length + 1).join(maskChar);
+  return Array.from({ length: input.length + 1 }).join(maskChar);
 }
 
 class PasswordPrompt extends Prompt {
@@ -24077,11 +24053,10 @@ class PasswordPrompt extends Prompt {
     let message = this.getQuestion();
     let bottomContent = '';
 
-    if (this.status === 'answered') {
-      message += this.getMaskedValue(this.answer);
-    } else {
-      message += this.getMaskedValue(this.rl.line || '');
-    }
+    message +=
+      this.status === 'answered'
+        ? this.getMaskedValue(this.answer)
+        : this.getMaskedValue(this.rl.line || '');
 
     if (error) {
       bottomContent = '\n' + chalk$4.red('>> ') + error;
@@ -24137,9 +24112,7 @@ class PasswordPrompt extends Prompt {
 
   onKeypress() {
     // If user press a key, just clear the default value
-    if (this.opt.default) {
-      this.opt.default = undefined;
-    }
+    this.opt.default &&= undefined;
 
     this.render();
   }
@@ -38198,11 +38171,10 @@ class EditorPrompt extends Prompt {
     let bottomContent = '';
     let message = this.getQuestion();
 
-    if (this.status === 'answered') {
-      message += chalk$4.dim('Received');
-    } else {
-      message += chalk$4.dim('Press <enter> to launch your preferred editor.');
-    }
+    message +=
+      this.status === 'answered'
+        ? chalk$4.dim('Received')
+        : chalk$4.dim('Press <enter> to launch your preferred editor.');
 
     if (error) {
       bottomContent = chalk$4.red('>> ') + error;
@@ -38337,6 +38309,27 @@ var implementation = implementation$1;
 
 var functionBind = Function.prototype.bind || implementation;
 
+/** @type {import('.')} */
+var esErrors = Error;
+
+/** @type {import('./eval')} */
+var _eval = EvalError;
+
+/** @type {import('./range')} */
+var range = RangeError;
+
+/** @type {import('./ref')} */
+var ref = ReferenceError;
+
+/** @type {import('./syntax')} */
+var syntax = SyntaxError;
+
+/** @type {import('./type')} */
+var type = TypeError;
+
+/** @type {import('./uri')} */
+var uri = URIError;
+
 /* eslint complexity: [2, 18], max-statements: [2, 33] */
 var shams = function hasSymbols() {
 	if (typeof Symbol !== 'function' || typeof Object.getOwnPropertySymbols !== 'function') { return false; }
@@ -38391,27 +38384,37 @@ var hasSymbols$1 = function hasNativeSymbols() {
 };
 
 var test = {
+	__proto__: null,
 	foo: {}
 };
 
 var $Object = Object;
 
+/** @type {import('.')} */
 var hasProto$1 = function hasProto() {
-	return { __proto__: test }.foo === test.foo && !({ __proto__: null } instanceof $Object);
+	// @ts-expect-error: TS errors on an inherited property for some reason
+	return { __proto__: test }.foo === test.foo
+		&& !(test instanceof $Object);
 };
 
 var call = Function.prototype.call;
 var $hasOwn = Object.prototype.hasOwnProperty;
 var bind$1 = functionBind;
 
-/** @type {(o: {}, p: PropertyKey) => p is keyof o} */
+/** @type {import('.')} */
 var hasown = bind$1.call(call, $hasOwn);
 
 var undefined$1;
 
-var $SyntaxError$1 = SyntaxError;
+var $Error = esErrors;
+var $EvalError = _eval;
+var $RangeError = range;
+var $ReferenceError = ref;
+var $SyntaxError$1 = syntax;
+var $TypeError$2 = type;
+var $URIError = uri;
+
 var $Function = Function;
-var $TypeError$2 = TypeError;
 
 // eslint-disable-next-line consistent-return
 var getEvalledConstructor = function (expressionSyntax) {
@@ -38463,6 +38466,7 @@ var needsEval = {};
 var TypedArray = typeof Uint8Array === 'undefined' || !getProto ? undefined$1 : getProto(Uint8Array);
 
 var INTRINSICS = {
+	__proto__: null,
 	'%AggregateError%': typeof AggregateError === 'undefined' ? undefined$1 : AggregateError,
 	'%Array%': Array,
 	'%ArrayBuffer%': typeof ArrayBuffer === 'undefined' ? undefined$1 : ArrayBuffer,
@@ -38483,9 +38487,9 @@ var INTRINSICS = {
 	'%decodeURIComponent%': decodeURIComponent,
 	'%encodeURI%': encodeURI,
 	'%encodeURIComponent%': encodeURIComponent,
-	'%Error%': Error,
+	'%Error%': $Error,
 	'%eval%': eval, // eslint-disable-line no-eval
-	'%EvalError%': EvalError,
+	'%EvalError%': $EvalError,
 	'%Float32Array%': typeof Float32Array === 'undefined' ? undefined$1 : Float32Array,
 	'%Float64Array%': typeof Float64Array === 'undefined' ? undefined$1 : Float64Array,
 	'%FinalizationRegistry%': typeof FinalizationRegistry === 'undefined' ? undefined$1 : FinalizationRegistry,
@@ -38507,8 +38511,8 @@ var INTRINSICS = {
 	'%parseInt%': parseInt,
 	'%Promise%': typeof Promise === 'undefined' ? undefined$1 : Promise,
 	'%Proxy%': typeof Proxy === 'undefined' ? undefined$1 : Proxy,
-	'%RangeError%': RangeError,
-	'%ReferenceError%': ReferenceError,
+	'%RangeError%': $RangeError,
+	'%ReferenceError%': $ReferenceError,
 	'%Reflect%': typeof Reflect === 'undefined' ? undefined$1 : Reflect,
 	'%RegExp%': RegExp,
 	'%Set%': typeof Set === 'undefined' ? undefined$1 : Set,
@@ -38525,7 +38529,7 @@ var INTRINSICS = {
 	'%Uint8ClampedArray%': typeof Uint8ClampedArray === 'undefined' ? undefined$1 : Uint8ClampedArray,
 	'%Uint16Array%': typeof Uint16Array === 'undefined' ? undefined$1 : Uint16Array,
 	'%Uint32Array%': typeof Uint32Array === 'undefined' ? undefined$1 : Uint32Array,
-	'%URIError%': URIError,
+	'%URIError%': $URIError,
 	'%WeakMap%': typeof WeakMap === 'undefined' ? undefined$1 : WeakMap,
 	'%WeakRef%': typeof WeakRef === 'undefined' ? undefined$1 : WeakRef,
 	'%WeakSet%': typeof WeakSet === 'undefined' ? undefined$1 : WeakSet
@@ -38567,6 +38571,7 @@ var doEval = function doEval(name) {
 };
 
 var LEGACY_ALIASES = {
+	__proto__: null,
 	'%ArrayBufferPrototype%': ['ArrayBuffer', 'prototype'],
 	'%ArrayPrototype%': ['Array', 'prototype'],
 	'%ArrayProto_entries%': ['Array', 'prototype', 'entries'],
@@ -38757,41 +38762,33 @@ var getIntrinsic = function GetIntrinsic(name, allowMissing) {
 	return value;
 };
 
-var GetIntrinsic$3 = getIntrinsic;
+var esDefineProperty;
+var hasRequiredEsDefineProperty;
 
-var $defineProperty$1 = GetIntrinsic$3('%Object.defineProperty%', true);
+function requireEsDefineProperty () {
+	if (hasRequiredEsDefineProperty) return esDefineProperty;
+	hasRequiredEsDefineProperty = 1;
 
-var hasPropertyDescriptors$1 = function hasPropertyDescriptors() {
-	if ($defineProperty$1) {
+	var GetIntrinsic = getIntrinsic;
+
+	/** @type {import('.')} */
+	var $defineProperty = GetIntrinsic('%Object.defineProperty%', true) || false;
+	if ($defineProperty) {
 		try {
-			$defineProperty$1({}, 'a', { value: 1 });
-			return true;
+			$defineProperty({}, 'a', { value: 1 });
 		} catch (e) {
 			// IE 8 has a broken defineProperty
-			return false;
+			$defineProperty = false;
 		}
 	}
-	return false;
-};
 
-hasPropertyDescriptors$1.hasArrayLengthDefineBug = function hasArrayLengthDefineBug() {
-	// node v0.6 has a bug where array lengths can be Set but not Defined
-	if (!hasPropertyDescriptors$1()) {
-		return null;
-	}
-	try {
-		return $defineProperty$1([], 'length', { value: 1 }).length !== 1;
-	} catch (e) {
-		// In Firefox 4-22, defining length on an array throws an exception.
-		return true;
-	}
-};
+	esDefineProperty = $defineProperty;
+	return esDefineProperty;
+}
 
-var hasPropertyDescriptors_1 = hasPropertyDescriptors$1;
+var GetIntrinsic$1 = getIntrinsic;
 
-var GetIntrinsic$2 = getIntrinsic;
-
-var $gOPD = GetIntrinsic$2('%Object.getOwnPropertyDescriptor%', true);
+var $gOPD = GetIntrinsic$1('%Object.getOwnPropertyDescriptor%', true);
 
 if ($gOPD) {
 	try {
@@ -38804,26 +38801,14 @@ if ($gOPD) {
 
 var gopd$1 = $gOPD;
 
-var hasPropertyDescriptors = hasPropertyDescriptors_1();
+var $defineProperty$1 = requireEsDefineProperty();
 
-var GetIntrinsic$1 = getIntrinsic;
-
-var $defineProperty = hasPropertyDescriptors && GetIntrinsic$1('%Object.defineProperty%', true);
-if ($defineProperty) {
-	try {
-		$defineProperty({}, 'a', { value: 1 });
-	} catch (e) {
-		// IE 8 has a broken defineProperty
-		$defineProperty = false;
-	}
-}
-
-var $SyntaxError = GetIntrinsic$1('%SyntaxError%');
-var $TypeError$1 = GetIntrinsic$1('%TypeError%');
+var $SyntaxError = syntax;
+var $TypeError$1 = type;
 
 var gopd = gopd$1;
 
-/** @type {(obj: Record<PropertyKey, unknown>, property: PropertyKey, value: unknown, nonEnumerable?: boolean | null, nonWritable?: boolean | null, nonConfigurable?: boolean | null, loose?: boolean) => void} */
+/** @type {import('.')} */
 var defineDataProperty = function defineDataProperty(
 	obj,
 	property,
@@ -38856,8 +38841,8 @@ var defineDataProperty = function defineDataProperty(
 	/* @type {false | TypedPropertyDescriptor<unknown>} */
 	var desc = !!gopd && gopd(obj, property);
 
-	if ($defineProperty) {
-		$defineProperty(obj, property, {
+	if ($defineProperty$1) {
+		$defineProperty$1(obj, property, {
 			configurable: nonConfigurable === null && desc ? desc.configurable : !nonConfigurable,
 			enumerable: nonEnumerable === null && desc ? desc.enumerable : !nonEnumerable,
 			value: value,
@@ -38871,14 +38856,36 @@ var defineDataProperty = function defineDataProperty(
 	}
 };
 
+var $defineProperty = requireEsDefineProperty();
+
+var hasPropertyDescriptors = function hasPropertyDescriptors() {
+	return !!$defineProperty;
+};
+
+hasPropertyDescriptors.hasArrayLengthDefineBug = function hasArrayLengthDefineBug() {
+	// node v0.6 has a bug where array lengths can be Set but not Defined
+	if (!$defineProperty) {
+		return null;
+	}
+	try {
+		return $defineProperty([], 'length', { value: 1 }).length !== 1;
+	} catch (e) {
+		// In Firefox 4-22, defining length on an array throws an exception.
+		return true;
+	}
+};
+
+var hasPropertyDescriptors_1 = hasPropertyDescriptors;
+
 var GetIntrinsic = getIntrinsic;
 var define = defineDataProperty;
 var hasDescriptors = hasPropertyDescriptors_1();
 var gOPD = gopd$1;
 
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = type;
 var $floor = GetIntrinsic('%Math.floor%');
 
+/** @type {import('.')} */
 var setFunctionLength = function setFunctionLength(fn, length) {
 	if (typeof fn !== 'function') {
 		throw new $TypeError('`fn` is not a function');
@@ -38903,9 +38910,9 @@ var setFunctionLength = function setFunctionLength(fn, length) {
 
 	if (functionLengthIsConfigurable || functionLengthIsWritable || !loose) {
 		if (hasDescriptors) {
-			define(fn, 'length', length, true, true);
+			define(/** @type {Parameters<define>[0]} */ (fn), 'length', length, true, true);
 		} else {
-			define(fn, 'length', length);
+			define(/** @type {Parameters<define>[0]} */ (fn), 'length', length);
 		}
 	}
 	return fn;
@@ -38917,22 +38924,13 @@ var setFunctionLength = function setFunctionLength(fn, length) {
 	var GetIntrinsic = getIntrinsic;
 	var setFunctionLength$1 = setFunctionLength;
 
-	var $TypeError = GetIntrinsic('%TypeError%');
+	var $TypeError = type;
 	var $apply = GetIntrinsic('%Function.prototype.apply%');
 	var $call = GetIntrinsic('%Function.prototype.call%');
 	var $reflectApply = GetIntrinsic('%Reflect.apply%', true) || bind.call($call, $apply);
 
-	var $defineProperty = GetIntrinsic('%Object.defineProperty%', true);
+	var $defineProperty = requireEsDefineProperty();
 	var $max = GetIntrinsic('%Math.max%');
-
-	if ($defineProperty) {
-		try {
-			$defineProperty({}, 'a', { value: 1 });
-		} catch (e) {
-			// IE 8 has a broken defineProperty
-			$defineProperty = null;
-		}
-	}
 
 	module.exports = function callBind(originalFunction) {
 		if (typeof originalFunction !== 'function') {
@@ -38962,22 +38960,26 @@ var callBindExports = callBind$1.exports;
 var Stream$1 = require$$0$5.Stream;
 var callBind = callBindExports;
 
+/** @typedef {import('./through').ThroughStream} ThroughStream */
+
 // create a readable writable stream.
 
+/** @type {import('./through')} */
 function through(write, end, opts) {
 	var writeBound = callBind(write || function (data) { this.queue(data); });
 	var endBound = callBind(end || function () { this.queue(null); });
 
 	var ended = false;
 	var destroyed = false;
-	var buffer = [];
+	/** @type {unknown[]} */ var buffer = [];
 	var _ended = false;
-	var stream = new Stream$1();
+	// @ts-expect-error
+	/** @type {ThroughStream} */ var stream = new Stream$1();
 	stream.readable = true;
 	stream.writable = true;
 	stream.paused = false;
 
-	//  stream.autoPause   = !(opts && opts.autoPause   === false)
+	// stream.autoPause = !(opts && opts.autoPause === false)
 	stream.autoDestroy = !(opts && opts.autoDestroy === false);
 
 	stream.write = function (data) {
@@ -39004,9 +39006,7 @@ function through(write, end, opts) {
 	stream.push = stream.queue;
 
 	/*
-	 * this will be registered as the first 'end' listener
-	 * must call destroy next tick, to make sure we're after any
-	 * stream piped from here.
+	 * this will be registered as the first 'end' listener must call destroy next tick, to make sure we're after any stream piped from here.
 	 * this is only a problem if end is not emitted synchronously.
 	 * a nicer way to do this is to make sure this is the last listener for 'end'
 	 */
@@ -39057,10 +39057,7 @@ function through(write, end, opts) {
 			stream.emit('resume');
 		}
 		drain();
-		/*
-		 * may have become paused again,
-		 * as drain emits 'data'.
-		 */
+		// may have become paused again, as drain emits 'data'.
 		if (!stream.paused) { stream.emit('drain'); }
 		return stream;
 	};
@@ -39232,9 +39229,7 @@ class UI {
   constructor(opt) {
     // Instantiate the Readline interface
     // @Note: Don't reassign if already present (allow test to override the Stream)
-    if (!this.rl) {
-      this.rl = readline$1.createInterface(setupReadlineOptions(opt));
-    }
+    this.rl ||= readline$1.createInterface(setupReadlineOptions(opt));
 
     this.rl.resume();
 
@@ -39378,7 +39373,7 @@ class BottomBar extends UI {
    */
 
   enforceLF(str) {
-    return str.match(/[\r\n]$/) ? str : str + '\n';
+    return /[\n\r]$/.test(str) ? str : str + '\n';
   }
 
   /**
@@ -39390,7 +39385,7 @@ class BottomBar extends UI {
     this.height = msgLines.length;
 
     // Write message to screen and setPrompt to control backspace
-    this.rl.setPrompt(msgLines[msgLines.length - 1]);
+    this.rl.setPrompt(msgLines.at(-1));
 
     if (this.rl.output.rows === 0 && this.rl.output.columns === 0) {
       /* When it's a tty through serial port there's no terminal info and the render will malfunction,
@@ -39596,11 +39591,7 @@ class PromptUI extends UI {
 
   run(questions, answers) {
     // Keep global reference to the answers
-    if (_.isPlainObject(answers)) {
-      this.answers = { ...answers };
-    } else {
-      this.answers = {};
-    }
+    this.answers = _.isPlainObject(answers) ? { ...answers } : {};
 
     // Make sure questions is an array.
     if (_.isPlainObject(questions)) {
@@ -39908,7 +39899,7 @@ function setToken() {
     inquirer.prompt([{
       name: "token",
       type: "input",
-      message: i18n.__("Set service TOKEN:"),
+      message: i18n.__("Set service TOKEN (Use the wildcard character (*) to match any character):"),
       default: "vue-plugin-hiprint",
       validate: (input) => {
         if (input && input.length >= 6) {
