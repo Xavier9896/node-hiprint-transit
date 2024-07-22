@@ -4,7 +4,7 @@
 
 `node-hiprint-transit` is a Node.js-based transit server that acts as a bridge between the `electron-hiprint` client and the `vue-plugin-hiprint` library, enabling seamless connectivity and printing operations between these components.
 
-[中文](README.md)
+[中文](README_CN.md)
 
 ![node-hiprint-transit_cn.png](./res/node-hiprint-transit_en.png)
 
