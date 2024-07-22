@@ -1,8 +1,8 @@
 /*
  * @Date: 2023-09-29 13:52:41
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2023-10-14 19:30:03
- * @FilePath: \node-hiprint-transit\src\init.js
+ * @LastEditTime: 2024-07-22 15:02:09
+ * @FilePath: /node-hiprint-transit/init.js
  */
 import path from "node:path";
 import readline from "node:readline";

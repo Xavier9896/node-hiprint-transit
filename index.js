@@ -1,14 +1,15 @@
 /*
  * @Date: 2023-09-28 19:28:42
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-07-19 20:10:05
- * @FilePath: \node-hiprint-transit\index.js
+ * @LastEditTime: 2024-07-22 16:38:53
+ * @FilePath: /node-hiprint-transit/index.js
  */
 import path from "node:path";
 import http from "node:http";
 import https from "node:https";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { totalmem, freemem } from "node:os";
 import chalk from "chalk";
 import { I18n } from "i18n";
 import { Server } from "socket.io";
@@ -103,6 +104,33 @@ readConfig().then((CONFIG) => {
       CLIENT.set(sToken, {});
     }
 
+    // Send server info to client
+    const serverInfo = {
+      // Server version
+      version: packageJson.version,
+      // Number of Electron-hiprint clients for the current socket's token
+      currentClients: Object.keys(CLIENT.get(sToken)).length,
+      // Number of all Electron-hiprint clients
+      allClients: Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) => handshake.query?.client === "electron-hiprint"
+      )?.length,
+      // Number of web clients for the current socket's token
+      webClients: Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) =>
+          handshake.auth.token === sToken &&
+          handshake.query?.client !== "electron-hiprint"
+      )?.length,
+      // Number of all web clients
+      allWebClients: Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) => handshake.query?.client === "electron-hiprint"
+      )?.length,
+      // Server total memory
+      totalmem: totalmem(),
+      // Server free memory
+      freemem: freemem(),
+    };
+    socket.emit("serverInfo", serverInfo);
+
     if (socket.handshake.query.test !== "true") {
       if (socket.handshake.query.client === "electron-hiprint") {
         log(
@@ -145,6 +173,10 @@ readConfig().then((CONFIG) => {
       }
     } else {
       log(i18n.__("Client connected: %s", `${socket.id} | ${sToken} | (test)`));
+      // Wait for the serverInfo event to be emitted, then disconnect.
+      setTimeout(() => {
+        socket.disconnect(true);
+      }, 1000 * 5);
     }
 
     // Get client info
