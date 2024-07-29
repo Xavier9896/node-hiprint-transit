@@ -18,6 +18,8 @@
 
 - **Ease of Use**: `node-hiprint-transit` is typically installed on a public server with a relatively fixed IP and port. It can also be accessed via a domain name. Only one-time configuration is required in `electron-hiprint` and `vue-plugin-hiprint`, unlike `electron-hiprint` which is susceptible to DHCP automatic address changes.
 
+<a href="#success_note">↓ ⚠️ Important Note</a>
+
 ## Free Services - Powered by Love
 
 | Version | Server Info | Service Provider | Region | Expiry Date | Server Address | Token |
@@ -107,7 +109,7 @@ Now you can directly connect to the transit server `node-hiprint-transit` using 
 import { hiprint } from 'vue-plugin-hiprint'
 
 hiprint.init({
-  host: 'https://printjs.cn:17521', // Enter the address after the server starts
+  host: 'https://v4.printjs.cn:17521', // Enter the address after the server starts
   token: 'hiprint-1', // Token used for authentication
 });
 ```
@@ -289,6 +291,21 @@ Send print information to `electron-hiprint` client.
 Perform success callback to respond to the client.
 
   - socket.to(options.replyId).emit("success", options)
+
+<a name="success_note"></a>
+
+> !!! ⚠️ Please note that there is a spelling mistake in all versions of vue-plugin-hiprint 0.0.57 and earlier. It only listens and handles the "successs" event. This issue is expected to be fixed in version 0.0.58. For now, you need to patch vue-plugin-hiprint yourself.
+
+```js
+hiprint.init({
+  host: 'https://v4.printjs.cn:17521', // Enter the address after the server starts
+  token: 'hiprint-1',     // Token used for authentication
+});
+// Add the following code after hiprint.init
+hiwebSocket.socket.on("success", ()=> {
+  hinnn.event.trigger("printSuccess" + t.templateId, t);
+})
+```
 
 ### socket.on("error", (options) => {})
 

@@ -18,6 +18,8 @@
 
 - **易用性**: `node-hiprint-transit` 一般安装在公网服务器，服务器 ip、端口 相对固定，也可通过域名访问，`electron-hiprint` 和 `vue-plugin-hiprint` 中只需配置一次地址，不像 `electron-hiprint` 一样容易受到 DHCP 自动分配变更地址。
 
+<a href="#success_note">↓ ⚠️ 重要提示</a>
+
 ## 免费服务-用爱发电
 
 | 版本 | 服务器信息 | 服务商 | 地域 | 有效期 | 服务器地址 | Token |
@@ -106,7 +108,7 @@ https://printjs.cn:17521
 import { hiprint } from 'vue-plugin-hiprint'
 
 hiprint.init({
-    host: 'https://printjs.cn:17521', // 此处输入服务启动后的地址
+    host: 'https://v4.printjs.cn:17521', // 此处输入服务启动后的地址
     token: 'hiprint-1',     // 用于鉴权的token
 });
 ```
@@ -286,6 +288,21 @@ hiprint.init({
 进行成功回调以回复客户端。
 
   - socket.to(options.replyId).emit("success", options)
+
+<a name="success_note"></a>
+
+> !!! ⚠️ 请注意，vue-plugin-hiprint 0.0.57 及以前的所有版本中存在拼写错误，只监听处理 successs 事件，预计会在 0.0.58 版本修复该问题，目前你需要自己重新为 vue-plugin-hiprint 打个补丁
+
+```js
+hiprint.init({
+  host: 'https://v4.printjs.cn:17521', // 此处输入服务启动后的地址
+  token: 'hiprint-1',     // 用于鉴权的token
+});
+// 在 hiprint.init 后添加以下代码
+hiwebSocket.socket.on("success", ()=> {
+  hinnn.event.trigger("printSuccess" + t.templateId, t);
+})
+```
 
 ### socket.on("error", (options) => {})
 
