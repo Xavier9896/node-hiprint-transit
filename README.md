@@ -25,7 +25,7 @@
 | Version | Server Info | Service Provider | Region | Expiry Date | Server Address | Token |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0.0.4 | 2C2G4M 300G/m | Tencent Cloud | GZ | 2026-07-16 | https://v4.printjs.cn:17521 | hiprint* |
-| 0.0.4 | 2C2G3M | Aliyun | GZ | 2024-11-8 | https://v4-b.printjs.cn:17521 | hiprint* |
+| 0.0.4 | 2C2G3M | Aliyun | GZ | 2025-11-8 | https://v4-b.printjs.cn:17521 | hiprint* |
 | 0.0.3 | 1C1G3M 1000G/m | Yisu Cloud | HK | 2025-07-17 | https://printjs.cn:17521 | vue-plugin-hiprint |
 
 The above services are freely available. Version 0.0.3 does not have token isolation and is only recommended for development and testing purposes.

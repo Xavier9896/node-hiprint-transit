@@ -25,7 +25,7 @@
 | 版本 | 服务器信息 | 服务商 | 地域 | 有效期 | 服务器地址 | Token |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0.0.4 | 2C2G4M 300G/m | Tencent Cloud | GZ | 2026-07-16 | https://v4.printjs.cn:17521 | hiprint* |
-| 0.0.4 | 2C2G3M | Aliyun | GZ | 2024-11-8 | https://v4-b.printjs.cn:17521 | hiprint* |
+| 0.0.4 | 2C2G3M | Aliyun | GZ | 2025-11-8 | https://v4-b.printjs.cn:17521 | hiprint* |
 | 0.0.3 | 1C1G3M 1000G/m | Yisu Cloud | HK | 2025-07-17 | https://printjs.cn:17521 | vue-plugin-hiprint |
 
 以上服务免费开放，0.0.3 版本未进行 token 隔离，仅推荐用于开发测试。
