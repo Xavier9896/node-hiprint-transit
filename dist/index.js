@@ -3,28 +3,654 @@ import http$2 from 'node:http';
 import https$1 from 'node:https';
 import { appendFile, access, constants as constants$1, writeFile, mkdir, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { totalmem, freemem } from 'node:os';
-import { s as srcExports, g as getAugmentedNamespace, c as commonjsGlobal, a as getDefaultExportFromCjs, I as I18n, b as chalk } from './index_chunk.js';
-import require$$0$4 from 'http';
-import require$$1$4 from 'fs';
-import require$$1$1 from 'zlib';
+import os, { totalmem, freemem } from 'node:os';
+import process$1 from 'node:process';
+import tty from 'node:tty';
+import { r as requireMs, a as requireSupportsColor, g as getAugmentedNamespace, c as commonjsGlobal, b as getDefaultExportFromCjs, I as I18n } from './index_chunk.js';
+import require$$0$6 from 'http';
+import require$$1$5 from 'fs';
+import require$$1$2 from 'zlib';
 import require$$1 from 'path';
-import require$$0$3 from 'stream';
-import require$$1$2 from 'querystring';
+import require$$0$5 from 'stream';
+import require$$1$3 from 'querystring';
 import require$$3$1 from 'url';
 import require$$2 from 'crypto';
-import require$$0$2 from 'events';
+import require$$0$3 from 'events';
+import require$$0$2 from 'tty';
+import require$$1$1 from 'util';
 import require$$2$1 from 'timers';
-import require$$1$3 from 'https';
+import require$$1$4 from 'https';
 import require$$3 from 'net';
 import require$$4 from 'tls';
+import require$$0$4 from 'buffer';
 import { toUnicode } from 'punycode';
 import { readConfig, getIPAddress } from './src/config.js';
-import 'node:process';
-import 'node:tty';
-import 'tty';
-import 'util';
 import 'os';
+
+const ANSI_BACKGROUND_OFFSET = 10;
+
+const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
+
+const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
+
+const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
+
+const styles$1 = {
+	modifier: {
+		reset: [0, 0],
+		// 21 isn't widely supported and 22 does the same thing
+		bold: [1, 22],
+		dim: [2, 22],
+		italic: [3, 23],
+		underline: [4, 24],
+		overline: [53, 55],
+		inverse: [7, 27],
+		hidden: [8, 28],
+		strikethrough: [9, 29],
+	},
+	color: {
+		black: [30, 39],
+		red: [31, 39],
+		green: [32, 39],
+		yellow: [33, 39],
+		blue: [34, 39],
+		magenta: [35, 39],
+		cyan: [36, 39],
+		white: [37, 39],
+
+		// Bright color
+		blackBright: [90, 39],
+		gray: [90, 39], // Alias of `blackBright`
+		grey: [90, 39], // Alias of `blackBright`
+		redBright: [91, 39],
+		greenBright: [92, 39],
+		yellowBright: [93, 39],
+		blueBright: [94, 39],
+		magentaBright: [95, 39],
+		cyanBright: [96, 39],
+		whiteBright: [97, 39],
+	},
+	bgColor: {
+		bgBlack: [40, 49],
+		bgRed: [41, 49],
+		bgGreen: [42, 49],
+		bgYellow: [43, 49],
+		bgBlue: [44, 49],
+		bgMagenta: [45, 49],
+		bgCyan: [46, 49],
+		bgWhite: [47, 49],
+
+		// Bright color
+		bgBlackBright: [100, 49],
+		bgGray: [100, 49], // Alias of `bgBlackBright`
+		bgGrey: [100, 49], // Alias of `bgBlackBright`
+		bgRedBright: [101, 49],
+		bgGreenBright: [102, 49],
+		bgYellowBright: [103, 49],
+		bgBlueBright: [104, 49],
+		bgMagentaBright: [105, 49],
+		bgCyanBright: [106, 49],
+		bgWhiteBright: [107, 49],
+	},
+};
+
+Object.keys(styles$1.modifier);
+const foregroundColorNames = Object.keys(styles$1.color);
+const backgroundColorNames = Object.keys(styles$1.bgColor);
+[...foregroundColorNames, ...backgroundColorNames];
+
+function assembleStyles() {
+	const codes = new Map();
+
+	for (const [groupName, group] of Object.entries(styles$1)) {
+		for (const [styleName, style] of Object.entries(group)) {
+			styles$1[styleName] = {
+				open: `\u001B[${style[0]}m`,
+				close: `\u001B[${style[1]}m`,
+			};
+
+			group[styleName] = styles$1[styleName];
+
+			codes.set(style[0], style[1]);
+		}
+
+		Object.defineProperty(styles$1, groupName, {
+			value: group,
+			enumerable: false,
+		});
+	}
+
+	Object.defineProperty(styles$1, 'codes', {
+		value: codes,
+		enumerable: false,
+	});
+
+	styles$1.color.close = '\u001B[39m';
+	styles$1.bgColor.close = '\u001B[49m';
+
+	styles$1.color.ansi = wrapAnsi16();
+	styles$1.color.ansi256 = wrapAnsi256();
+	styles$1.color.ansi16m = wrapAnsi16m();
+	styles$1.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
+	styles$1.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
+	styles$1.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
+
+	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
+	Object.defineProperties(styles$1, {
+		rgbToAnsi256: {
+			value(red, green, blue) {
+				// We use the extended greyscale palette here, with the exception of
+				// black and white. normal palette only has 4 greyscale shades.
+				if (red === green && green === blue) {
+					if (red < 8) {
+						return 16;
+					}
+
+					if (red > 248) {
+						return 231;
+					}
+
+					return Math.round(((red - 8) / 247) * 24) + 232;
+				}
+
+				return 16
+					+ (36 * Math.round(red / 255 * 5))
+					+ (6 * Math.round(green / 255 * 5))
+					+ Math.round(blue / 255 * 5);
+			},
+			enumerable: false,
+		},
+		hexToRgb: {
+			value(hex) {
+				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
+				if (!matches) {
+					return [0, 0, 0];
+				}
+
+				let [colorString] = matches;
+
+				if (colorString.length === 3) {
+					colorString = [...colorString].map(character => character + character).join('');
+				}
+
+				const integer = Number.parseInt(colorString, 16);
+
+				return [
+					/* eslint-disable no-bitwise */
+					(integer >> 16) & 0xFF,
+					(integer >> 8) & 0xFF,
+					integer & 0xFF,
+					/* eslint-enable no-bitwise */
+				];
+			},
+			enumerable: false,
+		},
+		hexToAnsi256: {
+			value: hex => styles$1.rgbToAnsi256(...styles$1.hexToRgb(hex)),
+			enumerable: false,
+		},
+		ansi256ToAnsi: {
+			value(code) {
+				if (code < 8) {
+					return 30 + code;
+				}
+
+				if (code < 16) {
+					return 90 + (code - 8);
+				}
+
+				let red;
+				let green;
+				let blue;
+
+				if (code >= 232) {
+					red = (((code - 232) * 10) + 8) / 255;
+					green = red;
+					blue = red;
+				} else {
+					code -= 16;
+
+					const remainder = code % 36;
+
+					red = Math.floor(code / 36) / 5;
+					green = Math.floor(remainder / 6) / 5;
+					blue = (remainder % 6) / 5;
+				}
+
+				const value = Math.max(red, green, blue) * 2;
+
+				if (value === 0) {
+					return 30;
+				}
+
+				// eslint-disable-next-line no-bitwise
+				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
+
+				if (value === 2) {
+					result += 60;
+				}
+
+				return result;
+			},
+			enumerable: false,
+		},
+		rgbToAnsi: {
+			value: (red, green, blue) => styles$1.ansi256ToAnsi(styles$1.rgbToAnsi256(red, green, blue)),
+			enumerable: false,
+		},
+		hexToAnsi: {
+			value: hex => styles$1.ansi256ToAnsi(styles$1.hexToAnsi256(hex)),
+			enumerable: false,
+		},
+	});
+
+	return styles$1;
+}
+
+const ansiStyles = assembleStyles();
+
+// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
+/// function hasFlag(flag, argv = globalThis.Deno?.args ?? process.argv) {
+function hasFlag(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$1.argv) {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+}
+
+const {env} = process$1;
+
+let flagForceColor;
+if (
+	hasFlag('no-color')
+	|| hasFlag('no-colors')
+	|| hasFlag('color=false')
+	|| hasFlag('color=never')
+) {
+	flagForceColor = 0;
+} else if (
+	hasFlag('color')
+	|| hasFlag('colors')
+	|| hasFlag('color=true')
+	|| hasFlag('color=always')
+) {
+	flagForceColor = 1;
+}
+
+function envForceColor() {
+	if ('FORCE_COLOR' in env) {
+		if (env.FORCE_COLOR === 'true') {
+			return 1;
+		}
+
+		if (env.FORCE_COLOR === 'false') {
+			return 0;
+		}
+
+		return env.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env.FORCE_COLOR, 10), 3);
+	}
+}
+
+function translateLevel(level) {
+	if (level === 0) {
+		return false;
+	}
+
+	return {
+		level,
+		hasBasic: true,
+		has256: level >= 2,
+		has16m: level >= 3,
+	};
+}
+
+function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
+	const noFlagForceColor = envForceColor();
+	if (noFlagForceColor !== undefined) {
+		flagForceColor = noFlagForceColor;
+	}
+
+	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
+
+	if (forceColor === 0) {
+		return 0;
+	}
+
+	if (sniffFlags) {
+		if (hasFlag('color=16m')
+			|| hasFlag('color=full')
+			|| hasFlag('color=truecolor')) {
+			return 3;
+		}
+
+		if (hasFlag('color=256')) {
+			return 2;
+		}
+	}
+
+	// Check for Azure DevOps pipelines.
+	// Has to be above the `!streamIsTTY` check.
+	if ('TF_BUILD' in env && 'AGENT_NAME' in env) {
+		return 1;
+	}
+
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
+		return 0;
+	}
+
+	const min = forceColor || 0;
+
+	if (env.TERM === 'dumb') {
+		return min;
+	}
+
+	if (process$1.platform === 'win32') {
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+		const osRelease = os.release().split('.');
+		if (
+			Number(osRelease[0]) >= 10
+			&& Number(osRelease[2]) >= 10_586
+		) {
+			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
+		}
+
+		return 1;
+	}
+
+	if ('CI' in env) {
+		if ('GITHUB_ACTIONS' in env || 'GITEA_ACTIONS' in env) {
+			return 3;
+		}
+
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+			return 1;
+		}
+
+		return min;
+	}
+
+	if ('TEAMCITY_VERSION' in env) {
+		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+	}
+
+	if (env.COLORTERM === 'truecolor') {
+		return 3;
+	}
+
+	if (env.TERM === 'xterm-kitty') {
+		return 3;
+	}
+
+	if ('TERM_PROGRAM' in env) {
+		const version = Number.parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+		switch (env.TERM_PROGRAM) {
+			case 'iTerm.app': {
+				return version >= 3 ? 3 : 2;
+			}
+
+			case 'Apple_Terminal': {
+				return 2;
+			}
+			// No default
+		}
+	}
+
+	if (/-256(color)?$/i.test(env.TERM)) {
+		return 2;
+	}
+
+	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
+		return 1;
+	}
+
+	if ('COLORTERM' in env) {
+		return 1;
+	}
+
+	return min;
+}
+
+function createSupportsColor(stream, options = {}) {
+	const level = _supportsColor(stream, {
+		streamIsTTY: stream && stream.isTTY,
+		...options,
+	});
+
+	return translateLevel(level);
+}
+
+const supportsColor = {
+	stdout: createSupportsColor({isTTY: tty.isatty(1)}),
+	stderr: createSupportsColor({isTTY: tty.isatty(2)}),
+};
+
+// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
+function stringReplaceAll(string, substring, replacer) {
+	let index = string.indexOf(substring);
+	if (index === -1) {
+		return string;
+	}
+
+	const substringLength = substring.length;
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		returnValue += string.slice(endIndex, index) + substring + replacer;
+		endIndex = index + substringLength;
+		index = string.indexOf(substring, endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+function stringEncaseCRLFWithFirstIndex(string, prefix, postfix, index) {
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		const gotCR = string[index - 1] === '\r';
+		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
+		endIndex = index + 1;
+		index = string.indexOf('\n', endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+const {stdout: stdoutColor, stderr: stderrColor} = supportsColor;
+
+const GENERATOR = Symbol('GENERATOR');
+const STYLER = Symbol('STYLER');
+const IS_EMPTY = Symbol('IS_EMPTY');
+
+// `supportsColor.level` → `ansiStyles.color[name]` mapping
+const levelMapping = [
+	'ansi',
+	'ansi',
+	'ansi256',
+	'ansi16m',
+];
+
+const styles = Object.create(null);
+
+const applyOptions = (object, options = {}) => {
+	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
+		throw new Error('The `level` option should be an integer from 0 to 3');
+	}
+
+	// Detect level if not set manually
+	const colorLevel = stdoutColor ? stdoutColor.level : 0;
+	object.level = options.level === undefined ? colorLevel : options.level;
+};
+
+const chalkFactory = options => {
+	const chalk = (...strings) => strings.join(' ');
+	applyOptions(chalk, options);
+
+	Object.setPrototypeOf(chalk, createChalk.prototype);
+
+	return chalk;
+};
+
+function createChalk(options) {
+	return chalkFactory(options);
+}
+
+Object.setPrototypeOf(createChalk.prototype, Function.prototype);
+
+for (const [styleName, style] of Object.entries(ansiStyles)) {
+	styles[styleName] = {
+		get() {
+			const builder = createBuilder(this, createStyler(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
+			Object.defineProperty(this, styleName, {value: builder});
+			return builder;
+		},
+	};
+}
+
+styles.visible = {
+	get() {
+		const builder = createBuilder(this, this[STYLER], true);
+		Object.defineProperty(this, 'visible', {value: builder});
+		return builder;
+	},
+};
+
+const getModelAnsi = (model, level, type, ...arguments_) => {
+	if (model === 'rgb') {
+		if (level === 'ansi16m') {
+			return ansiStyles[type].ansi16m(...arguments_);
+		}
+
+		if (level === 'ansi256') {
+			return ansiStyles[type].ansi256(ansiStyles.rgbToAnsi256(...arguments_));
+		}
+
+		return ansiStyles[type].ansi(ansiStyles.rgbToAnsi(...arguments_));
+	}
+
+	if (model === 'hex') {
+		return getModelAnsi('rgb', level, type, ...ansiStyles.hexToRgb(...arguments_));
+	}
+
+	return ansiStyles[type][model](...arguments_);
+};
+
+const usedModels = ['rgb', 'hex', 'ansi256'];
+
+for (const model of usedModels) {
+	styles[model] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'color', ...arguments_), ansiStyles.color.close, this[STYLER]);
+				return createBuilder(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+
+	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
+	styles[bgModel] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'bgColor', ...arguments_), ansiStyles.bgColor.close, this[STYLER]);
+				return createBuilder(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+}
+
+const proto = Object.defineProperties(() => {}, {
+	...styles,
+	level: {
+		enumerable: true,
+		get() {
+			return this[GENERATOR].level;
+		},
+		set(level) {
+			this[GENERATOR].level = level;
+		},
+	},
+});
+
+const createStyler = (open, close, parent) => {
+	let openAll;
+	let closeAll;
+	if (parent === undefined) {
+		openAll = open;
+		closeAll = close;
+	} else {
+		openAll = parent.openAll + open;
+		closeAll = close + parent.closeAll;
+	}
+
+	return {
+		open,
+		close,
+		openAll,
+		closeAll,
+		parent,
+	};
+};
+
+const createBuilder = (self, _styler, _isEmpty) => {
+	// Single argument is hot path, implicit coercion is faster than anything
+	// eslint-disable-next-line no-implicit-coercion
+	const builder = (...arguments_) => applyStyle(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
+
+	// We alter the prototype because we must return a function, but there is
+	// no way to create a function with a different prototype
+	Object.setPrototypeOf(builder, proto);
+
+	builder[GENERATOR] = self;
+	builder[STYLER] = _styler;
+	builder[IS_EMPTY] = _isEmpty;
+
+	return builder;
+};
+
+const applyStyle = (self, string) => {
+	if (self.level <= 0 || !string) {
+		return self[IS_EMPTY] ? '' : string;
+	}
+
+	let styler = self[STYLER];
+
+	if (styler === undefined) {
+		return string;
+	}
+
+	const {openAll, closeAll} = styler;
+	if (string.includes('\u001B')) {
+		while (styler !== undefined) {
+			// Replace any instances already present with a re-opening code
+			// otherwise only the part of the string until said closing code
+			// will be colored, and the rest will simply be 'plain'.
+			string = stringReplaceAll(string, styler.close, styler.open);
+
+			styler = styler.parent;
+		}
+	}
+
+	// We can move both next actions out of loop, because remaining actions in loop won't have
+	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
+	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
+	const lfIndex = string.indexOf('\n');
+	if (lfIndex !== -1) {
+		string = stringEncaseCRLFWithFirstIndex(string, closeAll, openAll, lfIndex);
+	}
+
+	return openAll + string + closeAll;
+};
+
+Object.defineProperties(createChalk.prototype, styles);
+
+const chalk = createChalk();
+createChalk({level: stderrColor ? stderrColor.level : 0});
 
 var dist$1 = {exports: {}};
 
@@ -12233,7 +12859,7 @@ PACKET_TYPES["upgrade"] = "5";
 PACKET_TYPES["noop"] = "6";
 const PACKET_TYPES_REVERSE = Object.create(null);
 commons.PACKET_TYPES_REVERSE = PACKET_TYPES_REVERSE;
-Object.keys(PACKET_TYPES).forEach(key => {
+Object.keys(PACKET_TYPES).forEach((key) => {
     PACKET_TYPES_REVERSE[PACKET_TYPES[key]] = key;
 });
 const ERROR_PACKET = { type: "error", data: "parser error" };
@@ -12241,7 +12867,8 @@ commons.ERROR_PACKET = ERROR_PACKET;
 
 (function (exports) {
 	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.encodePacketToBinary = exports.encodePacket = void 0;
+	exports.encodePacket = void 0;
+	exports.encodePacketToBinary = encodePacketToBinary;
 	const commons_js_1 = commons;
 	const encodePacket = ({ type, data }, supportsBinary, callback) => {
 	    if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
@@ -12268,15 +12895,14 @@ commons.ERROR_PACKET = ERROR_PACKET;
 	    if (packet.data instanceof ArrayBuffer || ArrayBuffer.isView(packet.data)) {
 	        return callback(toBuffer(packet.data, false));
 	    }
-	    (0, exports.encodePacket)(packet, true, encoded => {
+	    (0, exports.encodePacket)(packet, true, (encoded) => {
 	        if (!TEXT_ENCODER) {
 	            // lazily created for compatibility with Node.js 10
 	            TEXT_ENCODER = new TextEncoder();
 	        }
 	        callback(TEXT_ENCODER.encode(encoded));
 	    });
-	}
-	exports.encodePacketToBinary = encodePacketToBinary; 
+	} 
 } (encodePacket));
 
 var decodePacket$1 = {};
@@ -12288,7 +12914,7 @@ const decodePacket = (encodedPacket, binaryType) => {
     if (typeof encodedPacket !== "string") {
         return {
             type: "message",
-            data: mapBinary(encodedPacket, binaryType)
+            data: mapBinary(encodedPacket, binaryType),
         };
     }
     const type = encodedPacket.charAt(0);
@@ -12296,7 +12922,7 @@ const decodePacket = (encodedPacket, binaryType) => {
         const buffer = Buffer.from(encodedPacket.substring(1), "base64");
         return {
             type: "message",
-            data: mapBinary(buffer, binaryType)
+            data: mapBinary(buffer, binaryType),
         };
     }
     if (!commons_js_1.PACKET_TYPES_REVERSE[type]) {
@@ -12305,10 +12931,10 @@ const decodePacket = (encodedPacket, binaryType) => {
     return encodedPacket.length > 1
         ? {
             type: commons_js_1.PACKET_TYPES_REVERSE[type],
-            data: encodedPacket.substring(1)
+            data: encodedPacket.substring(1),
         }
         : {
-            type: commons_js_1.PACKET_TYPES_REVERSE[type]
+            type: commons_js_1.PACKET_TYPES_REVERSE[type],
         };
 };
 decodePacket$1.decodePacket = decodePacket;
@@ -12342,7 +12968,9 @@ const mapBinary = (data, binaryType) => {
 
 (function (exports) {
 	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.decodePayload = exports.decodePacket = exports.encodePayload = exports.encodePacket = exports.protocol = exports.createPacketDecoderStream = exports.createPacketEncoderStream = void 0;
+	exports.decodePayload = exports.decodePacket = exports.encodePayload = exports.encodePacket = exports.protocol = void 0;
+	exports.createPacketEncoderStream = createPacketEncoderStream;
+	exports.createPacketDecoderStream = createPacketDecoderStream;
 	const encodePacket_js_1 = encodePacket;
 	Object.defineProperty(exports, "encodePacket", { enumerable: true, get: function () { return encodePacket_js_1.encodePacket; } });
 	const decodePacket_js_1 = decodePacket$1;
@@ -12356,7 +12984,7 @@ const mapBinary = (data, binaryType) => {
 	    let count = 0;
 	    packets.forEach((packet, i) => {
 	        // force base64 encoding for binary packets
-	        (0, encodePacket_js_1.encodePacket)(packet, false, encodedPacket => {
+	        (0, encodePacket_js_1.encodePacket)(packet, false, (encodedPacket) => {
 	            encodedPackets[i] = encodedPacket;
 	            if (++count === length) {
 	                callback(encodedPackets.join(SEPARATOR));
@@ -12381,7 +13009,7 @@ const mapBinary = (data, binaryType) => {
 	function createPacketEncoderStream() {
 	    return new TransformStream({
 	        transform(packet, controller) {
-	            (0, encodePacket_js_1.encodePacketToBinary)(packet, encodedPacket => {
+	            (0, encodePacket_js_1.encodePacketToBinary)(packet, (encodedPacket) => {
 	                const payloadLength = encodedPacket.length;
 	                let header;
 	                // inspired by the WebSocket format: https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#decoding_payload_length
@@ -12408,10 +13036,9 @@ const mapBinary = (data, binaryType) => {
 	                controller.enqueue(header);
 	                controller.enqueue(encodedPacket);
 	            });
-	        }
+	        },
 	    });
 	}
-	exports.createPacketEncoderStream = createPacketEncoderStream;
 	let TEXT_DECODER;
 	function totalLength(chunks) {
 	    return chunks.reduce((acc, chunk) => acc + chunk.length, 0);
@@ -12439,14 +13066,14 @@ const mapBinary = (data, binaryType) => {
 	        TEXT_DECODER = new TextDecoder();
 	    }
 	    const chunks = [];
-	    let state = 0 /* READ_HEADER */;
+	    let state = 0 /* State.READ_HEADER */;
 	    let expectedLength = -1;
 	    let isBinary = false;
 	    return new TransformStream({
 	        transform(chunk, controller) {
 	            chunks.push(chunk);
 	            while (true) {
-	                if (state === 0 /* READ_HEADER */) {
+	                if (state === 0 /* State.READ_HEADER */) {
 	                    if (totalLength(chunks) < 1) {
 	                        break;
 	                    }
@@ -12454,24 +13081,24 @@ const mapBinary = (data, binaryType) => {
 	                    isBinary = (header[0] & 0x80) === 0x80;
 	                    expectedLength = header[0] & 0x7f;
 	                    if (expectedLength < 126) {
-	                        state = 3 /* READ_PAYLOAD */;
+	                        state = 3 /* State.READ_PAYLOAD */;
 	                    }
 	                    else if (expectedLength === 126) {
-	                        state = 1 /* READ_EXTENDED_LENGTH_16 */;
+	                        state = 1 /* State.READ_EXTENDED_LENGTH_16 */;
 	                    }
 	                    else {
-	                        state = 2 /* READ_EXTENDED_LENGTH_64 */;
+	                        state = 2 /* State.READ_EXTENDED_LENGTH_64 */;
 	                    }
 	                }
-	                else if (state === 1 /* READ_EXTENDED_LENGTH_16 */) {
+	                else if (state === 1 /* State.READ_EXTENDED_LENGTH_16 */) {
 	                    if (totalLength(chunks) < 2) {
 	                        break;
 	                    }
 	                    const headerArray = concatChunks(chunks, 2);
 	                    expectedLength = new DataView(headerArray.buffer, headerArray.byteOffset, headerArray.length).getUint16(0);
-	                    state = 3 /* READ_PAYLOAD */;
+	                    state = 3 /* State.READ_PAYLOAD */;
 	                }
-	                else if (state === 2 /* READ_EXTENDED_LENGTH_64 */) {
+	                else if (state === 2 /* State.READ_EXTENDED_LENGTH_64 */) {
 	                    if (totalLength(chunks) < 8) {
 	                        break;
 	                    }
@@ -12484,7 +13111,7 @@ const mapBinary = (data, binaryType) => {
 	                        break;
 	                    }
 	                    expectedLength = n * Math.pow(2, 32) + view.getUint32(4);
-	                    state = 3 /* READ_PAYLOAD */;
+	                    state = 3 /* State.READ_PAYLOAD */;
 	                }
 	                else {
 	                    if (totalLength(chunks) < expectedLength) {
@@ -12492,17 +13119,16 @@ const mapBinary = (data, binaryType) => {
 	                    }
 	                    const data = concatChunks(chunks, expectedLength);
 	                    controller.enqueue((0, decodePacket_js_1.decodePacket)(isBinary ? data : TEXT_DECODER.decode(data), binaryType));
-	                    state = 0 /* READ_HEADER */;
+	                    state = 0 /* State.READ_HEADER */;
 	                }
 	                if (expectedLength === 0 || expectedLength > maxPayload) {
 	                    controller.enqueue(commons_js_1.ERROR_PACKET);
 	                    break;
 	                }
 	            }
-	        }
+	        },
 	    });
 	}
-	exports.createPacketDecoderStream = createPacketDecoderStream;
 	exports.protocol = 4; 
 } (cjs$1));
 
@@ -12700,7 +13326,15 @@ var utf8 = {
 (function (exports) {
 	// imported from https://github.com/socketio/engine.io-parser/tree/2.2.x
 	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.decodePayloadAsBinary = exports.encodePayloadAsBinary = exports.decodePayload = exports.encodePayload = exports.decodeBase64Packet = exports.decodePacket = exports.encodeBase64Packet = exports.encodePacket = exports.packets = exports.protocol = void 0;
+	exports.packets = exports.protocol = void 0;
+	exports.encodePacket = encodePacket;
+	exports.encodeBase64Packet = encodeBase64Packet;
+	exports.decodePacket = decodePacket;
+	exports.decodeBase64Packet = decodeBase64Packet;
+	exports.encodePayload = encodePayload;
+	exports.decodePayload = decodePayload;
+	exports.encodePayloadAsBinary = encodePayloadAsBinary;
+	exports.decodePayloadAsBinary = decodePayloadAsBinary;
 	/**
 	 * Module dependencies.
 	 */
@@ -12775,7 +13409,6 @@ var utf8 = {
 	    }
 	    return callback('' + encoded);
 	}
-	exports.encodePacket = encodePacket;
 	/**
 	 * Encode Buffer data
 	 */
@@ -12800,7 +13433,6 @@ var utf8 = {
 	    message += data.toString('base64');
 	    return callback(message);
 	}
-	exports.encodeBase64Packet = encodeBase64Packet;
 	/**
 	 * Decodes a packet. Data also available as an ArrayBuffer if requested.
 	 *
@@ -12847,7 +13479,6 @@ var utf8 = {
 	    type = data[0];
 	    return { type: packetslist[type], data: data.slice(1) };
 	}
-	exports.decodePacket = decodePacket;
 	function tryDecode(data) {
 	    try {
 	        data = utf8$1.decode(data, { strict: false });
@@ -12876,7 +13507,6 @@ var utf8 = {
 	    }
 	    return { type: type, data: data };
 	}
-	exports.decodeBase64Packet = decodeBase64Packet;
 	/**
 	 * Encodes multiple messages (payload).
 	 *
@@ -12912,7 +13542,6 @@ var utf8 = {
 	        return callback(results.join(''));
 	    });
 	}
-	exports.encodePayload = encodePayload;
 	function setLengthHeader(message) {
 	    return message.length + ':' + message;
 	}
@@ -12986,7 +13615,6 @@ var utf8 = {
 	        return callback(err, 0, 1);
 	    }
 	}
-	exports.decodePayload = decodePayload;
 	/**
 	 *
 	 * Converts a buffer to a utf8.js encoded string
@@ -13046,7 +13674,6 @@ var utf8 = {
 	        return callback(Buffer.concat(results));
 	    });
 	}
-	exports.encodePayloadAsBinary = encodePayloadAsBinary;
 	function encodeOneBinaryPacket(p, doneCallback) {
 	    function onBinaryPacketEncode(packet) {
 	        var encodingLength = '' + packet.length;
@@ -13112,49 +13739,908 @@ var utf8 = {
 	        callback(decodePacket(buffer, binaryType, true), i, total);
 	    }
 	}
-	exports.decodePayloadAsBinary = decodePayloadAsBinary;
 } (parserV3));
+
+var src$3 = {exports: {}};
+
+var browser$3 = {exports: {}};
+
+var common$3;
+var hasRequiredCommon$3;
+
+function requireCommon$3 () {
+	if (hasRequiredCommon$3) return common$3;
+	hasRequiredCommon$3 = 1;
+	/**
+	 * This is the common logic for both the Node.js and web browser
+	 * implementations of `debug()`.
+	 */
+
+	function setup(env) {
+		createDebug.debug = createDebug;
+		createDebug.default = createDebug;
+		createDebug.coerce = coerce;
+		createDebug.disable = disable;
+		createDebug.enable = enable;
+		createDebug.enabled = enabled;
+		createDebug.humanize = requireMs();
+		createDebug.destroy = destroy;
+
+		Object.keys(env).forEach(key => {
+			createDebug[key] = env[key];
+		});
+
+		/**
+		* The currently active debug mode names, and names to skip.
+		*/
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		/**
+		* Map of special "%n" handling functions, for the debug "format" argument.
+		*
+		* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+		*/
+		createDebug.formatters = {};
+
+		/**
+		* Selects a color for a debug namespace
+		* @param {String} namespace The namespace string for the debug instance to be colored
+		* @return {Number|String} An ANSI color code for the given namespace
+		* @api private
+		*/
+		function selectColor(namespace) {
+			let hash = 0;
+
+			for (let i = 0; i < namespace.length; i++) {
+				hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+				hash |= 0; // Convert to 32bit integer
+			}
+
+			return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+		}
+		createDebug.selectColor = selectColor;
+
+		/**
+		* Create a debugger with the given `namespace`.
+		*
+		* @param {String} namespace
+		* @return {Function}
+		* @api public
+		*/
+		function createDebug(namespace) {
+			let prevTime;
+			let enableOverride = null;
+			let namespacesCache;
+			let enabledCache;
+
+			function debug(...args) {
+				// Disabled?
+				if (!debug.enabled) {
+					return;
+				}
+
+				const self = debug;
+
+				// Set `diff` timestamp
+				const curr = Number(new Date());
+				const ms = curr - (prevTime || curr);
+				self.diff = ms;
+				self.prev = prevTime;
+				self.curr = curr;
+				prevTime = curr;
+
+				args[0] = createDebug.coerce(args[0]);
+
+				if (typeof args[0] !== 'string') {
+					// Anything else let's inspect with %O
+					args.unshift('%O');
+				}
+
+				// Apply any `formatters` transformations
+				let index = 0;
+				args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+					// If we encounter an escaped % then don't increase the array index
+					if (match === '%%') {
+						return '%';
+					}
+					index++;
+					const formatter = createDebug.formatters[format];
+					if (typeof formatter === 'function') {
+						const val = args[index];
+						match = formatter.call(self, val);
+
+						// Now we need to remove `args[index]` since it's inlined in the `format`
+						args.splice(index, 1);
+						index--;
+					}
+					return match;
+				});
+
+				// Apply env-specific formatting (colors, etc.)
+				createDebug.formatArgs.call(self, args);
+
+				const logFn = self.log || createDebug.log;
+				logFn.apply(self, args);
+			}
+
+			debug.namespace = namespace;
+			debug.useColors = createDebug.useColors();
+			debug.color = createDebug.selectColor(namespace);
+			debug.extend = extend;
+			debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+			Object.defineProperty(debug, 'enabled', {
+				enumerable: true,
+				configurable: false,
+				get: () => {
+					if (enableOverride !== null) {
+						return enableOverride;
+					}
+					if (namespacesCache !== createDebug.namespaces) {
+						namespacesCache = createDebug.namespaces;
+						enabledCache = createDebug.enabled(namespace);
+					}
+
+					return enabledCache;
+				},
+				set: v => {
+					enableOverride = v;
+				}
+			});
+
+			// Env-specific initialization logic for debug instances
+			if (typeof createDebug.init === 'function') {
+				createDebug.init(debug);
+			}
+
+			return debug;
+		}
+
+		function extend(namespace, delimiter) {
+			const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+			newDebug.log = this.log;
+			return newDebug;
+		}
+
+		/**
+		* Enables a debug mode by namespaces. This can include modes
+		* separated by a colon and wildcards.
+		*
+		* @param {String} namespaces
+		* @api public
+		*/
+		function enable(namespaces) {
+			createDebug.save(namespaces);
+			createDebug.namespaces = namespaces;
+
+			createDebug.names = [];
+			createDebug.skips = [];
+
+			let i;
+			const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+			const len = split.length;
+
+			for (i = 0; i < len; i++) {
+				if (!split[i]) {
+					// ignore empty strings
+					continue;
+				}
+
+				namespaces = split[i].replace(/\*/g, '.*?');
+
+				if (namespaces[0] === '-') {
+					createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+				} else {
+					createDebug.names.push(new RegExp('^' + namespaces + '$'));
+				}
+			}
+		}
+
+		/**
+		* Disable debug output.
+		*
+		* @return {String} namespaces
+		* @api public
+		*/
+		function disable() {
+			const namespaces = [
+				...createDebug.names.map(toNamespace),
+				...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+			].join(',');
+			createDebug.enable('');
+			return namespaces;
+		}
+
+		/**
+		* Returns true if the given mode name is enabled, false otherwise.
+		*
+		* @param {String} name
+		* @return {Boolean}
+		* @api public
+		*/
+		function enabled(name) {
+			if (name[name.length - 1] === '*') {
+				return true;
+			}
+
+			let i;
+			let len;
+
+			for (i = 0, len = createDebug.skips.length; i < len; i++) {
+				if (createDebug.skips[i].test(name)) {
+					return false;
+				}
+			}
+
+			for (i = 0, len = createDebug.names.length; i < len; i++) {
+				if (createDebug.names[i].test(name)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		* Convert regexp to namespace
+		*
+		* @param {RegExp} regxep
+		* @return {String} namespace
+		* @api private
+		*/
+		function toNamespace(regexp) {
+			return regexp.toString()
+				.substring(2, regexp.toString().length - 2)
+				.replace(/\.\*\?$/, '*');
+		}
+
+		/**
+		* Coerce `val`.
+		*
+		* @param {Mixed} val
+		* @return {Mixed}
+		* @api private
+		*/
+		function coerce(val) {
+			if (val instanceof Error) {
+				return val.stack || val.message;
+			}
+			return val;
+		}
+
+		/**
+		* XXX DO NOT USE. This is a temporary stub function.
+		* XXX It WILL be removed in the next major release.
+		*/
+		function destroy() {
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+
+		createDebug.enable(createDebug.load());
+
+		return createDebug;
+	}
+
+	common$3 = setup;
+	return common$3;
+}
+
+/* eslint-env browser */
+
+var hasRequiredBrowser$3;
+
+function requireBrowser$3 () {
+	if (hasRequiredBrowser$3) return browser$3.exports;
+	hasRequiredBrowser$3 = 1;
+	(function (module, exports) {
+		/**
+		 * This is the web browser implementation of `debug()`.
+		 */
+
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.storage = localstorage();
+		exports.destroy = (() => {
+			let warned = false;
+
+			return () => {
+				if (!warned) {
+					warned = true;
+					console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+				}
+			};
+		})();
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [
+			'#0000CC',
+			'#0000FF',
+			'#0033CC',
+			'#0033FF',
+			'#0066CC',
+			'#0066FF',
+			'#0099CC',
+			'#0099FF',
+			'#00CC00',
+			'#00CC33',
+			'#00CC66',
+			'#00CC99',
+			'#00CCCC',
+			'#00CCFF',
+			'#3300CC',
+			'#3300FF',
+			'#3333CC',
+			'#3333FF',
+			'#3366CC',
+			'#3366FF',
+			'#3399CC',
+			'#3399FF',
+			'#33CC00',
+			'#33CC33',
+			'#33CC66',
+			'#33CC99',
+			'#33CCCC',
+			'#33CCFF',
+			'#6600CC',
+			'#6600FF',
+			'#6633CC',
+			'#6633FF',
+			'#66CC00',
+			'#66CC33',
+			'#9900CC',
+			'#9900FF',
+			'#9933CC',
+			'#9933FF',
+			'#99CC00',
+			'#99CC33',
+			'#CC0000',
+			'#CC0033',
+			'#CC0066',
+			'#CC0099',
+			'#CC00CC',
+			'#CC00FF',
+			'#CC3300',
+			'#CC3333',
+			'#CC3366',
+			'#CC3399',
+			'#CC33CC',
+			'#CC33FF',
+			'#CC6600',
+			'#CC6633',
+			'#CC9900',
+			'#CC9933',
+			'#CCCC00',
+			'#CCCC33',
+			'#FF0000',
+			'#FF0033',
+			'#FF0066',
+			'#FF0099',
+			'#FF00CC',
+			'#FF00FF',
+			'#FF3300',
+			'#FF3333',
+			'#FF3366',
+			'#FF3399',
+			'#FF33CC',
+			'#FF33FF',
+			'#FF6600',
+			'#FF6633',
+			'#FF9900',
+			'#FF9933',
+			'#FFCC00',
+			'#FFCC33'
+		];
+
+		/**
+		 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+		 * and the Firebug extension (any Firefox version) are known
+		 * to support "%c" CSS customizations.
+		 *
+		 * TODO: add a `localStorage` variable to explicitly enable/disable colors
+		 */
+
+		// eslint-disable-next-line complexity
+		function useColors() {
+			// NB: In an Electron preload script, document will be defined but not fully
+			// initialized. Since we know we're in Chrome, we'll just detect this case
+			// explicitly
+			if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+				return true;
+			}
+
+			// Internet Explorer and Edge do not support colors.
+			if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+				return false;
+			}
+
+			let m;
+
+			// Is webkit? http://stackoverflow.com/a/16459606/376773
+			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+				// Is firebug? http://stackoverflow.com/a/398120/376773
+				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+				// Is firefox >= v31?
+				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
+				// Double check webkit in userAgent just in case we are in a worker
+				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+		}
+
+		/**
+		 * Colorize log arguments if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			args[0] = (this.useColors ? '%c' : '') +
+				this.namespace +
+				(this.useColors ? ' %c' : ' ') +
+				args[0] +
+				(this.useColors ? '%c ' : ' ') +
+				'+' + module.exports.humanize(this.diff);
+
+			if (!this.useColors) {
+				return;
+			}
+
+			const c = 'color: ' + this.color;
+			args.splice(1, 0, c, 'color: inherit');
+
+			// The final "%c" is somewhat tricky, because there could be other
+			// arguments passed either before or after the %c, so we need to
+			// figure out the correct index to insert the CSS into
+			let index = 0;
+			let lastC = 0;
+			args[0].replace(/%[a-zA-Z%]/g, match => {
+				if (match === '%%') {
+					return;
+				}
+				index++;
+				if (match === '%c') {
+					// We only are interested in the *last* %c
+					// (the user may have provided their own)
+					lastC = index;
+				}
+			});
+
+			args.splice(lastC, 0, c);
+		}
+
+		/**
+		 * Invokes `console.debug()` when available.
+		 * No-op when `console.debug` is not a "function".
+		 * If `console.debug` is not available, falls back
+		 * to `console.log`.
+		 *
+		 * @api public
+		 */
+		exports.log = console.debug || console.log || (() => {});
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			try {
+				if (namespaces) {
+					exports.storage.setItem('debug', namespaces);
+				} else {
+					exports.storage.removeItem('debug');
+				}
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+		function load() {
+			let r;
+			try {
+				r = exports.storage.getItem('debug');
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+
+			// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+			if (!r && typeof process !== 'undefined' && 'env' in process) {
+				r = process.env.DEBUG;
+			}
+
+			return r;
+		}
+
+		/**
+		 * Localstorage attempts to return the localstorage.
+		 *
+		 * This is necessary because safari throws
+		 * when a user disables cookies/localstorage
+		 * and you attempt to access it.
+		 *
+		 * @return {LocalStorage}
+		 * @api private
+		 */
+
+		function localstorage() {
+			try {
+				// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+				// The Browser also has localStorage in the global context.
+				return localStorage;
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		module.exports = requireCommon$3()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+		 */
+
+		formatters.j = function (v) {
+			try {
+				return JSON.stringify(v);
+			} catch (error) {
+				return '[UnexpectedJSONParseError]: ' + error.message;
+			}
+		}; 
+	} (browser$3, browser$3.exports));
+	return browser$3.exports;
+}
+
+var node$3 = {exports: {}};
+
+/**
+ * Module dependencies.
+ */
+
+var hasRequiredNode$3;
+
+function requireNode$3 () {
+	if (hasRequiredNode$3) return node$3.exports;
+	hasRequiredNode$3 = 1;
+	(function (module, exports) {
+		const tty = require$$0$2;
+		const util = require$$1$1;
+
+		/**
+		 * This is the Node.js implementation of `debug()`.
+		 */
+
+		exports.init = init;
+		exports.log = log;
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.destroy = util.deprecate(
+			() => {},
+			'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+		);
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [6, 2, 3, 4, 5, 1];
+
+		try {
+			// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+			// eslint-disable-next-line import/no-extraneous-dependencies
+			const supportsColor = requireSupportsColor();
+
+			if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+				exports.colors = [
+					20,
+					21,
+					26,
+					27,
+					32,
+					33,
+					38,
+					39,
+					40,
+					41,
+					42,
+					43,
+					44,
+					45,
+					56,
+					57,
+					62,
+					63,
+					68,
+					69,
+					74,
+					75,
+					76,
+					77,
+					78,
+					79,
+					80,
+					81,
+					92,
+					93,
+					98,
+					99,
+					112,
+					113,
+					128,
+					129,
+					134,
+					135,
+					148,
+					149,
+					160,
+					161,
+					162,
+					163,
+					164,
+					165,
+					166,
+					167,
+					168,
+					169,
+					170,
+					171,
+					172,
+					173,
+					178,
+					179,
+					184,
+					185,
+					196,
+					197,
+					198,
+					199,
+					200,
+					201,
+					202,
+					203,
+					204,
+					205,
+					206,
+					207,
+					208,
+					209,
+					214,
+					215,
+					220,
+					221
+				];
+			}
+		} catch (error) {
+			// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+		}
+
+		/**
+		 * Build up the default `inspectOpts` object from the environment variables.
+		 *
+		 *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+		 */
+
+		exports.inspectOpts = Object.keys(process.env).filter(key => {
+			return /^debug_/i.test(key);
+		}).reduce((obj, key) => {
+			// Camel-case
+			const prop = key
+				.substring(6)
+				.toLowerCase()
+				.replace(/_([a-z])/g, (_, k) => {
+					return k.toUpperCase();
+				});
+
+			// Coerce string value into JS value
+			let val = process.env[key];
+			if (/^(yes|on|true|enabled)$/i.test(val)) {
+				val = true;
+			} else if (/^(no|off|false|disabled)$/i.test(val)) {
+				val = false;
+			} else if (val === 'null') {
+				val = null;
+			} else {
+				val = Number(val);
+			}
+
+			obj[prop] = val;
+			return obj;
+		}, {});
+
+		/**
+		 * Is stdout a TTY? Colored output is enabled when `true`.
+		 */
+
+		function useColors() {
+			return 'colors' in exports.inspectOpts ?
+				Boolean(exports.inspectOpts.colors) :
+				tty.isatty(process.stderr.fd);
+		}
+
+		/**
+		 * Adds ANSI color escape codes if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			const {namespace: name, useColors} = this;
+
+			if (useColors) {
+				const c = this.color;
+				const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+				const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+				args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+				args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+			} else {
+				args[0] = getDate() + name + ' ' + args[0];
+			}
+		}
+
+		function getDate() {
+			if (exports.inspectOpts.hideDate) {
+				return '';
+			}
+			return new Date().toISOString() + ' ';
+		}
+
+		/**
+		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
+		 */
+
+		function log(...args) {
+			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
+		}
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			if (namespaces) {
+				process.env.DEBUG = namespaces;
+			} else {
+				// If you set a process.env field to null or undefined, it gets cast to the
+				// string 'null' or 'undefined'. Just delete instead.
+				delete process.env.DEBUG;
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+
+		function load() {
+			return process.env.DEBUG;
+		}
+
+		/**
+		 * Init logic for `debug` instances.
+		 *
+		 * Create a new `inspectOpts` object in case `useColors` is set
+		 * differently for a particular `debug` instance.
+		 */
+
+		function init(debug) {
+			debug.inspectOpts = {};
+
+			const keys = Object.keys(exports.inspectOpts);
+			for (let i = 0; i < keys.length; i++) {
+				debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+			}
+		}
+
+		module.exports = requireCommon$3()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %o to `util.inspect()`, all on a single line.
+		 */
+
+		formatters.o = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts)
+				.split('\n')
+				.map(str => str.trim())
+				.join(' ');
+		};
+
+		/**
+		 * Map %O to `util.inspect()`, allowing multiple lines if needed.
+		 */
+
+		formatters.O = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts);
+		}; 
+	} (node$3, node$3.exports));
+	return node$3.exports;
+}
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	src$3.exports = requireBrowser$3();
+} else {
+	src$3.exports = requireNode$3();
+}
+
+var srcExports$3 = src$3.exports;
 
 Object.defineProperty(transport, "__esModule", { value: true });
 transport.Transport = void 0;
-const events_1$4 = require$$0$2;
+const events_1$4 = require$$0$3;
 const parser_v4 = cjs$1;
 const parser_v3 = parserV3;
-const debug_1$a = srcExports;
-const debug$b = (0, debug_1$a.default)("engine:transport");
-/**
- * Noop function.
- *
- * @api private
- */
-function noop() { }
+const debug_1$b = srcExports$3;
+const debug$c = (0, debug_1$b.default)("engine:transport");
+function noop$1() { }
 class Transport extends events_1$4.EventEmitter {
+    get readyState() {
+        return this._readyState;
+    }
+    set readyState(state) {
+        debug$c("readyState updated from %s to %s (%s)", this._readyState, state, this.name);
+        this._readyState = state;
+    }
     /**
      * Transport constructor.
      *
-     * @param {http.IncomingMessage} req
-     * @api public
+     * @param {EngineRequest} req
      */
     constructor(req) {
         super();
+        /**
+         * Whether the transport is currently ready to send packets.
+         */
         this.writable = false;
+        /**
+         * The current state of the transport.
+         * @protected
+         */
         this._readyState = "open";
+        /**
+         * Whether the transport is discarded and can be safely closed (used during upgrade).
+         * @protected
+         */
         this.discarded = false;
         this.protocol = req._query.EIO === "4" ? 4 : 3; // 3rd revision by default
         this.parser = this.protocol === 4 ? parser_v4 : parser_v3;
         this.supportsBinary = !(req._query && req._query.b64);
     }
-    get readyState() {
-        return this._readyState;
-    }
-    set readyState(state) {
-        debug$b("readyState updated from %s to %s (%s)", this._readyState, state, this.name);
-        this._readyState = state;
-    }
     /**
      * Flags the transport as discarded.
      *
-     * @api private
+     * @package
      */
     discard() {
         this.discarded = true;
@@ -13162,30 +14648,27 @@ class Transport extends events_1$4.EventEmitter {
     /**
      * Called with an incoming HTTP request.
      *
-     * @param {http.IncomingMessage} req
-     * @api protected
+     * @param req
+     * @package
      */
-    onRequest(req) {
-        debug$b("setting request");
-        this.req = req;
-    }
+    onRequest(req) { }
     /**
      * Closes the transport.
      *
-     * @api private
+     * @package
      */
     close(fn) {
         if ("closed" === this.readyState || "closing" === this.readyState)
             return;
         this.readyState = "closing";
-        this.doClose(fn || noop);
+        this.doClose(fn || noop$1);
     }
     /**
      * Called with a transport error.
      *
      * @param {String} msg - message error
      * @param {Object} desc - error description
-     * @api protected
+     * @protected
      */
     onError(msg, desc) {
         if (this.listeners("error").length) {
@@ -13197,14 +14680,14 @@ class Transport extends events_1$4.EventEmitter {
             this.emit("error", err);
         }
         else {
-            debug$b("ignored transport error %s (%s)", msg, desc);
+            debug$c("ignored transport error %s (%s)", msg, desc);
         }
     }
     /**
      * Called with parsed out a packets from the data stream.
      *
      * @param {Object} packet
-     * @api protected
+     * @protected
      */
     onPacket(packet) {
         this.emit("packet", packet);
@@ -13213,7 +14696,7 @@ class Transport extends events_1$4.EventEmitter {
      * Called with the encoded packet data.
      *
      * @param {String} data
-     * @api protected
+     * @protected
      */
     onData(data) {
         this.onPacket(this.parser.decodePacket(data));
@@ -13221,7 +14704,7 @@ class Transport extends events_1$4.EventEmitter {
     /**
      * Called upon transport close.
      *
-     * @api protected
+     * @protected
      */
     onClose() {
         this.readyState = "closed";
@@ -13233,10 +14716,10 @@ transport.Transport = Transport;
 Object.defineProperty(polling$2, "__esModule", { value: true });
 polling$2.Polling = void 0;
 const transport_1$4 = transport;
-const zlib_1$1 = require$$1$1;
+const zlib_1$1 = require$$1$2;
 const accepts$1 = accepts$2;
-const debug_1$9 = srcExports;
-const debug$a = (0, debug_1$9.default)("engine:polling");
+const debug_1$a = srcExports$3;
+const debug$b = (0, debug_1$a.default)("engine:polling");
 const compressionMethods$1 = {
     gzip: zlib_1$1.createGzip,
     deflate: zlib_1$1.createDeflate,
@@ -13244,8 +14727,6 @@ const compressionMethods$1 = {
 let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * HTTP polling constructor.
-     *
-     * @api public.
      */
     constructor(req) {
         super(req);
@@ -13253,20 +14734,15 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     }
     /**
      * Transport name
-     *
-     * @api public
      */
     get name() {
         return "polling";
     }
-    get supportsFraming() {
-        return false;
-    }
     /**
      * Overrides onRequest.
      *
-     * @param {http.IncomingMessage}
-     * @api private
+     * @param {EngineRequest} req
+     * @package
      */
     onRequest(req) {
         const res = req.res;
@@ -13286,18 +14762,18 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * The client sends a request awaiting for us to send data.
      *
-     * @api private
+     * @private
      */
     onPollRequest(req, res) {
         if (this.req) {
-            debug$a("request overlap");
+            debug$b("request overlap");
             // assert: this.res, '.req and .res should be (un)set together'
             this.onError("overlap from client");
             res.writeHead(400);
             res.end();
             return;
         }
-        debug$a("setting request");
+        debug$b("setting request");
         this.req = req;
         this.res = res;
         const onClose = () => {
@@ -13310,17 +14786,17 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
         req.cleanup = cleanup;
         req.on("close", onClose);
         this.writable = true;
-        this.emit("drain");
+        this.emit("ready");
         // if we're still writable but had a pending close, trigger an empty send
         if (this.writable && this.shouldClose) {
-            debug$a("triggering empty send to append close packet");
+            debug$b("triggering empty send to append close packet");
             this.send([{ type: "noop" }]);
         }
     }
     /**
      * The client sends a request with data.
      *
-     * @api private
+     * @private
      */
     onDataRequest(req, res) {
         if (this.dataReq) {
@@ -13368,7 +14844,7 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
                 // text/html is required instead of text/plain to avoid an
                 // unwanted download dialog on certain user-agents (GH-43)
                 "Content-Type": "text/html",
-                "Content-Length": 2,
+                "Content-Length": "2",
             };
             res.writeHead(200, this.headers(req, headers));
             res.end("ok");
@@ -13383,14 +14859,14 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * Processes the incoming data payload.
      *
-     * @param {String} encoded payload
-     * @api private
+     * @param data - encoded payload
+     * @protected
      */
     onData(data) {
-        debug$a('received "%s"', data);
+        debug$b('received "%s"', data);
         const callback = (packet) => {
             if ("close" === packet.type) {
-                debug$a("got xhr close packet");
+                debug$b("got xhr close packet");
                 this.onClose();
                 return false;
             }
@@ -13406,7 +14882,7 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * Overrides onClose.
      *
-     * @api private
+     * @private
      */
     onClose() {
         if (this.writable) {
@@ -13415,16 +14891,10 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
         }
         super.onClose();
     }
-    /**
-     * Writes a packet payload.
-     *
-     * @param {Object} packet
-     * @api private
-     */
     send(packets) {
         this.writable = false;
         if (this.shouldClose) {
-            debug$a("appending close packet to payload");
+            debug$b("appending close packet to payload");
             packets.push({ type: "close" });
             this.shouldClose();
             this.shouldClose = null;
@@ -13447,18 +14917,19 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
      *
      * @param {String} data
      * @param {Object} options
-     * @api private
+     * @private
      */
     write(data, options) {
-        debug$a('writing "%s"', data);
+        debug$b('writing "%s"', data);
         this.doWrite(data, options, () => {
             this.req.cleanup();
+            this.emit("drain");
         });
     }
     /**
      * Performs the write.
      *
-     * @api private
+     * @protected
      */
     doWrite(data, options, callback) {
         // explicit UTF-8 is required for pages not served under utf
@@ -13504,10 +14975,10 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * Compresses data.
      *
-     * @api private
+     * @private
      */
     compress(data, encoding, callback) {
-        debug$a("compressing");
+        debug$b("compressing");
         const buffers = [];
         let nread = 0;
         compressionMethods$1[encoding](this.httpCompression)
@@ -13524,13 +14995,13 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * Closes the transport.
      *
-     * @api private
+     * @private
      */
     doClose(fn) {
-        debug$a("closing");
+        debug$b("closing");
         let closeTimeoutTimer;
         if (this.dataReq) {
-            debug$a("aborting ongoing data request");
+            debug$b("aborting ongoing data request");
             this.dataReq.destroy();
         }
         const onClose = () => {
@@ -13539,16 +15010,16 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
             this.onClose();
         };
         if (this.writable) {
-            debug$a("transport writable - closing right away");
+            debug$b("transport writable - closing right away");
             this.send([{ type: "close" }]);
             onClose();
         }
         else if (this.discarded) {
-            debug$a("transport discarded - closing right away");
+            debug$b("transport discarded - closing right away");
             onClose();
         }
         else {
-            debug$a("transport not writable - buffering orderly close");
+            debug$b("transport not writable - buffering orderly close");
             this.shouldClose = onClose;
             closeTimeoutTimer = setTimeout(onClose, this.closeTimeout);
         }
@@ -13556,12 +15027,11 @@ let Polling$1 = class Polling extends transport_1$4.Transport {
     /**
      * Returns headers for a response.
      *
-     * @param {http.IncomingMessage} request
-     * @param {Object} extra headers
-     * @api private
+     * @param {http.IncomingMessage} req
+     * @param {Object} headers - extra headers
+     * @private
      */
-    headers(req, headers) {
-        headers = headers || {};
+    headers(req, headers = {}) {
         // prevent XSS warnings on IE
         // https://github.com/LearnBoost/socket.io/pull/1333
         const ua = req.headers["user-agent"];
@@ -13580,26 +15050,18 @@ var pollingJsonp = {};
 Object.defineProperty(pollingJsonp, "__esModule", { value: true });
 pollingJsonp.JSONP = void 0;
 const polling_1$2 = polling$2;
-const qs$1 = require$$1$2;
+const qs$1 = require$$1$3;
 const rDoubleSlashes = /\\\\n/g;
 const rSlashes = /(\\)?\\n/g;
 class JSONP extends polling_1$2.Polling {
     /**
      * JSON-P polling transport.
-     *
-     * @api public
      */
     constructor(req) {
         super(req);
         this.head = "___eio[" + (req._query.j || "").replace(/[^0-9]/g, "") + "](";
         this.foot = ");";
     }
-    /**
-     * Handles incoming data.
-     * Due to a bug in \n handling by browsers, we expect a escaped string.
-     *
-     * @api private
-     */
     onData(data) {
         // we leverage the qs module so that we get built-in DoS protection
         // and the fast alternative to decodeURIComponent
@@ -13613,11 +15075,6 @@ class JSONP extends polling_1$2.Polling {
             super.onData(data.replace(rDoubleSlashes, "\\n"));
         }
     }
-    /**
-     * Performs the write.
-     *
-     * @api private
-     */
     doWrite(data, options, callback) {
         // we must output valid javascript, not valid json
         // see: http://timelessrepo.com/json-isnt-a-javascript-subset
@@ -13636,21 +15093,41 @@ var websocket$2 = {};
 Object.defineProperty(websocket$2, "__esModule", { value: true });
 websocket$2.WebSocket = void 0;
 const transport_1$3 = transport;
-const debug_1$8 = srcExports;
-const debug$9 = (0, debug_1$8.default)("engine:ws");
+const debug_1$9 = srcExports$3;
+const debug$a = (0, debug_1$9.default)("engine:ws");
 let WebSocket$5 = class WebSocket extends transport_1$3.Transport {
     /**
      * WebSocket transport
      *
-     * @param {http.IncomingMessage}
-     * @api public
+     * @param {EngineRequest} req
      */
     constructor(req) {
         super(req);
+        this._doSend = (data) => {
+            this.socket.send(data, this._onSent);
+        };
+        this._doSendLast = (data) => {
+            this.socket.send(data, this._onSentLast);
+        };
+        this._onSent = (err) => {
+            if (err) {
+                this.onError("write error", err.stack);
+            }
+        };
+        this._onSentLast = (err) => {
+            if (err) {
+                this.onError("write error", err.stack);
+            }
+            else {
+                this.emit("drain");
+                this.writable = true;
+                this.emit("ready");
+            }
+        };
         this.socket = req.websocket;
         this.socket.on("message", (data, isBinary) => {
             const message = isBinary ? data : data.toString();
-            debug$9('received "%s"', message);
+            debug$a('received "%s"', message);
             super.onData(message);
         });
         this.socket.once("close", this.onClose.bind(this));
@@ -13660,73 +15137,30 @@ let WebSocket$5 = class WebSocket extends transport_1$3.Transport {
     }
     /**
      * Transport name
-     *
-     * @api public
      */
     get name() {
         return "websocket";
     }
     /**
      * Advertise upgrade support.
-     *
-     * @api public
      */
     get handlesUpgrades() {
         return true;
     }
-    /**
-     * Advertise framing support.
-     *
-     * @api public
-     */
-    get supportsFraming() {
-        return true;
-    }
-    /**
-     * Writes a packet payload.
-     *
-     * @param {Array} packets
-     * @api private
-     */
     send(packets) {
         this.writable = false;
         for (let i = 0; i < packets.length; i++) {
             const packet = packets[i];
             const isLast = i + 1 === packets.length;
-            // always creates a new object since ws modifies it
-            const opts = {};
-            if (packet.options) {
-                opts.compress = packet.options.compress;
-            }
-            const onSent = (err) => {
-                if (err) {
-                    return this.onError("write error", err.stack);
-                }
-                else if (isLast) {
-                    this.writable = true;
-                    this.emit("drain");
-                }
-            };
-            const send = (data) => {
-                if (this.perMessageDeflate) {
-                    const len = "string" === typeof data ? Buffer.byteLength(data) : data.length;
-                    if (len < this.perMessageDeflate.threshold) {
-                        opts.compress = false;
-                    }
-                }
-                debug$9('writing "%s"', data);
-                this.socket.send(data, opts, onSent);
-            };
-            if (packet.options && typeof packet.options.wsPreEncoded === "string") {
-                send(packet.options.wsPreEncoded);
-            }
-            else if (this._canSendPreEncodedFrame(packet)) {
+            if (this._canSendPreEncodedFrame(packet)) {
                 // the WebSocket frame was computed with WebSocket.Sender.frame()
                 // see https://github.com/websockets/ws/issues/617#issuecomment-283002469
-                this.socket._sender.sendFrame(packet.options.wsPreEncodedFrame, onSent);
+                this.socket._sender.sendFrame(
+                // @ts-ignore
+                packet.options.wsPreEncodedFrame, isLast ? this._onSentLast : this._onSent);
             }
             else {
-                this.parser.encodePacket(packet, this.supportsBinary, send);
+                this.parser.encodePacket(packet, this.supportsBinary, isLast ? this._doSendLast : this._doSend);
             }
         }
     }
@@ -13739,15 +15173,11 @@ let WebSocket$5 = class WebSocket extends transport_1$3.Transport {
         var _a, _b, _c;
         return (!this.perMessageDeflate &&
             typeof ((_b = (_a = this.socket) === null || _a === void 0 ? void 0 : _a._sender) === null || _b === void 0 ? void 0 : _b.sendFrame) === "function" &&
+            // @ts-ignore
             ((_c = packet.options) === null || _c === void 0 ? void 0 : _c.wsPreEncodedFrame) !== undefined);
     }
-    /**
-     * Closes the transport.
-     *
-     * @api private
-     */
     doClose(fn) {
-        debug$9("closing");
+        debug$a("closing");
         this.socket.close();
         fn && fn();
     }
@@ -13759,9 +15189,9 @@ var webtransport = {};
 Object.defineProperty(webtransport, "__esModule", { value: true });
 webtransport.WebTransport = void 0;
 const transport_1$2 = transport;
-const debug_1$7 = srcExports;
+const debug_1$8 = srcExports$3;
 const engine_io_parser_1$1 = cjs$1;
-const debug$8 = (0, debug_1$7.default)("engine:webtransport");
+const debug$9 = (0, debug_1$8.default)("engine:webtransport");
 /**
  * Reference: https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API
  */
@@ -13771,7 +15201,7 @@ class WebTransport extends transport_1$2.Transport {
         this.session = session;
         const transformStream = (0, engine_io_parser_1$1.createPacketEncoderStream)();
         transformStream.readable.pipeTo(stream.writable).catch(() => {
-            debug$8("the stream was closed");
+            debug$9("the stream was closed");
         });
         this.writer = transformStream.writable.getWriter();
         (async () => {
@@ -13779,15 +15209,15 @@ class WebTransport extends transport_1$2.Transport {
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) {
-                        debug$8("session is closed");
+                        debug$9("session is closed");
                         break;
                     }
-                    debug$8("received chunk: %o", value);
+                    debug$9("received chunk: %o", value);
                     this.onPacket(value);
                 }
             }
             catch (e) {
-                debug$8("error while reading: %s", e.message);
+                debug$9("error while reading: %s", e.message);
             }
         })();
         session.closed.then(() => this.onClose());
@@ -13795,9 +15225,6 @@ class WebTransport extends transport_1$2.Transport {
     }
     get name() {
         return "webtransport";
-    }
-    get supportsFraming() {
-        return true;
     }
     async send(packets) {
         this.writable = false;
@@ -13808,13 +15235,14 @@ class WebTransport extends transport_1$2.Transport {
             }
         }
         catch (e) {
-            debug$8("error while writing: %s", e.message);
+            debug$9("error while writing: %s", e.message);
         }
-        this.writable = true;
         this.emit("drain");
+        this.writable = true;
+        this.emit("ready");
     }
     doClose(fn) {
-        debug$8("closing WebTransport session");
+        debug$9("closing WebTransport session");
         this.session.close();
         fn && fn();
     }
@@ -13833,8 +15261,6 @@ transports.default = {
 };
 /**
  * Polling polymorphic constructor.
- *
- * @api private
  */
 function polling$1(req) {
     if ("string" === typeof req._query.j) {
@@ -13850,21 +15276,26 @@ var socket$1 = {};
 
 Object.defineProperty(socket$1, "__esModule", { value: true });
 socket$1.Socket = void 0;
-const events_1$3 = require$$0$2;
-const debug_1$6 = srcExports;
+const events_1$3 = require$$0$3;
+const debug_1$7 = srcExports$3;
 const timers_1 = require$$2$1;
-const debug$7 = (0, debug_1$6.default)("engine:socket");
-let Socket$1 = class Socket extends events_1$3.EventEmitter {
-    /**
-     * Client class (abstract).
-     *
-     * @api private
-     */
+const debug$8 = (0, debug_1$7.default)("engine:socket");
+let Socket$2 = class Socket extends events_1$3.EventEmitter {
+    get readyState() {
+        return this._readyState;
+    }
+    set readyState(state) {
+        debug$8("readyState updated from %s to %s", this._readyState, state);
+        this._readyState = state;
+    }
     constructor(id, server, transport, req, protocol) {
         super();
+        /**
+         * The current state of the socket.
+         */
         this._readyState = "opening";
-        this.upgrading = false;
-        this.upgraded = false;
+        /* private */ this.upgrading = false;
+        /* private */ this.upgraded = false;
         this.writeBuffer = [];
         this.packetsFn = [];
         this.sentCallbackFn = [];
@@ -13887,17 +15318,10 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
         this.setTransport(transport);
         this.onOpen();
     }
-    get readyState() {
-        return this._readyState;
-    }
-    set readyState(state) {
-        debug$7("readyState updated from %s to %s", this._readyState, state);
-        this._readyState = state;
-    }
     /**
      * Called upon transport considered open.
      *
-     * @api private
+     * @private
      */
     onOpen() {
         this.readyState = "open";
@@ -13916,7 +15340,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
         this.emit("open");
         if (this.protocol === 3) {
             // in protocol v3, the client sends a ping, and the server answers with a pong
-            this.resetPingTimeout(this.server.opts.pingInterval + this.server.opts.pingTimeout);
+            this.resetPingTimeout();
         }
         else {
             // in protocol v4, the server sends a ping, and the client answers with a pong
@@ -13927,34 +15351,33 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
      * Called upon transport packet.
      *
      * @param {Object} packet
-     * @api private
+     * @private
      */
     onPacket(packet) {
         if ("open" !== this.readyState) {
-            return debug$7("packet received with closed socket");
+            return debug$8("packet received with closed socket");
         }
         // export packet event
-        debug$7(`received packet ${packet.type}`);
+        debug$8(`received packet ${packet.type}`);
         this.emit("packet", packet);
-        // Reset ping timeout on any packet, incoming data is a good sign of
-        // other side's liveness
-        this.resetPingTimeout(this.server.opts.pingInterval + this.server.opts.pingTimeout);
         switch (packet.type) {
             case "ping":
                 if (this.transport.protocol !== 3) {
-                    this.onError("invalid heartbeat direction");
+                    this.onError(new Error("invalid heartbeat direction"));
                     return;
                 }
-                debug$7("got ping");
+                debug$8("got ping");
+                this.pingTimeoutTimer.refresh();
                 this.sendPacket("pong");
                 this.emit("heartbeat");
                 break;
             case "pong":
                 if (this.transport.protocol === 3) {
-                    this.onError("invalid heartbeat direction");
+                    this.onError(new Error("invalid heartbeat direction"));
                     return;
                 }
-                debug$7("got pong");
+                debug$8("got pong");
+                (0, timers_1.clearTimeout)(this.pingTimeoutTimer);
                 this.pingIntervalTimer.refresh();
                 this.emit("heartbeat");
                 break;
@@ -13971,75 +15394,94 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
      * Called upon transport error.
      *
      * @param {Error} err - error object
-     * @api private
+     * @private
      */
     onError(err) {
-        debug$7("transport error");
+        debug$8("transport error");
         this.onClose("transport error", err);
     }
     /**
      * Pings client every `this.pingInterval` and expects response
      * within `this.pingTimeout` or closes connection.
      *
-     * @api private
+     * @private
      */
     schedulePing() {
         this.pingIntervalTimer = (0, timers_1.setTimeout)(() => {
-            debug$7("writing ping packet - expecting pong within %sms", this.server.opts.pingTimeout);
+            debug$8("writing ping packet - expecting pong within %sms", this.server.opts.pingTimeout);
             this.sendPacket("ping");
-            this.resetPingTimeout(this.server.opts.pingTimeout);
+            this.resetPingTimeout();
         }, this.server.opts.pingInterval);
     }
     /**
      * Resets ping timeout.
      *
-     * @api private
+     * @private
      */
-    resetPingTimeout(timeout) {
+    resetPingTimeout() {
         (0, timers_1.clearTimeout)(this.pingTimeoutTimer);
         this.pingTimeoutTimer = (0, timers_1.setTimeout)(() => {
             if (this.readyState === "closed")
                 return;
             this.onClose("ping timeout");
-        }, timeout);
+        }, this.protocol === 3
+            ? this.server.opts.pingInterval + this.server.opts.pingTimeout
+            : this.server.opts.pingTimeout);
     }
     /**
      * Attaches handlers for the given transport.
      *
      * @param {Transport} transport
-     * @api private
+     * @private
      */
     setTransport(transport) {
         const onError = this.onError.bind(this);
+        const onReady = () => this.flush();
         const onPacket = this.onPacket.bind(this);
-        const flush = this.flush.bind(this);
+        const onDrain = this.onDrain.bind(this);
         const onClose = this.onClose.bind(this, "transport close");
         this.transport = transport;
         this.transport.once("error", onError);
+        this.transport.on("ready", onReady);
         this.transport.on("packet", onPacket);
-        this.transport.on("drain", flush);
+        this.transport.on("drain", onDrain);
         this.transport.once("close", onClose);
-        // this function will manage packet events (also message callbacks)
-        this.setupSendCallback();
         this.cleanupFn.push(function () {
             transport.removeListener("error", onError);
+            transport.removeListener("ready", onReady);
             transport.removeListener("packet", onPacket);
-            transport.removeListener("drain", flush);
+            transport.removeListener("drain", onDrain);
             transport.removeListener("close", onClose);
         });
+    }
+    /**
+     * Upon transport "drain" event
+     *
+     * @private
+     */
+    onDrain() {
+        if (this.sentCallbackFn.length > 0) {
+            debug$8("executing batch send callback");
+            const seqFn = this.sentCallbackFn.shift();
+            if (seqFn) {
+                for (let i = 0; i < seqFn.length; i++) {
+                    seqFn[i](this.transport);
+                }
+            }
+        }
     }
     /**
      * Upgrades socket to the given transport
      *
      * @param {Transport} transport
-     * @api private
+     * @private
      */
-    maybeUpgrade(transport) {
-        debug$7('might upgrade socket transport from "%s" to "%s"', this.transport.name, transport.name);
+    /* private */ _maybeUpgrade(transport) {
+        debug$8('might upgrade socket transport from "%s" to "%s"', this.transport.name, transport.name);
         this.upgrading = true;
         // set transport upgrade timer
         const upgradeTimeoutTimer = (0, timers_1.setTimeout)(() => {
-            debug$7("client did not complete upgrade - closing transport");
+            debug$8("client did not complete upgrade - closing transport");
             cleanup();
             if ("open" === transport.readyState) {
                 transport.close();
@@ -14048,14 +15490,14 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
         let checkIntervalTimer;
         const onPacket = (packet) => {
             if ("ping" === packet.type && "probe" === packet.data) {
-                debug$7("got probe ping packet, sending pong");
+                debug$8("got probe ping packet, sending pong");
                 transport.send([{ type: "pong", data: "probe" }]);
                 this.emit("upgrading", transport);
                 clearInterval(checkIntervalTimer);
                 checkIntervalTimer = setInterval(check, 100);
             }
             else if ("upgrade" === packet.type && this.readyState !== "closed") {
-                debug$7("got upgrade packet - upgrading");
+                debug$8("got upgrade packet - upgrading");
                 cleanup();
                 this.transport.discard();
                 this.upgraded = true;
@@ -14077,7 +15519,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
         // we force a polling cycle to ensure a fast upgrade
         const check = () => {
             if ("polling" === this.transport.name && this.transport.writable) {
-                debug$7("writing a noop packet to polling for fast upgrade");
+                debug$8("writing a noop packet to polling for fast upgrade");
                 this.transport.send([{ type: "noop" }]);
             }
         };
@@ -14091,7 +15533,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
             this.removeListener("close", onClose);
         };
         const onError = (err) => {
-            debug$7("client did not complete upgrade - %s", err);
+            debug$8("client did not complete upgrade - %s", err);
             cleanup();
             transport.close();
             transport = null;
@@ -14110,7 +15552,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
     /**
      * Clears listeners and timers associated with current transport.
      *
-     * @api private
+     * @private
      */
     clearTransport() {
         let cleanup;
@@ -14121,7 +15563,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
         }
         // silence further transport errors and prevent uncaught exceptions
         this.transport.on("error", function () {
-            debug$7("error triggered by discarded transport");
+            debug$8("error triggered by discarded transport");
         });
         // ensure transport won't stay open
         this.transport.close();
@@ -14150,44 +15592,12 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
         }
     }
     /**
-     * Setup and manage send callback
-     *
-     * @api private
-     */
-    setupSendCallback() {
-        // the message was sent successfully, execute the callback
-        const onDrain = () => {
-            if (this.sentCallbackFn.length > 0) {
-                const seqFn = this.sentCallbackFn.splice(0, 1)[0];
-                if ("function" === typeof seqFn) {
-                    debug$7("executing send callback");
-                    seqFn(this.transport);
-                }
-                else if (Array.isArray(seqFn)) {
-                    debug$7("executing batch send callback");
-                    const l = seqFn.length;
-                    let i = 0;
-                    for (; i < l; i++) {
-                        if ("function" === typeof seqFn[i]) {
-                            seqFn[i](this.transport);
-                        }
-                    }
-                }
-            }
-        };
-        this.transport.on("drain", onDrain);
-        this.cleanupFn.push(() => {
-            this.transport.removeListener("drain", onDrain);
-        });
-    }
-    /**
      * Sends a message packet.
      *
      * @param {Object} data
      * @param {Object} options
      * @param {Function} callback
      * @return {Socket} for chaining
-     * @api public
      */
     send(data, options, callback) {
         this.sendPacket("message", data, options, callback);
@@ -14212,7 +15622,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
      * @param {Object} options
      * @param {Function} callback
      *
-     * @api private
+     * @private
      */
     sendPacket(type, data, options = {}, callback) {
         if ("function" === typeof options) {
@@ -14220,7 +15630,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
             options = {};
         }
         if ("closing" !== this.readyState && "closed" !== this.readyState) {
-            debug$7('sending packet "%s" (%s)', type, data);
+            debug$8('sending packet "%s" (%s)', type, data);
             // compression is enabled by default
             options.compress = options.compress !== false;
             const packet = {
@@ -14233,7 +15643,7 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
             this.emit("packetCreate", packet);
             this.writeBuffer.push(packet);
             // add send callback to object, if defined
-            if (callback)
+            if ("function" === typeof callback)
                 this.packetsFn.push(callback);
             this.flush();
         }
@@ -14241,24 +15651,24 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
     /**
      * Attempts to flush the packets buffer.
      *
-     * @api private
+     * @private
      */
     flush() {
         if ("closed" !== this.readyState &&
             this.transport.writable &&
             this.writeBuffer.length) {
-            debug$7("flushing buffer to transport");
+            debug$8("flushing buffer to transport");
             this.emit("flush", this.writeBuffer);
             this.server.emit("flush", this, this.writeBuffer);
             const wbuf = this.writeBuffer;
             this.writeBuffer = [];
-            if (!this.transport.supportsFraming) {
+            if (this.packetsFn.length) {
                 this.sentCallbackFn.push(this.packetsFn);
+                this.packetsFn = [];
             }
             else {
-                this.sentCallbackFn.push.apply(this.sentCallbackFn, this.packetsFn);
+                this.sentCallbackFn.push(null);
             }
-            this.packetsFn = [];
             this.transport.send(wbuf);
             this.emit("drain");
             this.server.emit("drain", this);
@@ -14267,14 +15677,12 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
     /**
      * Get available upgrades for this socket.
      *
-     * @api private
+     * @private
      */
     getAvailableUpgrades() {
         const availableUpgrades = [];
         const allUpgrades = this.server.upgrades(this.transport.name);
-        let i = 0;
-        const l = allUpgrades.length;
-        for (; i < l; ++i) {
+        for (let i = 0; i < allUpgrades.length; ++i) {
             const upg = allUpgrades[i];
             if (this.server.opts.transports.indexOf(upg) !== -1) {
                 availableUpgrades.push(upg);
@@ -14287,37 +15695,40 @@ let Socket$1 = class Socket extends events_1$3.EventEmitter {
      *
      * @param {Boolean} discard - optional, discard the transport
      * @return {Socket} for chaining
-     * @api public
      */
     close(discard) {
+        if (discard &&
+            (this.readyState === "open" || this.readyState === "closing")) {
+            return this.closeTransport(discard);
+        }
         if ("open" !== this.readyState)
             return;
         this.readyState = "closing";
         if (this.writeBuffer.length) {
-            debug$7("there are %d remaining packets in the buffer, waiting for the 'drain' event", this.writeBuffer.length);
+            debug$8("there are %d remaining packets in the buffer, waiting for the 'drain' event", this.writeBuffer.length);
             this.once("drain", () => {
-                debug$7("all packets have been sent, closing the transport");
+                debug$8("all packets have been sent, closing the transport");
                 this.closeTransport(discard);
             });
             return;
         }
-        debug$7("the buffer is empty, closing the transport right away", discard);
+        debug$8("the buffer is empty, closing the transport right away");
         this.closeTransport(discard);
     }
     /**
      * Closes the underlying transport.
      *
      * @param {Boolean} discard
-     * @api private
+     * @private
      */
     closeTransport(discard) {
-        debug$7("closing the transport (discard? %s)", discard);
+        debug$8("closing the transport (discard? %s)", !!discard);
         if (discard)
             this.transport.discard();
         this.transport.close(this.onClose.bind(this, "forced close"));
     }
 };
-socket$1.Socket = Socket$1;
+socket$1.Socket = Socket$2;
 
 var cookie = {};
 
@@ -14341,18 +15752,70 @@ cookie.serialize = serialize;
  * @private
  */
 
-var decode$1 = decodeURIComponent;
-var encode$1 = encodeURIComponent;
+var __toString = Object.prototype.toString;
+var __hasOwnProperty = Object.prototype.hasOwnProperty;
 
 /**
- * RegExp to match field-content in RFC 7230 sec 3.2
+ * RegExp to match cookie-name in RFC 6265 sec 4.1.1
+ * This refers out to the obsoleted definition of token in RFC 2616 sec 2.2
+ * which has been replaced by the token definition in RFC 7230 appendix B.
  *
- * field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
- * field-vchar   = VCHAR / obs-text
- * obs-text      = %x80-FF
+ * cookie-name       = token
+ * token             = 1*tchar
+ * tchar             = "!" / "#" / "$" / "%" / "&" / "'" /
+ *                     "*" / "+" / "-" / "." / "^" / "_" /
+ *                     "`" / "|" / "~" / DIGIT / ALPHA
  */
 
-var fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
+var cookieNameRegExp = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+/**
+ * RegExp to match cookie-value in RFC 6265 sec 4.1.1
+ *
+ * cookie-value      = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+ * cookie-octet      = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+ *                     ; US-ASCII characters excluding CTLs,
+ *                     ; whitespace DQUOTE, comma, semicolon,
+ *                     ; and backslash
+ */
+
+var cookieValueRegExp = /^("?)[\u0021\u0023-\u002B\u002D-\u003A\u003C-\u005B\u005D-\u007E]*\1$/;
+
+/**
+ * RegExp to match domain-value in RFC 6265 sec 4.1.1
+ *
+ * domain-value      = <subdomain>
+ *                     ; defined in [RFC1034], Section 3.5, as
+ *                     ; enhanced by [RFC1123], Section 2.1
+ * <subdomain>       = <label> | <subdomain> "." <label>
+ * <label>           = <let-dig> [ [ <ldh-str> ] <let-dig> ]
+ *                     Labels must be 63 characters or less.
+ *                     'let-dig' not 'letter' in the first char, per RFC1123
+ * <ldh-str>         = <let-dig-hyp> | <let-dig-hyp> <ldh-str>
+ * <let-dig-hyp>     = <let-dig> | "-"
+ * <let-dig>         = <letter> | <digit>
+ * <letter>          = any one of the 52 alphabetic characters A through Z in
+ *                     upper case and a through z in lower case
+ * <digit>           = any one of the ten digits 0 through 9
+ *
+ * Keep support for leading dot: https://github.com/jshttp/cookie/issues/173
+ *
+ * > (Note that a leading %x2E ("."), if present, is ignored even though that
+ * character is not permitted, but a trailing %x2E ("."), if present, will
+ * cause the user agent to ignore the attribute.)
+ */
+
+var domainValueRegExp = /^([.]?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+
+/**
+ * RegExp to match path-value in RFC 6265 sec 4.1.1
+ *
+ * path-value        = <any CHAR except CTLs or ";">
+ * CHAR              = %x01-7F
+ *                     ; defined in RFC 5234 appendix B.1
+ */
+
+var pathValueRegExp = /^[\u0020-\u003A\u003D-\u007E]*$/;
 
 /**
  * Parse a cookie header.
@@ -14361,96 +15824,128 @@ var fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
  * The object has the various cookies as keys(names) => values
  *
  * @param {string} str
- * @param {object} [options]
+ * @param {object} [opt]
  * @return {object}
  * @public
  */
 
-function parse$4(str, options) {
+function parse$4(str, opt) {
   if (typeof str !== 'string') {
     throw new TypeError('argument str must be a string');
   }
 
   var obj = {};
-  var opt = options || {};
-  var pairs = str.split(';');
-  var dec = opt.decode || decode$1;
+  var len = str.length;
+  // RFC 6265 sec 4.1.1, RFC 2616 2.2 defines a cookie name consists of one char minimum, plus '='.
+  if (len < 2) return obj;
 
-  for (var i = 0; i < pairs.length; i++) {
-    var pair = pairs[i];
-    var index = pair.indexOf('=');
+  var dec = (opt && opt.decode) || decode$1;
+  var index = 0;
+  var eqIdx = 0;
+  var endIdx = 0;
 
-    // skip things that don't look like key=value
-    if (index < 0) {
+  do {
+    eqIdx = str.indexOf('=', index);
+    if (eqIdx === -1) break; // No more cookie pairs.
+
+    endIdx = str.indexOf(';', index);
+
+    if (endIdx === -1) {
+      endIdx = len;
+    } else if (eqIdx > endIdx) {
+      // backtrack on prior semicolon
+      index = str.lastIndexOf(';', eqIdx - 1) + 1;
       continue;
     }
 
-    var key = pair.substring(0, index).trim();
+    var keyStartIdx = startIndex(str, index, eqIdx);
+    var keyEndIdx = endIndex(str, eqIdx, keyStartIdx);
+    var key = str.slice(keyStartIdx, keyEndIdx);
 
     // only assign once
-    if (undefined == obj[key]) {
-      var val = pair.substring(index + 1, pair.length).trim();
+    if (!__hasOwnProperty.call(obj, key)) {
+      var valStartIdx = startIndex(str, eqIdx + 1, endIdx);
+      var valEndIdx = endIndex(str, endIdx, valStartIdx);
 
-      // quoted values
-      if (val[0] === '"') {
-        val = val.slice(1, -1);
+      if (str.charCodeAt(valStartIdx) === 0x22 /* " */ && str.charCodeAt(valEndIdx - 1) === 0x22 /* " */) {
+        valStartIdx++;
+        valEndIdx--;
       }
 
+      var val = str.slice(valStartIdx, valEndIdx);
       obj[key] = tryDecode(val, dec);
     }
-  }
+
+    index = endIdx + 1;
+  } while (index < len);
 
   return obj;
+}
+
+function startIndex(str, index, max) {
+  do {
+    var code = str.charCodeAt(index);
+    if (code !== 0x20 /*   */ && code !== 0x09 /* \t */) return index;
+  } while (++index < max);
+  return max;
+}
+
+function endIndex(str, index, min) {
+  while (index > min) {
+    var code = str.charCodeAt(--index);
+    if (code !== 0x20 /*   */ && code !== 0x09 /* \t */) return index + 1;
+  }
+  return min;
 }
 
 /**
  * Serialize data into a cookie header.
  *
- * Serialize the a name value pair into a cookie string suitable for
- * http headers. An optional options object specified cookie parameters.
+ * Serialize a name value pair into a cookie string suitable for
+ * http headers. An optional options object specifies cookie parameters.
  *
  * serialize('foo', 'bar', { httpOnly: true })
  *   => "foo=bar; httpOnly"
  *
  * @param {string} name
  * @param {string} val
- * @param {object} [options]
+ * @param {object} [opt]
  * @return {string}
  * @public
  */
 
-function serialize(name, val, options) {
-  var opt = options || {};
-  var enc = opt.encode || encode$1;
+function serialize(name, val, opt) {
+  var enc = (opt && opt.encode) || encodeURIComponent;
 
   if (typeof enc !== 'function') {
     throw new TypeError('option encode is invalid');
   }
 
-  if (!fieldContentRegExp.test(name)) {
+  if (!cookieNameRegExp.test(name)) {
     throw new TypeError('argument name is invalid');
   }
 
   var value = enc(val);
 
-  if (value && !fieldContentRegExp.test(value)) {
+  if (!cookieValueRegExp.test(value)) {
     throw new TypeError('argument val is invalid');
   }
 
   var str = name + '=' + value;
+  if (!opt) return str;
 
   if (null != opt.maxAge) {
-    var maxAge = opt.maxAge - 0;
+    var maxAge = Math.floor(opt.maxAge);
 
-    if (isNaN(maxAge) || !isFinite(maxAge)) {
+    if (!isFinite(maxAge)) {
       throw new TypeError('option maxAge is invalid')
     }
 
-    str += '; Max-Age=' + Math.floor(maxAge);
+    str += '; Max-Age=' + maxAge;
   }
 
   if (opt.domain) {
-    if (!fieldContentRegExp.test(opt.domain)) {
+    if (!domainValueRegExp.test(opt.domain)) {
       throw new TypeError('option domain is invalid');
     }
 
@@ -14458,7 +15953,7 @@ function serialize(name, val, options) {
   }
 
   if (opt.path) {
-    if (!fieldContentRegExp.test(opt.path)) {
+    if (!pathValueRegExp.test(opt.path)) {
       throw new TypeError('option path is invalid');
     }
 
@@ -14466,11 +15961,13 @@ function serialize(name, val, options) {
   }
 
   if (opt.expires) {
-    if (typeof opt.expires.toUTCString !== 'function') {
+    var expires = opt.expires;
+
+    if (!isDate(expires) || isNaN(expires.valueOf())) {
       throw new TypeError('option expires is invalid');
     }
 
-    str += '; Expires=' + opt.expires.toUTCString();
+    str += '; Expires=' + expires.toUTCString();
   }
 
   if (opt.httpOnly) {
@@ -14479,6 +15976,29 @@ function serialize(name, val, options) {
 
   if (opt.secure) {
     str += '; Secure';
+  }
+
+  if (opt.partitioned) {
+    str += '; Partitioned';
+  }
+
+  if (opt.priority) {
+    var priority = typeof opt.priority === 'string'
+      ? opt.priority.toLowerCase() : opt.priority;
+
+    switch (priority) {
+      case 'low':
+        str += '; Priority=Low';
+        break
+      case 'medium':
+        str += '; Priority=Medium';
+        break
+      case 'high':
+        str += '; Priority=High';
+        break
+      default:
+        throw new TypeError('option priority is invalid')
+    }
   }
 
   if (opt.sameSite) {
@@ -14504,6 +16024,30 @@ function serialize(name, val, options) {
   }
 
   return str;
+}
+
+/**
+ * URL-decode string value. Optimized to skip native call when no %.
+ *
+ * @param {string} str
+ * @returns {string}
+ */
+
+function decode$1 (str) {
+  return str.indexOf('%') !== -1
+    ? decodeURIComponent(str)
+    : str
+}
+
+/**
+ * Determine if value is a Date.
+ *
+ * @param {*} val
+ * @private
+ */
+
+function isDate (val) {
+  return __toString.call(val) === '[object Date]';
 }
 
 /**
@@ -14540,6 +16084,8 @@ var mask;
 
 const { EMPTY_BUFFER: EMPTY_BUFFER$3 } = constants;
 
+const FastBuffer$2 = Buffer[Symbol.species];
+
 /**
  * Merges an array of buffers into a new buffer.
  *
@@ -14561,7 +16107,9 @@ function concat$1(list, totalLength) {
     offset += buf.length;
   }
 
-  if (offset < totalLength) return target.slice(0, offset);
+  if (offset < totalLength) {
+    return new FastBuffer$2(target.buffer, target.byteOffset, offset);
+  }
 
   return target;
 }
@@ -14603,11 +16151,11 @@ function _unmask(buffer, mask) {
  * @public
  */
 function toArrayBuffer$2(buf) {
-  if (buf.byteLength === buf.buffer.byteLength) {
+  if (buf.length === buf.buffer.byteLength) {
     return buf.buffer;
   }
 
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length);
 }
 
 /**
@@ -14626,9 +16174,9 @@ function toBuffer$2(data) {
   let buf;
 
   if (data instanceof ArrayBuffer) {
-    buf = Buffer.from(data);
+    buf = new FastBuffer$2(data);
   } else if (ArrayBuffer.isView(data)) {
-    buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+    buf = new FastBuffer$2(data.buffer, data.byteOffset, data.byteLength);
   } else {
     buf = Buffer.from(data);
     toBuffer$2.readOnly = false;
@@ -14720,12 +16268,13 @@ let Limiter$1 = class Limiter {
 
 var limiter = Limiter$1;
 
-const zlib = require$$1$1;
+const zlib = require$$1$2;
 
 const bufferUtil = bufferUtilExports;
 const Limiter = limiter;
 const { kStatusCode: kStatusCode$2 } = constants;
 
+const FastBuffer$1 = Buffer[Symbol.species];
 const TRAILER = Buffer.from([0x00, 0x00, 0xff, 0xff]);
 const kPerMessageDeflate = Symbol('permessage-deflate');
 const kTotalLength = Symbol('total-length');
@@ -15157,7 +16706,9 @@ let PerMessageDeflate$4 = class PerMessageDeflate {
         this._deflate[kTotalLength]
       );
 
-      if (fin) data = data.slice(0, data.length - 4);
+      if (fin) {
+        data = new FastBuffer$1(data.buffer, data.byteOffset, data.length - 4);
+      }
 
       //
       // Ensure that the callback will not be called again in
@@ -15233,6 +16784,8 @@ function inflateOnError(err) {
 var validation = {exports: {}};
 
 var isValidUTF8_1;
+
+const { isUtf8 } = require$$0$4;
 
 //
 // Allowed token characters:
@@ -15345,13 +16898,16 @@ validation.exports = {
   tokenChars: tokenChars$2
 };
 
-/* istanbul ignore else  */
-if (!process.env.WS_NO_UTF_8_VALIDATE) {
+if (isUtf8) {
+  isValidUTF8_1 = validation.exports.isValidUTF8 = function (buf) {
+    return buf.length < 24 ? _isValidUTF8(buf) : isUtf8(buf);
+  };
+} /* istanbul ignore else  */ else if (!process.env.WS_NO_UTF_8_VALIDATE) {
   try {
     const isValidUTF8 = require('utf-8-validate');
 
     isValidUTF8_1 = validation.exports.isValidUTF8 = function (buf) {
-      return buf.length < 150 ? _isValidUTF8(buf) : isValidUTF8(buf);
+      return buf.length < 32 ? _isValidUTF8(buf) : isValidUTF8(buf);
     };
   } catch (e) {
     // Continue regardless of the error.
@@ -15360,7 +16916,7 @@ if (!process.env.WS_NO_UTF_8_VALIDATE) {
 
 var validationExports = validation.exports;
 
-const { Writable } = require$$0$3;
+const { Writable } = require$$0$5;
 
 const PerMessageDeflate$3 = permessageDeflate;
 const {
@@ -15372,12 +16928,15 @@ const {
 const { concat, toArrayBuffer: toArrayBuffer$1, unmask } = bufferUtilExports;
 const { isValidStatusCode: isValidStatusCode$1, isValidUTF8 } = validationExports;
 
+const FastBuffer = Buffer[Symbol.species];
+
 const GET_INFO = 0;
 const GET_PAYLOAD_LENGTH_16 = 1;
 const GET_PAYLOAD_LENGTH_64 = 2;
 const GET_MASK = 3;
 const GET_DATA = 4;
 const INFLATING = 5;
+const DEFER_EVENT = 6;
 
 /**
  * HyBi Receiver implementation.
@@ -15389,6 +16948,9 @@ let Receiver$1 = class Receiver extends Writable {
    * Creates a Receiver instance.
    *
    * @param {Object} [options] Options object
+   * @param {Boolean} [options.allowSynchronousEvents=true] Specifies whether
+   *     any of the `'message'`, `'ping'`, and `'pong'` events can be emitted
+   *     multiple times in the same tick
    * @param {String} [options.binaryType=nodebuffer] The type for binary data
    * @param {Object} [options.extensions] An object containing the negotiated
    *     extensions
@@ -15401,6 +16963,10 @@ let Receiver$1 = class Receiver extends Writable {
   constructor(options = {}) {
     super();
 
+    this._allowSynchronousEvents =
+      options.allowSynchronousEvents !== undefined
+        ? options.allowSynchronousEvents
+        : true;
     this._binaryType = options.binaryType || BINARY_TYPES$1[0];
     this._extensions = options.extensions || {};
     this._isServer = !!options.isServer;
@@ -15423,8 +16989,9 @@ let Receiver$1 = class Receiver extends Writable {
     this._messageLength = 0;
     this._fragments = [];
 
-    this._state = GET_INFO;
+    this._errored = false;
     this._loop = false;
+    this._state = GET_INFO;
   }
 
   /**
@@ -15457,8 +17024,13 @@ let Receiver$1 = class Receiver extends Writable {
 
     if (n < this._buffers[0].length) {
       const buf = this._buffers[0];
-      this._buffers[0] = buf.slice(n);
-      return buf.slice(0, n);
+      this._buffers[0] = new FastBuffer(
+        buf.buffer,
+        buf.byteOffset + n,
+        buf.length - n
+      );
+
+      return new FastBuffer(buf.buffer, buf.byteOffset, n);
     }
 
     const dst = Buffer.allocUnsafe(n);
@@ -15471,7 +17043,11 @@ let Receiver$1 = class Receiver extends Writable {
         dst.set(this._buffers.shift(), offset);
       } else {
         dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n), offset);
-        this._buffers[0] = buf.slice(n);
+        this._buffers[0] = new FastBuffer(
+          buf.buffer,
+          buf.byteOffset + n,
+          buf.length - n
+        );
       }
 
       n -= buf.length;
@@ -15487,43 +17063,42 @@ let Receiver$1 = class Receiver extends Writable {
    * @private
    */
   startLoop(cb) {
-    let err;
     this._loop = true;
 
     do {
       switch (this._state) {
         case GET_INFO:
-          err = this.getInfo();
+          this.getInfo(cb);
           break;
         case GET_PAYLOAD_LENGTH_16:
-          err = this.getPayloadLength16();
+          this.getPayloadLength16(cb);
           break;
         case GET_PAYLOAD_LENGTH_64:
-          err = this.getPayloadLength64();
+          this.getPayloadLength64(cb);
           break;
         case GET_MASK:
           this.getMask();
           break;
         case GET_DATA:
-          err = this.getData(cb);
+          this.getData(cb);
           break;
-        default:
-          // `INFLATING`
+        case INFLATING:
+        case DEFER_EVENT:
           this._loop = false;
           return;
       }
     } while (this._loop);
 
-    cb(err);
+    if (!this._errored) cb();
   }
 
   /**
    * Reads the first two bytes of a frame.
    *
-   * @return {(RangeError|undefined)} A possible error
+   * @param {Function} cb Callback
    * @private
    */
-  getInfo() {
+  getInfo(cb) {
     if (this._bufferedBytes < 2) {
       this._loop = false;
       return;
@@ -15532,27 +17107,31 @@ let Receiver$1 = class Receiver extends Writable {
     const buf = this.consume(2);
 
     if ((buf[0] & 0x30) !== 0x00) {
-      this._loop = false;
-      return error(
+      const error = this.createError(
         RangeError,
         'RSV2 and RSV3 must be clear',
         true,
         1002,
         'WS_ERR_UNEXPECTED_RSV_2_3'
       );
+
+      cb(error);
+      return;
     }
 
     const compressed = (buf[0] & 0x40) === 0x40;
 
     if (compressed && !this._extensions[PerMessageDeflate$3.extensionName]) {
-      this._loop = false;
-      return error(
+      const error = this.createError(
         RangeError,
         'RSV1 must be clear',
         true,
         1002,
         'WS_ERR_UNEXPECTED_RSV_1'
       );
+
+      cb(error);
+      return;
     }
 
     this._fin = (buf[0] & 0x80) === 0x80;
@@ -15561,83 +17140,100 @@ let Receiver$1 = class Receiver extends Writable {
 
     if (this._opcode === 0x00) {
       if (compressed) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           'RSV1 must be clear',
           true,
           1002,
           'WS_ERR_UNEXPECTED_RSV_1'
         );
+
+        cb(error);
+        return;
       }
 
       if (!this._fragmented) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           'invalid opcode 0',
           true,
           1002,
           'WS_ERR_INVALID_OPCODE'
         );
+
+        cb(error);
+        return;
       }
 
       this._opcode = this._fragmented;
     } else if (this._opcode === 0x01 || this._opcode === 0x02) {
       if (this._fragmented) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           `invalid opcode ${this._opcode}`,
           true,
           1002,
           'WS_ERR_INVALID_OPCODE'
         );
+
+        cb(error);
+        return;
       }
 
       this._compressed = compressed;
     } else if (this._opcode > 0x07 && this._opcode < 0x0b) {
       if (!this._fin) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           'FIN must be set',
           true,
           1002,
           'WS_ERR_EXPECTED_FIN'
         );
+
+        cb(error);
+        return;
       }
 
       if (compressed) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           'RSV1 must be clear',
           true,
           1002,
           'WS_ERR_UNEXPECTED_RSV_1'
         );
+
+        cb(error);
+        return;
       }
 
-      if (this._payloadLength > 0x7d) {
-        this._loop = false;
-        return error(
+      if (
+        this._payloadLength > 0x7d ||
+        (this._opcode === 0x08 && this._payloadLength === 1)
+      ) {
+        const error = this.createError(
           RangeError,
           `invalid payload length ${this._payloadLength}`,
           true,
           1002,
           'WS_ERR_INVALID_CONTROL_PAYLOAD_LENGTH'
         );
+
+        cb(error);
+        return;
       }
     } else {
-      this._loop = false;
-      return error(
+      const error = this.createError(
         RangeError,
         `invalid opcode ${this._opcode}`,
         true,
         1002,
         'WS_ERR_INVALID_OPCODE'
       );
+
+      cb(error);
+      return;
     }
 
     if (!this._fin && !this._fragmented) this._fragmented = this._opcode;
@@ -15645,54 +17241,58 @@ let Receiver$1 = class Receiver extends Writable {
 
     if (this._isServer) {
       if (!this._masked) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           'MASK must be set',
           true,
           1002,
           'WS_ERR_EXPECTED_MASK'
         );
+
+        cb(error);
+        return;
       }
     } else if (this._masked) {
-      this._loop = false;
-      return error(
+      const error = this.createError(
         RangeError,
         'MASK must be clear',
         true,
         1002,
         'WS_ERR_UNEXPECTED_MASK'
       );
+
+      cb(error);
+      return;
     }
 
     if (this._payloadLength === 126) this._state = GET_PAYLOAD_LENGTH_16;
     else if (this._payloadLength === 127) this._state = GET_PAYLOAD_LENGTH_64;
-    else return this.haveLength();
+    else this.haveLength(cb);
   }
 
   /**
    * Gets extended payload length (7+16).
    *
-   * @return {(RangeError|undefined)} A possible error
+   * @param {Function} cb Callback
    * @private
    */
-  getPayloadLength16() {
+  getPayloadLength16(cb) {
     if (this._bufferedBytes < 2) {
       this._loop = false;
       return;
     }
 
     this._payloadLength = this.consume(2).readUInt16BE(0);
-    return this.haveLength();
+    this.haveLength(cb);
   }
 
   /**
    * Gets extended payload length (7+64).
    *
-   * @return {(RangeError|undefined)} A possible error
+   * @param {Function} cb Callback
    * @private
    */
-  getPayloadLength64() {
+  getPayloadLength64(cb) {
     if (this._bufferedBytes < 8) {
       this._loop = false;
       return;
@@ -15706,38 +17306,42 @@ let Receiver$1 = class Receiver extends Writable {
     // if payload length is greater than this number.
     //
     if (num > Math.pow(2, 53 - 32) - 1) {
-      this._loop = false;
-      return error(
+      const error = this.createError(
         RangeError,
         'Unsupported WebSocket frame: payload length > 2^53 - 1',
         false,
         1009,
         'WS_ERR_UNSUPPORTED_DATA_PAYLOAD_LENGTH'
       );
+
+      cb(error);
+      return;
     }
 
     this._payloadLength = num * Math.pow(2, 32) + buf.readUInt32BE(4);
-    return this.haveLength();
+    this.haveLength(cb);
   }
 
   /**
    * Payload length has been read.
    *
-   * @return {(RangeError|undefined)} A possible error
+   * @param {Function} cb Callback
    * @private
    */
-  haveLength() {
+  haveLength(cb) {
     if (this._payloadLength && this._opcode < 0x08) {
       this._totalPayloadLength += this._payloadLength;
       if (this._totalPayloadLength > this._maxPayload && this._maxPayload > 0) {
-        this._loop = false;
-        return error(
+        const error = this.createError(
           RangeError,
           'Max payload size exceeded',
           false,
           1009,
           'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH'
         );
+
+        cb(error);
+        return;
       }
     }
 
@@ -15764,7 +17368,6 @@ let Receiver$1 = class Receiver extends Writable {
    * Reads data bytes.
    *
    * @param {Function} cb Callback
-   * @return {(Error|RangeError|undefined)} A possible error
    * @private
    */
   getData(cb) {
@@ -15786,7 +17389,10 @@ let Receiver$1 = class Receiver extends Writable {
       }
     }
 
-    if (this._opcode > 0x07) return this.controlMessage(data);
+    if (this._opcode > 0x07) {
+      this.controlMessage(data, cb);
+      return;
+    }
 
     if (this._compressed) {
       this._state = INFLATING;
@@ -15803,7 +17409,7 @@ let Receiver$1 = class Receiver extends Writable {
       this._fragments.push(data);
     }
 
-    return this.dataMessage();
+    this.dataMessage(cb);
   }
 
   /**
@@ -15822,74 +17428,96 @@ let Receiver$1 = class Receiver extends Writable {
       if (buf.length) {
         this._messageLength += buf.length;
         if (this._messageLength > this._maxPayload && this._maxPayload > 0) {
-          return cb(
-            error(
-              RangeError,
-              'Max payload size exceeded',
-              false,
-              1009,
-              'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH'
-            )
+          const error = this.createError(
+            RangeError,
+            'Max payload size exceeded',
+            false,
+            1009,
+            'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH'
           );
+
+          cb(error);
+          return;
         }
 
         this._fragments.push(buf);
       }
 
-      const er = this.dataMessage();
-      if (er) return cb(er);
-
-      this.startLoop(cb);
+      this.dataMessage(cb);
+      if (this._state === GET_INFO) this.startLoop(cb);
     });
   }
 
   /**
    * Handles a data message.
    *
-   * @return {(Error|undefined)} A possible error
+   * @param {Function} cb Callback
    * @private
    */
-  dataMessage() {
-    if (this._fin) {
-      const messageLength = this._messageLength;
-      const fragments = this._fragments;
-
-      this._totalPayloadLength = 0;
-      this._messageLength = 0;
-      this._fragmented = 0;
-      this._fragments = [];
-
-      if (this._opcode === 2) {
-        let data;
-
-        if (this._binaryType === 'nodebuffer') {
-          data = concat(fragments, messageLength);
-        } else if (this._binaryType === 'arraybuffer') {
-          data = toArrayBuffer$1(concat(fragments, messageLength));
-        } else {
-          data = fragments;
-        }
-
-        this.emit('message', data, true);
-      } else {
-        const buf = concat(fragments, messageLength);
-
-        if (!this._skipUTF8Validation && !isValidUTF8(buf)) {
-          this._loop = false;
-          return error(
-            Error,
-            'invalid UTF-8 sequence',
-            true,
-            1007,
-            'WS_ERR_INVALID_UTF8'
-          );
-        }
-
-        this.emit('message', buf, false);
-      }
+  dataMessage(cb) {
+    if (!this._fin) {
+      this._state = GET_INFO;
+      return;
     }
 
-    this._state = GET_INFO;
+    const messageLength = this._messageLength;
+    const fragments = this._fragments;
+
+    this._totalPayloadLength = 0;
+    this._messageLength = 0;
+    this._fragmented = 0;
+    this._fragments = [];
+
+    if (this._opcode === 2) {
+      let data;
+
+      if (this._binaryType === 'nodebuffer') {
+        data = concat(fragments, messageLength);
+      } else if (this._binaryType === 'arraybuffer') {
+        data = toArrayBuffer$1(concat(fragments, messageLength));
+      } else {
+        data = fragments;
+      }
+
+      if (this._allowSynchronousEvents) {
+        this.emit('message', data, true);
+        this._state = GET_INFO;
+      } else {
+        this._state = DEFER_EVENT;
+        setImmediate(() => {
+          this.emit('message', data, true);
+          this._state = GET_INFO;
+          this.startLoop(cb);
+        });
+      }
+    } else {
+      const buf = concat(fragments, messageLength);
+
+      if (!this._skipUTF8Validation && !isValidUTF8(buf)) {
+        const error = this.createError(
+          Error,
+          'invalid UTF-8 sequence',
+          true,
+          1007,
+          'WS_ERR_INVALID_UTF8'
+        );
+
+        cb(error);
+        return;
+      }
+
+      if (this._state === INFLATING || this._allowSynchronousEvents) {
+        this.emit('message', buf, false);
+        this._state = GET_INFO;
+      } else {
+        this._state = DEFER_EVENT;
+        setImmediate(() => {
+          this.emit('message', buf, false);
+          this._state = GET_INFO;
+          this.startLoop(cb);
+        });
+      }
+    }
   }
 
   /**
@@ -15899,85 +17527,99 @@ let Receiver$1 = class Receiver extends Writable {
    * @return {(Error|RangeError|undefined)} A possible error
    * @private
    */
-  controlMessage(data) {
+  controlMessage(data, cb) {
     if (this._opcode === 0x08) {
-      this._loop = false;
-
       if (data.length === 0) {
+        this._loop = false;
         this.emit('conclude', 1005, EMPTY_BUFFER$2);
         this.end();
-      } else if (data.length === 1) {
-        return error(
-          RangeError,
-          'invalid payload length 1',
-          true,
-          1002,
-          'WS_ERR_INVALID_CONTROL_PAYLOAD_LENGTH'
-        );
       } else {
         const code = data.readUInt16BE(0);
 
         if (!isValidStatusCode$1(code)) {
-          return error(
+          const error = this.createError(
             RangeError,
             `invalid status code ${code}`,
             true,
             1002,
             'WS_ERR_INVALID_CLOSE_CODE'
           );
+
+          cb(error);
+          return;
         }
 
-        const buf = data.slice(2);
+        const buf = new FastBuffer(
+          data.buffer,
+          data.byteOffset + 2,
+          data.length - 2
+        );
 
         if (!this._skipUTF8Validation && !isValidUTF8(buf)) {
-          return error(
+          const error = this.createError(
             Error,
             'invalid UTF-8 sequence',
             true,
             1007,
             'WS_ERR_INVALID_UTF8'
           );
+
+          cb(error);
+          return;
         }
 
+        this._loop = false;
         this.emit('conclude', code, buf);
         this.end();
       }
-    } else if (this._opcode === 0x09) {
-      this.emit('ping', data);
-    } else {
-      this.emit('pong', data);
+
+      this._state = GET_INFO;
+      return;
     }
 
-    this._state = GET_INFO;
+    if (this._allowSynchronousEvents) {
+      this.emit(this._opcode === 0x09 ? 'ping' : 'pong', data);
+      this._state = GET_INFO;
+    } else {
+      this._state = DEFER_EVENT;
+      setImmediate(() => {
+        this.emit(this._opcode === 0x09 ? 'ping' : 'pong', data);
+        this._state = GET_INFO;
+        this.startLoop(cb);
+      });
+    }
+  }
+
+  /**
+   * Builds an error object.
+   *
+   * @param {function(new:Error|RangeError)} ErrorCtor The error constructor
+   * @param {String} message The error message
+   * @param {Boolean} prefix Specifies whether or not to add a default prefix to
+   *     `message`
+   * @param {Number} statusCode The status code
+   * @param {String} errorCode The exposed error code
+   * @return {(Error|RangeError)} The error
+   * @private
+   */
+  createError(ErrorCtor, message, prefix, statusCode, errorCode) {
+    this._loop = false;
+    this._errored = true;
+
+    const err = new ErrorCtor(
+      prefix ? `Invalid WebSocket frame: ${message}` : message
+    );
+
+    Error.captureStackTrace(err, this.createError);
+    err.code = errorCode;
+    err[kStatusCode$1] = statusCode;
+    return err;
   }
 };
 
 var receiver = Receiver$1;
 
-/**
- * Builds an error object.
- *
- * @param {function(new:Error|RangeError)} ErrorCtor The error constructor
- * @param {String} message The error message
- * @param {Boolean} prefix Specifies whether or not to add a default prefix to
- *     `message`
- * @param {Number} statusCode The status code
- * @param {String} errorCode The exposed error code
- * @return {(Error|RangeError)} The error
- * @private
- */
-function error(ErrorCtor, message, prefix, statusCode, errorCode) {
-  const err = new ErrorCtor(
-    prefix ? `Invalid WebSocket frame: ${message}` : message
-  );
-
-  Error.captureStackTrace(err, error);
-  err.code = errorCode;
-  err[kStatusCode$1] = statusCode;
-  return err;
-}
-
-/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^net|tls$" }] */
+/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^Duplex" }] */
 const { randomFillSync } = require$$2;
 
 const PerMessageDeflate$2 = permessageDeflate;
@@ -15987,6 +17629,9 @@ const { mask: applyMask, toBuffer: toBuffer$1 } = bufferUtilExports;
 
 const kByteLength = Symbol('kByteLength');
 const maskBuffer = Buffer.alloc(4);
+const RANDOM_POOL_SIZE = 8 * 1024;
+let randomPool;
+let randomPoolPointer = RANDOM_POOL_SIZE;
 
 /**
  * HyBi Sender implementation.
@@ -15995,7 +17640,7 @@ let Sender$1 = class Sender {
   /**
    * Creates a Sender instance.
    *
-   * @param {(net.Socket|tls.Socket)} socket The connection socket
+   * @param {Duplex} socket The connection socket
    * @param {Object} [extensions] An object containing the negotiated extensions
    * @param {Function} [generateMask] The function used to generate the masking
    *     key
@@ -16051,7 +17696,24 @@ let Sender$1 = class Sender {
       if (options.generateMask) {
         options.generateMask(mask);
       } else {
-        randomFillSync(mask, 0, 4);
+        if (randomPoolPointer === RANDOM_POOL_SIZE) {
+          /* istanbul ignore else  */
+          if (randomPool === undefined) {
+            //
+            // This is lazily initialized because server-sent frames must not
+            // be masked so it may never be used.
+            //
+            randomPool = Buffer.alloc(RANDOM_POOL_SIZE);
+          }
+
+          randomFillSync(randomPool, 0, RANDOM_POOL_SIZE);
+          randomPoolPointer = 0;
+        }
+
+        mask[0] = randomPool[randomPoolPointer++];
+        mask[1] = randomPool[randomPoolPointer++];
+        mask[2] = randomPool[randomPoolPointer++];
+        mask[3] = randomPool[randomPoolPointer++];
       }
 
       skipMasking = (mask[0] | mask[1] | mask[2] | mask[3]) === 0;
@@ -16944,11 +18606,11 @@ function format$1(extensions) {
 
 var extension$1 = { format: format$1, parse: parse$3 };
 
-/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^Readable$" }] */
+/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^Duplex|Readable$", "caughtErrors": "none" }] */
 
-const EventEmitter$1 = require$$0$2;
-const https = require$$1$3;
-const http$1 = require$$0$4;
+const EventEmitter$1 = require$$0$3;
+const https = require$$1$4;
+const http$1 = require$$0$6;
 const net = require$$3;
 const tls$2 = require$$4;
 const { randomBytes, createHash: createHash$1 } = require$$2;
@@ -17027,6 +18689,7 @@ let WebSocket$4 = class WebSocket extends EventEmitter$1 {
 
       initAsClient(this, address, protocols, options);
     } else {
+      this._autoPong = options.autoPong;
       this._isServer = true;
     }
   }
@@ -17132,10 +18795,12 @@ let WebSocket$4 = class WebSocket extends EventEmitter$1 {
   /**
    * Set up the socket and the internal resources.
    *
-   * @param {(net.Socket|tls.Socket)} socket The network socket between the
-   *     server and client
+   * @param {Duplex} socket The network socket between the server and client
    * @param {Buffer} head The first packet of the upgraded stream
    * @param {Object} options Options object
+   * @param {Boolean} [options.allowSynchronousEvents=false] Specifies whether
+   *     any of the `'message'`, `'ping'`, and `'pong'` events can be emitted
+   *     multiple times in the same tick
    * @param {Function} [options.generateMask] The function used to generate the
    *     masking key
    * @param {Number} [options.maxPayload=0] The maximum allowed message size
@@ -17145,6 +18810,7 @@ let WebSocket$4 = class WebSocket extends EventEmitter$1 {
    */
   setSocket(socket, head, options) {
     const receiver = new Receiver({
+      allowSynchronousEvents: options.allowSynchronousEvents,
       binaryType: this.binaryType,
       extensions: this._extensions,
       isServer: this._isServer,
@@ -17166,8 +18832,11 @@ let WebSocket$4 = class WebSocket extends EventEmitter$1 {
     receiver.on('ping', receiverOnPing);
     receiver.on('pong', receiverOnPong);
 
-    socket.setTimeout(0);
-    socket.setNoDelay();
+    //
+    // These methods may not be available if `socket` is just a `Duplex`.
+    //
+    if (socket.setTimeout) socket.setTimeout(0);
+    if (socket.setNoDelay) socket.setNoDelay();
 
     if (head.length > 0) socket.unshift(head);
 
@@ -17225,7 +18894,8 @@ let WebSocket$4 = class WebSocket extends EventEmitter$1 {
     if (this.readyState === WebSocket.CLOSED) return;
     if (this.readyState === WebSocket.CONNECTING) {
       const msg = 'WebSocket was closed before the connection was established';
-      return abortHandshake$1(this, this._req, msg);
+      abortHandshake$1(this, this._req, msg);
+      return;
     }
 
     if (this.readyState === WebSocket.CLOSING) {
@@ -17420,7 +19090,8 @@ let WebSocket$4 = class WebSocket extends EventEmitter$1 {
     if (this.readyState === WebSocket.CLOSED) return;
     if (this.readyState === WebSocket.CONNECTING) {
       const msg = 'WebSocket was closed before the connection was established';
-      return abortHandshake$1(this, this._req, msg);
+      abortHandshake$1(this, this._req, msg);
+      return;
     }
 
     if (this._socket) {
@@ -17557,6 +19228,13 @@ var websocket$1 = WebSocket$4;
  * @param {(String|URL)} address The URL to which to connect
  * @param {Array} protocols The subprotocols
  * @param {Object} [options] Connection options
+ * @param {Boolean} [options.allowSynchronousEvents=true] Specifies whether any
+ *     of the `'message'`, `'ping'`, and `'pong'` events can be emitted multiple
+ *     times in the same tick
+ * @param {Boolean} [options.autoPong=true] Specifies whether or not to
+ *     automatically send a pong in response to a ping
+ * @param {Function} [options.finishRequest] A function which can be used to
+ *     customize the headers of each http request before it is sent
  * @param {Boolean} [options.followRedirects=false] Whether or not to follow
  *     redirects
  * @param {Function} [options.generateMask] The function used to generate the
@@ -17579,6 +19257,8 @@ var websocket$1 = WebSocket$4;
  */
 function initAsClient(websocket, address, protocols, options) {
   const opts = {
+    allowSynchronousEvents: true,
+    autoPong: true,
     protocolVersion: protocolVersions[1],
     maxPayload: 100 * 1024 * 1024,
     skipUTF8Validation: false,
@@ -17586,7 +19266,6 @@ function initAsClient(websocket, address, protocols, options) {
     followRedirects: false,
     maxRedirects: 10,
     ...options,
-    createConnection: undefined,
     socketPath: undefined,
     hostname: undefined,
     protocol: undefined,
@@ -17596,6 +19275,8 @@ function initAsClient(websocket, address, protocols, options) {
     path: undefined,
     port: undefined
   };
+
+  websocket._autoPong = opts.autoPong;
 
   if (!protocolVersions.includes(opts.protocolVersion)) {
     throw new RangeError(
@@ -17608,16 +19289,21 @@ function initAsClient(websocket, address, protocols, options) {
 
   if (address instanceof URL$1) {
     parsedUrl = address;
-    websocket._url = address.href;
   } else {
     try {
       parsedUrl = new URL$1(address);
     } catch (e) {
       throw new SyntaxError(`Invalid URL: ${address}`);
     }
-
-    websocket._url = address;
   }
+
+  if (parsedUrl.protocol === 'http:') {
+    parsedUrl.protocol = 'ws:';
+  } else if (parsedUrl.protocol === 'https:') {
+    parsedUrl.protocol = 'wss:';
+  }
+
+  websocket._url = parsedUrl.href;
 
   const isSecure = parsedUrl.protocol === 'wss:';
   const isIpcUrl = parsedUrl.protocol === 'ws+unix:';
@@ -17625,7 +19311,8 @@ function initAsClient(websocket, address, protocols, options) {
 
   if (parsedUrl.protocol !== 'ws:' && !isSecure && !isIpcUrl) {
     invalidUrlMessage =
-      'The URL\'s protocol must be one of "ws:", "wss:", or "ws+unix:"';
+      'The URL\'s protocol must be one of "ws:", "wss:", ' +
+      '"http:", "https", or "ws+unix:"';
   } else if (isIpcUrl && !parsedUrl.pathname) {
     invalidUrlMessage = "The URL's pathname is empty";
   } else if (parsedUrl.hash) {
@@ -17649,7 +19336,8 @@ function initAsClient(websocket, address, protocols, options) {
   const protocolSet = new Set();
   let perMessageDeflate;
 
-  opts.createConnection = isSecure ? tlsConnect : netConnect;
+  opts.createConnection =
+    opts.createConnection || (isSecure ? tlsConnect : netConnect);
   opts.defaultPort = opts.defaultPort || defaultPort;
   opts.port = parsedUrl.port || defaultPort;
   opts.host = parsedUrl.hostname.startsWith('[')
@@ -17739,8 +19427,8 @@ function initAsClient(websocket, address, protocols, options) {
           ? opts.socketPath === websocket._originalHostOrSocketPath
           : false
         : websocket._originalIpc
-        ? false
-        : parsedUrl.host === websocket._originalHostOrSocketPath;
+          ? false
+          : parsedUrl.host === websocket._originalHostOrSocketPath;
 
       if (!isSameHost || (websocket._originalSecure && !isSecure)) {
         //
@@ -17845,7 +19533,9 @@ function initAsClient(websocket, address, protocols, options) {
 
     req = websocket._req = null;
 
-    if (res.headers.upgrade.toLowerCase() !== 'websocket') {
+    const upgrade = res.headers.upgrade;
+
+    if (upgrade === undefined || upgrade.toLowerCase() !== 'websocket') {
       abortHandshake$1(websocket, socket, 'Invalid Upgrade header');
       return;
     }
@@ -17924,13 +19614,18 @@ function initAsClient(websocket, address, protocols, options) {
     }
 
     websocket.setSocket(socket, head, {
+      allowSynchronousEvents: opts.allowSynchronousEvents,
       generateMask: opts.generateMask,
       maxPayload: opts.maxPayload,
       skipUTF8Validation: opts.skipUTF8Validation
     });
   });
 
-  req.end();
+  if (opts.finishRequest) {
+    opts.finishRequest(req, websocket);
+  } else {
+    req.end();
+  }
 }
 
 /**
@@ -18039,7 +19734,7 @@ function sendAfterClose(websocket, data, cb) {
       `WebSocket is not open: readyState ${websocket.readyState} ` +
         `(${readyStates[websocket.readyState]})`
     );
-    cb(err);
+    process.nextTick(cb, err);
   }
 }
 
@@ -18130,7 +19825,7 @@ function receiverOnMessage(data, isBinary) {
 function receiverOnPing(data) {
   const websocket = this[kWebSocket$1];
 
-  websocket.pong(data, !websocket._isServer, NOOP);
+  if (websocket._autoPong) websocket.pong(data, !this._isServer, NOOP);
   websocket.emit('ping', data);
 }
 
@@ -18155,7 +19850,7 @@ function resume(stream) {
 }
 
 /**
- * The listener of the `net.Socket` `'close'` event.
+ * The listener of the socket `'close'` event.
  *
  * @private
  */
@@ -18206,7 +19901,7 @@ function socketOnClose() {
 }
 
 /**
- * The listener of the `net.Socket` `'data'` event.
+ * The listener of the socket `'data'` event.
  *
  * @param {Buffer} chunk A chunk of data
  * @private
@@ -18218,7 +19913,7 @@ function socketOnData(chunk) {
 }
 
 /**
- * The listener of the `net.Socket` `'end'` event.
+ * The listener of the socket `'end'` event.
  *
  * @private
  */
@@ -18231,7 +19926,7 @@ function socketOnEnd() {
 }
 
 /**
- * The listener of the `net.Socket` `'error'` event.
+ * The listener of the socket `'error'` event.
  *
  * @private
  */
@@ -18247,7 +19942,7 @@ function socketOnError$1() {
   }
 }
 
-const { Duplex } = require$$0$3;
+const { Duplex } = require$$0$5;
 
 /**
  * Emits the `'close'` event on a stream.
@@ -18466,10 +20161,10 @@ function parse$1(header) {
 
 var subprotocol$1 = { parse: parse$1 };
 
-/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^net|tls|https$" }] */
+/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^Duplex$", "caughtErrors": "none" }] */
 
-const EventEmitter = require$$0$2;
-const http = require$$0$4;
+const EventEmitter = require$$0$3;
+const http = require$$0$6;
 const { createHash } = require$$2;
 
 const extension = extension$1;
@@ -18494,6 +20189,11 @@ class WebSocketServer extends EventEmitter {
    * Create a `WebSocketServer` instance.
    *
    * @param {Object} options Configuration options
+   * @param {Boolean} [options.allowSynchronousEvents=true] Specifies whether
+   *     any of the `'message'`, `'ping'`, and `'pong'` events can be emitted
+   *     multiple times in the same tick
+   * @param {Boolean} [options.autoPong=true] Specifies whether or not to
+   *     automatically send a pong in response to a ping
    * @param {Number} [options.backlog=511] The maximum length of the queue of
    *     pending connections
    * @param {Boolean} [options.clientTracking=true] Specifies whether or not to
@@ -18520,6 +20220,8 @@ class WebSocketServer extends EventEmitter {
     super();
 
     options = {
+      allowSynchronousEvents: true,
+      autoPong: true,
       maxPayload: 100 * 1024 * 1024,
       skipUTF8Validation: false,
       perMessageDeflate: false,
@@ -18684,8 +20386,7 @@ class WebSocketServer extends EventEmitter {
    * Handle a HTTP Upgrade request.
    *
    * @param {http.IncomingMessage} req The request object
-   * @param {(net.Socket|tls.Socket)} socket The network socket between the
-   *     server and client
+   * @param {Duplex} socket The network socket between the server and client
    * @param {Buffer} head The first packet of the upgraded stream
    * @param {Function} cb Callback
    * @public
@@ -18694,6 +20395,7 @@ class WebSocketServer extends EventEmitter {
     socket.on('error', socketOnError);
 
     const key = req.headers['sec-websocket-key'];
+    const upgrade = req.headers.upgrade;
     const version = +req.headers['sec-websocket-version'];
 
     if (req.method !== 'GET') {
@@ -18702,13 +20404,13 @@ class WebSocketServer extends EventEmitter {
       return;
     }
 
-    if (req.headers.upgrade.toLowerCase() !== 'websocket') {
+    if (upgrade === undefined || upgrade.toLowerCase() !== 'websocket') {
       const message = 'Invalid Upgrade header';
       abortHandshakeOrEmitwsClientError(this, req, socket, 400, message);
       return;
     }
 
-    if (!key || !keyRegex.test(key)) {
+    if (key === undefined || !keyRegex.test(key)) {
       const message = 'Missing or invalid Sec-WebSocket-Key header';
       abortHandshakeOrEmitwsClientError(this, req, socket, 400, message);
       return;
@@ -18809,8 +20511,7 @@ class WebSocketServer extends EventEmitter {
    * @param {String} key The value of the `Sec-WebSocket-Key` header
    * @param {Set} protocols The subprotocols
    * @param {http.IncomingMessage} req The request object
-   * @param {(net.Socket|tls.Socket)} socket The network socket between the
-   *     server and client
+   * @param {Duplex} socket The network socket between the server and client
    * @param {Buffer} head The first packet of the upgraded stream
    * @param {Function} cb Callback
    * @throws {Error} If called more than once with the same socket
@@ -18842,7 +20543,7 @@ class WebSocketServer extends EventEmitter {
       `Sec-WebSocket-Accept: ${digest}`
     ];
 
-    const ws = new this.options.WebSocket(null);
+    const ws = new this.options.WebSocket(null, undefined, this.options);
 
     if (protocols.size) {
       //
@@ -18876,6 +20577,7 @@ class WebSocketServer extends EventEmitter {
     socket.removeListener('error', socketOnError);
 
     ws.setSocket(socket, head, {
+      allowSynchronousEvents: this.options.allowSynchronousEvents,
       maxPayload: this.options.maxPayload,
       skipUTF8Validation: this.options.skipUTF8Validation
     });
@@ -18940,7 +20642,7 @@ function socketOnError() {
 /**
  * Close the connection when preconditions are not fulfilled.
  *
- * @param {(net.Socket|tls.Socket)} socket The socket of the upgrade request
+ * @param {Duplex} socket The socket of the upgrade request
  * @param {Number} code The HTTP response status code
  * @param {String} [message] The HTTP response body
  * @param {Object} [headers] Additional HTTP response headers
@@ -18981,7 +20683,7 @@ function abortHandshake(socket, code, message, headers) {
  *
  * @param {WebSocketServer} server The WebSocket server
  * @param {http.IncomingMessage} req The request object
- * @param {(net.Socket|tls.Socket)} socket The socket of the upgrade request
+ * @param {Duplex} socket The socket of the upgrade request
  * @param {Number} code The HTTP response status code
  * @param {String} message The HTTP response body
  * @private
@@ -19493,18 +21195,18 @@ var libExports = lib$1.exports;
 
 Object.defineProperty(server, "__esModule", { value: true });
 server.Server = server.BaseServer = void 0;
-const qs = require$$1$2;
+const qs = require$$1$3;
 const url_1 = require$$3$1;
 const base64id = base64idExports;
 const transports_1 = transports;
-const events_1$2 = require$$0$2;
+const events_1$2 = require$$0$3;
 const socket_1 = socket$1;
-const debug_1$5 = srcExports;
+const debug_1$6 = srcExports$3;
 const cookie_1 = cookie;
 const ws_1 = ws;
 const webtransport_1 = webtransport;
 const engine_io_parser_1 = cjs$1;
-const debug$6 = (0, debug_1$5.default)("engine");
+const debug$7 = (0, debug_1$6.default)("engine");
 const kResponseHeaders = Symbol("responseHeaders");
 function parseSessionId(data) {
     try {
@@ -19520,7 +21222,6 @@ class BaseServer extends events_1$2.EventEmitter {
      * Server constructor.
      *
      * @param {Object} opts - options
-     * @api public
      */
     constructor(opts = {}) {
         super();
@@ -19533,7 +21234,7 @@ class BaseServer extends events_1$2.EventEmitter {
             pingInterval: 25000,
             upgradeTimeout: 10000,
             maxHttpBufferSize: 1e6,
-            transports: ["polling", "websocket"],
+            transports: ["polling", "websocket"], // WebTransport is disabled by default
             allowUpgrades: true,
             httpCompression: {
                 threshold: 1024,
@@ -19577,7 +21278,6 @@ class BaseServer extends events_1$2.EventEmitter {
      * Returns a list of available transports for upgrade given a certain transport.
      *
      * @return {Array}
-     * @api public
      */
     upgrades(transport) {
         if (!this.opts.allowUpgrades)
@@ -19587,9 +21287,10 @@ class BaseServer extends events_1$2.EventEmitter {
     /**
      * Verifies a request.
      *
-     * @param {http.IncomingMessage}
-     * @return {Boolean} whether the request is valid
-     * @api private
+     * @param {EngineRequest} req
+     * @param upgrade - whether it's an upgrade request
+     * @param fn
+     * @protected
      */
     verify(req, upgrade, fn) {
         // transport check
@@ -19597,7 +21298,7 @@ class BaseServer extends events_1$2.EventEmitter {
         // WebTransport does not go through the verify() method, see the onWebTransportSession() method
         if (!~this.opts.transports.indexOf(transport) ||
             transport === "webtransport") {
-            debug$6('unknown transport "%s"', transport);
+            debug$7('unknown transport "%s"', transport);
             return fn(Server$1.errors.UNKNOWN_TRANSPORT, { transport });
         }
         // 'Origin' header check
@@ -19605,7 +21306,7 @@ class BaseServer extends events_1$2.EventEmitter {
         if (isOriginInvalid) {
             const origin = req.headers.origin;
             req.headers.origin = null;
-            debug$6("origin header invalid");
+            debug$7("origin header invalid");
             return fn(Server$1.errors.BAD_REQUEST, {
                 name: "INVALID_ORIGIN",
                 origin,
@@ -19615,14 +21316,14 @@ class BaseServer extends events_1$2.EventEmitter {
         const sid = req._query.sid;
         if (sid) {
             if (!this.clients.hasOwnProperty(sid)) {
-                debug$6('unknown sid "%s"', sid);
+                debug$7('unknown sid "%s"', sid);
                 return fn(Server$1.errors.UNKNOWN_SID, {
                     sid,
                 });
             }
             const previousTransport = this.clients[sid].transport.name;
             if (!upgrade && previousTransport !== transport) {
-                debug$6("bad request: unexpected transport without upgrade");
+                debug$7("bad request: unexpected transport without upgrade");
                 return fn(Server$1.errors.BAD_REQUEST, {
                     name: "TRANSPORT_MISMATCH",
                     transport,
@@ -19638,7 +21339,7 @@ class BaseServer extends events_1$2.EventEmitter {
                 });
             }
             if (transport === "websocket" && !upgrade) {
-                debug$6("invalid transport upgrade");
+                debug$7("invalid transport upgrade");
                 return fn(Server$1.errors.BAD_REQUEST, {
                     name: "TRANSPORT_HANDSHAKE_ERROR",
                 });
@@ -19679,11 +21380,11 @@ class BaseServer extends events_1$2.EventEmitter {
      */
     _applyMiddlewares(req, res, callback) {
         if (this.middlewares.length === 0) {
-            debug$6("no middleware to apply, skipping");
+            debug$7("no middleware to apply, skipping");
             return callback();
         }
         const apply = (i) => {
-            debug$6("applying middleware n°%d", i + 1);
+            debug$7("applying middleware n°%d", i + 1);
             this.middlewares[i](req, res, (err) => {
                 if (err) {
                     return callback(err);
@@ -19700,11 +21401,9 @@ class BaseServer extends events_1$2.EventEmitter {
     }
     /**
      * Closes all clients.
-     *
-     * @api public
      */
     close() {
-        debug$6("closing all open clients");
+        debug$7("closing all open clients");
         for (let i in this.clients) {
             if (this.clients.hasOwnProperty(i)) {
                 this.clients[i].close(true);
@@ -19717,8 +21416,7 @@ class BaseServer extends events_1$2.EventEmitter {
      * generate a socket id.
      * Overwrite this method to generate your custom socket id
      *
-     * @param {Object} request object
-     * @api public
+     * @param {IncomingMessage} req - the request object
      */
     generateId(req) {
         return base64id.generateId();
@@ -19726,16 +21424,16 @@ class BaseServer extends events_1$2.EventEmitter {
     /**
      * Handshakes a new client.
      *
-     * @param {String} transport name
-     * @param {Object} request object
+     * @param {String} transportName
+     * @param {Object} req - the request object
      * @param {Function} closeConnection
      *
-     * @api protected
+     * @protected
      */
     async handshake(transportName, req, closeConnection) {
         const protocol = req._query.EIO === "4" ? 4 : 3; // 3rd revision by default
         if (protocol === 3 && !this.opts.allowEIO3) {
-            debug$6("unsupported protocol version");
+            debug$7("unsupported protocol version");
             this.emit("connection_error", {
                 req,
                 code: Server$1.errors.UNSUPPORTED_PROTOCOL_VERSION,
@@ -19752,7 +21450,7 @@ class BaseServer extends events_1$2.EventEmitter {
             id = await this.generateId(req);
         }
         catch (e) {
-            debug$6("error while generating an id");
+            debug$7("error while generating an id");
             this.emit("connection_error", {
                 req,
                 code: Server$1.errors.BAD_REQUEST,
@@ -19765,7 +21463,7 @@ class BaseServer extends events_1$2.EventEmitter {
             closeConnection(Server$1.errors.BAD_REQUEST);
             return;
         }
-        debug$6('handshaking client "%s"', id);
+        debug$7('handshaking client "%s"', id);
         try {
             var transport = this.createTransport(transportName, req);
             if ("polling" === transportName) {
@@ -19777,7 +21475,7 @@ class BaseServer extends events_1$2.EventEmitter {
             }
         }
         catch (e) {
-            debug$6('error handshaking to transport "%s"', transportName);
+            debug$7('error handshaking to transport "%s"', transportName);
             this.emit("connection_error", {
                 req,
                 code: Server$1.errors.BAD_REQUEST,
@@ -19816,13 +21514,13 @@ class BaseServer extends events_1$2.EventEmitter {
     }
     async onWebTransportSession(session) {
         const timeout = setTimeout(() => {
-            debug$6("the client failed to establish a bidirectional stream in the given period");
+            debug$7("the client failed to establish a bidirectional stream in the given period");
             session.close();
         }, this.opts.upgradeTimeout);
         const streamReader = session.incomingBidirectionalStreams.getReader();
         const result = await streamReader.read();
         if (result.done) {
-            debug$6("session is closed");
+            debug$7("session is closed");
             return;
         }
         const stream = result.value;
@@ -19831,19 +21529,19 @@ class BaseServer extends events_1$2.EventEmitter {
         // reading the first packet of the stream
         const { value, done } = await reader.read();
         if (done) {
-            debug$6("stream is closed");
+            debug$7("stream is closed");
             return;
         }
         clearTimeout(timeout);
         if (value.type !== "open") {
-            debug$6("invalid WebTransport handshake");
+            debug$7("invalid WebTransport handshake");
             return session.close();
         }
         if (value.data === undefined) {
             const transport = new webtransport_1.WebTransport(session, stream, reader);
             // note: we cannot use "this.generateId()", because there is no "req" argument
             const id = base64id.generateId();
-            debug$6('handshaking client "%s" (WebTransport)', id);
+            debug$7('handshaking client "%s" (WebTransport)', id);
             const socket = new socket_1.Socket(id, this, transport, null, 4);
             this.clients[id] = socket;
             this.clientsCount++;
@@ -19856,26 +21554,26 @@ class BaseServer extends events_1$2.EventEmitter {
         }
         const sid = parseSessionId(value.data);
         if (!sid) {
-            debug$6("invalid WebTransport handshake");
+            debug$7("invalid WebTransport handshake");
             return session.close();
         }
         const client = this.clients[sid];
         if (!client) {
-            debug$6("upgrade attempt for closed client");
+            debug$7("upgrade attempt for closed client");
             session.close();
         }
         else if (client.upgrading) {
-            debug$6("transport has already been trying to upgrade");
+            debug$7("transport has already been trying to upgrade");
             session.close();
         }
         else if (client.upgraded) {
-            debug$6("transport had already been upgraded");
+            debug$7("transport had already been upgraded");
             session.close();
         }
         else {
-            debug$6("upgrading existing transport");
+            debug$7("upgrading existing transport");
             const transport = new webtransport_1.WebTransport(session, stream, reader);
-            client.maybeUpgrade(transport);
+            client._maybeUpgrade(transport);
         }
     }
 }
@@ -19928,11 +21626,14 @@ class WebSocketResponse {
         this.socket.destroy();
     }
 }
+/**
+ * An Engine.IO server based on Node.js built-in HTTP server and the `ws` package for WebSocket connections.
+ */
 let Server$1 = class Server extends BaseServer {
     /**
      * Initialize websocket server
      *
-     * @api protected
+     * @protected
      */
     init() {
         if (!~this.opts.transports.indexOf("websocket"))
@@ -19956,7 +21657,7 @@ let Server$1 = class Server extends BaseServer {
                     this.emit("initial_headers", additionalHeaders, req);
                 }
                 this.emit("headers", additionalHeaders, req);
-                debug$6("writing headers: %j", additionalHeaders);
+                debug$7("writing headers: %j", additionalHeaders);
                 Object.keys(additionalHeaders).forEach((key) => {
                     headersArray.push(`${key}: ${additionalHeaders[key]}`);
                 });
@@ -19965,7 +21666,7 @@ let Server$1 = class Server extends BaseServer {
     }
     cleanup() {
         if (this.ws) {
-            debug$6("closing webSocketServer");
+            debug$7("closing webSocketServer");
             this.ws.close();
             // don't delete this.ws because it can be used again if the http server starts listening again
         }
@@ -19973,12 +21674,12 @@ let Server$1 = class Server extends BaseServer {
     /**
      * Prepares a request by processing the query string.
      *
-     * @api private
+     * @private
      */
     prepare(req) {
         // try to leverage pre-existing `req._query` (e.g: from connect)
         if (!req._query) {
-            req._query = ~req.url.indexOf("?") ? qs.parse((0, url_1.parse)(req.url).query) : {};
+            req._query = (~req.url.indexOf("?") ? qs.parse((0, url_1.parse)(req.url).query) : {});
         }
     }
     createTransport(transportName, req) {
@@ -19987,14 +21688,12 @@ let Server$1 = class Server extends BaseServer {
     /**
      * Handles an Engine.IO HTTP request.
      *
-     * @param {IncomingMessage} req
+     * @param {EngineRequest} req
      * @param {ServerResponse} res
-     * @api public
      */
     handleRequest(req, res) {
-        debug$6('handling "%s" http request "%s"', req.method, req.url);
+        debug$7('handling "%s" http request "%s"', req.method, req.url);
         this.prepare(req);
-        // @ts-ignore
         req.res = res;
         const callback = (errorCode, errorContext) => {
             if (errorCode !== undefined) {
@@ -20007,15 +21706,12 @@ let Server$1 = class Server extends BaseServer {
                 abortRequest(res, errorCode, errorContext);
                 return;
             }
-            // @ts-ignore
             if (req._query.sid) {
-                debug$6("setting new request for existing client");
-                // @ts-ignore
+                debug$7("setting new request for existing client");
                 this.clients[req._query.sid].transport.onRequest(req);
             }
             else {
                 const closeConnection = (errorCode, errorContext) => abortRequest(res, errorCode, errorContext);
-                // @ts-ignore
                 this.handshake(req._query.transport, req, closeConnection);
             }
         };
@@ -20030,8 +21726,6 @@ let Server$1 = class Server extends BaseServer {
     }
     /**
      * Handles an Engine.IO HTTP Upgrade.
-     *
-     * @api public
      */
     handleUpgrade(req, socket, upgradeHead) {
         this.prepare(req);
@@ -20070,13 +21764,13 @@ let Server$1 = class Server extends BaseServer {
      * Called upon a ws.io connection.
      *
      * @param {ws.Socket} websocket
-     * @api private
+     * @private
      */
     onWebSocket(req, socket, websocket) {
         websocket.on("error", onUpgradeError);
         if (transports_1.default[req._query.transport] !== undefined &&
             !transports_1.default[req._query.transport].prototype.handlesUpgrades) {
-            debug$6("transport doesnt handle upgraded requests");
+            debug$7("transport doesnt handle upgraded requests");
             websocket.close();
             return;
         }
@@ -20087,24 +21781,24 @@ let Server$1 = class Server extends BaseServer {
         if (id) {
             const client = this.clients[id];
             if (!client) {
-                debug$6("upgrade attempt for closed client");
+                debug$7("upgrade attempt for closed client");
                 websocket.close();
             }
             else if (client.upgrading) {
-                debug$6("transport has already been trying to upgrade");
+                debug$7("transport has already been trying to upgrade");
                 websocket.close();
             }
             else if (client.upgraded) {
-                debug$6("transport had already been upgraded");
+                debug$7("transport had already been upgraded");
                 websocket.close();
             }
             else {
-                debug$6("upgrading existing transport");
+                debug$7("upgrading existing transport");
                 // transport error handling takes over
                 websocket.removeListener("error", onUpgradeError);
                 const transport = this.createTransport(req._query.transport, req);
                 transport.perMessageDeflate = this.opts.perMessageDeflate;
-                client.maybeUpgrade(transport);
+                client._maybeUpgrade(transport);
             }
         }
         else {
@@ -20112,7 +21806,7 @@ let Server$1 = class Server extends BaseServer {
             this.handshake(req._query.transport, req, closeConnection);
         }
         function onUpgradeError() {
-            debug$6("websocket error before upgrade");
+            debug$7("websocket error before upgrade");
             // websocket.close() not needed
         }
     }
@@ -20121,7 +21815,6 @@ let Server$1 = class Server extends BaseServer {
      *
      * @param {http.Server} server
      * @param {Object} options
-     * @api public
      */
     attach(server, options = {}) {
         const path = this._computePath(options);
@@ -20138,7 +21831,7 @@ let Server$1 = class Server extends BaseServer {
         // add request handler
         server.on("request", (req, res) => {
             if (check(req)) {
-                debug$6('intercepting request for path "%s"', path);
+                debug$7('intercepting request for path "%s"', path);
                 this.handleRequest(req, res);
             }
             else {
@@ -20163,7 +21856,7 @@ let Server$1 = class Server extends BaseServer {
                         // @ts-ignore
                         if (socket.writable && socket.bytesWritten <= 0) {
                             socket.on("error", (e) => {
-                                debug$6("error while destroying upgrade: %s", e.message);
+                                debug$7("error while destroying upgrade: %s", e.message);
                             });
                             return socket.end();
                         }
@@ -20181,7 +21874,7 @@ server.Server = Server$1;
  * @param errorCode - the error code
  * @param errorContext - additional error context
  *
- * @api private
+ * @private
  */
 function abortRequest(res, errorCode, errorContext) {
     const statusCode = errorCode === Server$1.errors.FORBIDDEN ? 403 : 400;
@@ -20200,12 +21893,10 @@ function abortRequest(res, errorCode, errorContext) {
  * @param {net.Socket} socket
  * @param {string} errorCode - the error code
  * @param {object} errorContext - additional error context
- *
- * @api private
  */
 function abortUpgrade(socket, errorCode, errorContext = {}) {
     socket.on("error", () => {
-        debug$6("ignoring error from closed connection");
+        debug$7("ignoring error from closed connection");
     });
     if (socket.writable) {
         const message = errorContext.message || Server$1.errorMessages[errorCode];
@@ -20236,15 +21927,15 @@ function abortUpgrade(socket, errorCode, errorContext = {}) {
  **/
 // prettier-ignore
 const validHdrChars = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, // 0 - 15
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 16 - 31
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 32 - 47
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 48 - 63
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 64 - 79
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 80 - 95
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 96 - 111
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, // 112 - 127
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 128 ...
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -20258,30 +21949,30 @@ function checkInvalidHeaderChar(val) {
     if (val.length < 1)
         return false;
     if (!validHdrChars[val.charCodeAt(0)]) {
-        debug$6('invalid header, index 0, char "%s"', val.charCodeAt(0));
+        debug$7('invalid header, index 0, char "%s"', val.charCodeAt(0));
         return true;
     }
     if (val.length < 2)
         return false;
     if (!validHdrChars[val.charCodeAt(1)]) {
-        debug$6('invalid header, index 1, char "%s"', val.charCodeAt(1));
+        debug$7('invalid header, index 1, char "%s"', val.charCodeAt(1));
         return true;
     }
     if (val.length < 3)
         return false;
     if (!validHdrChars[val.charCodeAt(2)]) {
-        debug$6('invalid header, index 2, char "%s"', val.charCodeAt(2));
+        debug$7('invalid header, index 2, char "%s"', val.charCodeAt(2));
         return true;
     }
     if (val.length < 4)
         return false;
     if (!validHdrChars[val.charCodeAt(3)]) {
-        debug$6('invalid header, index 3, char "%s"', val.charCodeAt(3));
+        debug$7('invalid header, index 3, char "%s"', val.charCodeAt(3));
         return true;
     }
     for (let i = 4; i < val.length; ++i) {
         if (!validHdrChars[val.charCodeAt(i)]) {
-            debug$6('invalid header, index "%i", char "%s"', i, val.charCodeAt(i));
+            debug$7('invalid header, index "%i", char "%s"', i, val.charCodeAt(i));
             return true;
         }
     }
@@ -20297,10 +21988,10 @@ var polling = {};
 Object.defineProperty(polling, "__esModule", { value: true });
 polling.Polling = void 0;
 const transport_1$1 = transport;
-const zlib_1 = require$$1$1;
+const zlib_1 = require$$1$2;
 const accepts = accepts$2;
-const debug_1$4 = srcExports;
-const debug$5 = (0, debug_1$4.default)("engine:polling");
+const debug_1$5 = srcExports$3;
+const debug$6 = (0, debug_1$5.default)("engine:polling");
 const compressionMethods = {
     gzip: zlib_1.createGzip,
     deflate: zlib_1.createDeflate,
@@ -20308,8 +21999,6 @@ const compressionMethods = {
 class Polling extends transport_1$1.Transport {
     /**
      * HTTP polling constructor.
-     *
-     * @api public.
      */
     constructor(req) {
         super(req);
@@ -20317,21 +22006,16 @@ class Polling extends transport_1$1.Transport {
     }
     /**
      * Transport name
-     *
-     * @api public
      */
     get name() {
         return "polling";
-    }
-    get supportsFraming() {
-        return false;
     }
     /**
      * Overrides onRequest.
      *
      * @param req
      *
-     * @api private
+     * @private
      */
     onRequest(req) {
         const res = req.res;
@@ -20351,18 +22035,18 @@ class Polling extends transport_1$1.Transport {
     /**
      * The client sends a request awaiting for us to send data.
      *
-     * @api private
+     * @private
      */
     onPollRequest(req, res) {
         if (this.req) {
-            debug$5("request overlap");
+            debug$6("request overlap");
             // assert: this.res, '.req and .res should be (un)set together'
             this.onError("overlap from client");
             res.writeStatus("500 Internal Server Error");
             res.end();
             return;
         }
-        debug$5("setting request");
+        debug$6("setting request");
         this.req = req;
         this.res = res;
         const onClose = () => {
@@ -20375,17 +22059,17 @@ class Polling extends transport_1$1.Transport {
         req.cleanup = cleanup;
         res.onAborted(onClose);
         this.writable = true;
-        this.emit("drain");
+        this.emit("ready");
         // if we're still writable but had a pending close, trigger an empty send
         if (this.writable && this.shouldClose) {
-            debug$5("triggering empty send to append close packet");
+            debug$6("triggering empty send to append close packet");
             this.send([{ type: "noop" }]);
         }
     }
     /**
      * The client sends a request with data.
      *
-     * @api private
+     * @private
      */
     onDataRequest(req, res) {
         if (this.dataReq) {
@@ -20465,7 +22149,7 @@ class Polling extends transport_1$1.Transport {
     /**
      * Cleanup request.
      *
-     * @api private
+     * @private
      */
     onDataRequestCleanup() {
         this.dataReq = this.dataRes = null;
@@ -20474,13 +22158,13 @@ class Polling extends transport_1$1.Transport {
      * Processes the incoming data payload.
      *
      * @param {String} encoded payload
-     * @api private
+     * @private
      */
     onData(data) {
-        debug$5('received "%s"', data);
+        debug$6('received "%s"', data);
         const callback = (packet) => {
             if ("close" === packet.type) {
-                debug$5("got xhr close packet");
+                debug$6("got xhr close packet");
                 this.onClose();
                 return false;
             }
@@ -20496,7 +22180,7 @@ class Polling extends transport_1$1.Transport {
     /**
      * Overrides onClose.
      *
-     * @api private
+     * @private
      */
     onClose() {
         if (this.writable) {
@@ -20509,12 +22193,12 @@ class Polling extends transport_1$1.Transport {
      * Writes a packet payload.
      *
      * @param {Object} packet
-     * @api private
+     * @private
      */
     send(packets) {
         this.writable = false;
         if (this.shouldClose) {
-            debug$5("appending close packet to payload");
+            debug$6("appending close packet to payload");
             packets.push({ type: "close" });
             this.shouldClose();
             this.shouldClose = null;
@@ -20537,18 +22221,19 @@ class Polling extends transport_1$1.Transport {
      *
      * @param {String} data
      * @param {Object} options
-     * @api private
+     * @private
      */
     write(data, options) {
-        debug$5('writing "%s"', data);
+        debug$6('writing "%s"', data);
         this.doWrite(data, options, () => {
             this.req.cleanup();
+            this.emit("drain");
         });
     }
     /**
      * Performs the write.
      *
-     * @api private
+     * @private
      */
     doWrite(data, options, callback) {
         // explicit UTF-8 is required for pages not served under utf
@@ -20597,10 +22282,10 @@ class Polling extends transport_1$1.Transport {
     /**
      * Compresses data.
      *
-     * @api private
+     * @private
      */
     compress(data, encoding, callback) {
-        debug$5("compressing");
+        debug$6("compressing");
         const buffers = [];
         let nread = 0;
         compressionMethods[encoding](this.httpCompression)
@@ -20617,10 +22302,10 @@ class Polling extends transport_1$1.Transport {
     /**
      * Closes the transport.
      *
-     * @api private
+     * @private
      */
     doClose(fn) {
-        debug$5("closing");
+        debug$6("closing");
         let closeTimeoutTimer;
         const onClose = () => {
             clearTimeout(closeTimeoutTimer);
@@ -20628,16 +22313,16 @@ class Polling extends transport_1$1.Transport {
             this.onClose();
         };
         if (this.writable) {
-            debug$5("transport writable - closing right away");
+            debug$6("transport writable - closing right away");
             this.send([{ type: "close" }]);
             onClose();
         }
         else if (this.discarded) {
-            debug$5("transport discarded - closing right away");
+            debug$6("transport discarded - closing right away");
             onClose();
         }
         else {
-            debug$5("transport not writable - buffering orderly close");
+            debug$6("transport not writable - buffering orderly close");
             this.shouldClose = onClose;
             closeTimeoutTimer = setTimeout(onClose, this.closeTimeout);
         }
@@ -20647,7 +22332,7 @@ class Polling extends transport_1$1.Transport {
      *
      * @param req - request
      * @param {Object} extra headers
-     * @api private
+     * @private
      */
     headers(req, headers) {
         headers = headers || {};
@@ -20669,14 +22354,13 @@ var websocket = {};
 Object.defineProperty(websocket, "__esModule", { value: true });
 websocket.WebSocket = void 0;
 const transport_1 = transport;
-const debug_1$3 = srcExports;
-const debug$4 = (0, debug_1$3.default)("engine:ws");
+const debug_1$4 = srcExports$3;
+const debug$5 = (0, debug_1$4.default)("engine:ws");
 let WebSocket$1 = class WebSocket extends transport_1.Transport {
     /**
      * WebSocket transport
      *
      * @param req
-     * @api public
      */
     constructor(req) {
         super(req);
@@ -20685,33 +22369,21 @@ let WebSocket$1 = class WebSocket extends transport_1.Transport {
     }
     /**
      * Transport name
-     *
-     * @api public
      */
     get name() {
         return "websocket";
     }
     /**
      * Advertise upgrade support.
-     *
-     * @api public
      */
     get handlesUpgrades() {
-        return true;
-    }
-    /**
-     * Advertise framing support.
-     *
-     * @api public
-     */
-    get supportsFraming() {
         return true;
     }
     /**
      * Writes a packet payload.
      *
      * @param {Array} packets
-     * @api private
+     * @private
      */
     send(packets) {
         this.writable = false;
@@ -20722,11 +22394,12 @@ let WebSocket$1 = class WebSocket extends transport_1.Transport {
                 const isBinary = typeof data !== "string";
                 const compress = this.perMessageDeflate &&
                     Buffer.byteLength(data) > this.perMessageDeflate.threshold;
-                debug$4('writing "%s"', data);
+                debug$5('writing "%s"', data);
                 this.socket.send(data, isBinary, compress);
                 if (isLast) {
-                    this.writable = true;
                     this.emit("drain");
+                    this.writable = true;
+                    this.emit("ready");
                 }
             };
             if (packet.options && typeof packet.options.wsPreEncoded === "string") {
@@ -20740,10 +22413,10 @@ let WebSocket$1 = class WebSocket extends transport_1.Transport {
     /**
      * Closes the transport.
      *
-     * @api private
+     * @private
      */
     doClose(fn) {
-        debug$4("closing");
+        debug$5("closing");
         fn && fn();
         // call fn first since socket.end() immediately emits a "close" event
         this.socket.end();
@@ -20761,17 +22434,21 @@ transportsUws.default = {
 
 Object.defineProperty(userver, "__esModule", { value: true });
 userver.uServer = void 0;
-const debug_1$2 = srcExports;
+const debug_1$3 = srcExports$3;
 const server_1 = server;
 const transports_uws_1 = transportsUws;
-const debug$3 = (0, debug_1$2.default)("engine:uws");
+const debug$4 = (0, debug_1$3.default)("engine:uws");
+/**
+ * An Engine.IO server based on the `uWebSockets.js` package.
+ */
+// TODO export it into its own package
 class uServer extends server_1.BaseServer {
     init() { }
     cleanup() { }
     /**
      * Prepares a request by processing the query string.
      *
-     * @api private
+     * @private
      */
     prepare(req, res) {
         req.method = req.getMethod().toUpperCase();
@@ -20786,7 +22463,7 @@ class uServer extends server_1.BaseServer {
             remoteAddress: Buffer.from(res.getRemoteAddressAsText()).toString(),
         };
         res.onAborted(() => {
-            debug$3("response has been aborted");
+            debug$4("response has been aborted");
         });
     }
     createTransport(transportName, req) {
@@ -20812,7 +22489,7 @@ class uServer extends server_1.BaseServer {
                 const transport = ws.getUserData().transport;
                 transport.socket = ws;
                 transport.writable = true;
-                transport.emit("drain");
+                transport.emit("ready");
             },
             message: (ws, message, isBinary) => {
                 ws.getUserData().transport.onData(isBinary ? message : Buffer.from(message).toString());
@@ -20836,7 +22513,7 @@ class uServer extends server_1.BaseServer {
         });
     }
     handleRequest(res, req) {
-        debug$3('handling "%s" http request "%s"', req.getMethod(), req.getUrl());
+        debug$4('handling "%s" http request "%s"', req.getMethod(), req.getUrl());
         this.prepare(req, res);
         req.res = res;
         const callback = (errorCode, errorContext) => {
@@ -20851,7 +22528,8 @@ class uServer extends server_1.BaseServer {
                 return;
             }
             if (req._query.sid) {
-                debug$3("setting new request for existing client");
+                debug$4("setting new request for existing client");
+                // @ts-ignore
                 this.clients[req._query.sid].transport.onRequest(req);
             }
             else {
@@ -20869,7 +22547,7 @@ class uServer extends server_1.BaseServer {
         });
     }
     handleUpgrade(res, req, context) {
-        debug$3("on upgrade");
+        debug$4("on upgrade");
         this.prepare(req, res);
         req.res = res;
         const callback = async (errorCode, errorContext) => {
@@ -20888,21 +22566,21 @@ class uServer extends server_1.BaseServer {
             if (id) {
                 const client = this.clients[id];
                 if (!client) {
-                    debug$3("upgrade attempt for closed client");
-                    res.close();
+                    debug$4("upgrade attempt for closed client");
+                    return res.close();
                 }
                 else if (client.upgrading) {
-                    debug$3("transport has already been trying to upgrade");
-                    res.close();
+                    debug$4("transport has already been trying to upgrade");
+                    return res.close();
                 }
                 else if (client.upgraded) {
-                    debug$3("transport had already been upgraded");
-                    res.close();
+                    debug$4("transport had already been upgraded");
+                    return res.close();
                 }
                 else {
-                    debug$3("upgrading existing transport");
+                    debug$4("upgrading existing transport");
                     transport = this.createTransport(req._query.transport, req);
-                    client.maybeUpgrade(transport);
+                    client._maybeUpgrade(transport);
                 }
             }
             else {
@@ -21035,8 +22713,10 @@ class ResponseWrapper {
 
 (function (exports) {
 	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.protocol = exports.Transport = exports.Socket = exports.uServer = exports.parser = exports.attach = exports.listen = exports.transports = exports.Server = void 0;
-	const http_1 = require$$0$4;
+	exports.protocol = exports.Transport = exports.Socket = exports.uServer = exports.parser = exports.transports = exports.Server = void 0;
+	exports.listen = listen;
+	exports.attach = attach;
+	const http_1 = require$$0$6;
 	const server_1 = server;
 	Object.defineProperty(exports, "Server", { enumerable: true, get: function () { return server_1.Server; } });
 	const index_1 = transports;
@@ -21057,7 +22737,6 @@ class ResponseWrapper {
 	 * @param {Function} callback
 	 * @param {Object} options
 	 * @return {Server} websocket.io server
-	 * @api public
 	 */
 	function listen(port, options, fn) {
 	    if ("function" === typeof options) {
@@ -21074,21 +22753,18 @@ class ResponseWrapper {
 	    server.listen(port, fn);
 	    return engine;
 	}
-	exports.listen = listen;
 	/**
 	 * Captures upgrade requests for a http.Server.
 	 *
 	 * @param {http.Server} server
 	 * @param {Object} options
 	 * @return {Server} engine server
-	 * @api public
 	 */
 	function attach(server, options) {
 	    const engine = new server_1.Server(options);
 	    engine.attach(server, options);
 	    return engine;
-	}
-	exports.attach = attach; 
+	} 
 } (engine_io));
 
 var client = {};
@@ -21265,12 +22941,12 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-var componentEmitter = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  Emitter: Emitter
+var esm = /*#__PURE__*/Object.freeze({
+	__proto__: null,
+	Emitter: Emitter
 });
 
-var require$$0 = /*@__PURE__*/getAugmentedNamespace(componentEmitter);
+var require$$0 = /*@__PURE__*/getAugmentedNamespace(esm);
 
 var binary = {};
 
@@ -21419,13 +23095,868 @@ function _reconstructPacket(data, buffers) {
     return data;
 }
 
+var src$2 = {exports: {}};
+
+var browser$2 = {exports: {}};
+
+var common$2;
+var hasRequiredCommon$2;
+
+function requireCommon$2 () {
+	if (hasRequiredCommon$2) return common$2;
+	hasRequiredCommon$2 = 1;
+	/**
+	 * This is the common logic for both the Node.js and web browser
+	 * implementations of `debug()`.
+	 */
+
+	function setup(env) {
+		createDebug.debug = createDebug;
+		createDebug.default = createDebug;
+		createDebug.coerce = coerce;
+		createDebug.disable = disable;
+		createDebug.enable = enable;
+		createDebug.enabled = enabled;
+		createDebug.humanize = requireMs();
+		createDebug.destroy = destroy;
+
+		Object.keys(env).forEach(key => {
+			createDebug[key] = env[key];
+		});
+
+		/**
+		* The currently active debug mode names, and names to skip.
+		*/
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		/**
+		* Map of special "%n" handling functions, for the debug "format" argument.
+		*
+		* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+		*/
+		createDebug.formatters = {};
+
+		/**
+		* Selects a color for a debug namespace
+		* @param {String} namespace The namespace string for the debug instance to be colored
+		* @return {Number|String} An ANSI color code for the given namespace
+		* @api private
+		*/
+		function selectColor(namespace) {
+			let hash = 0;
+
+			for (let i = 0; i < namespace.length; i++) {
+				hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+				hash |= 0; // Convert to 32bit integer
+			}
+
+			return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+		}
+		createDebug.selectColor = selectColor;
+
+		/**
+		* Create a debugger with the given `namespace`.
+		*
+		* @param {String} namespace
+		* @return {Function}
+		* @api public
+		*/
+		function createDebug(namespace) {
+			let prevTime;
+			let enableOverride = null;
+			let namespacesCache;
+			let enabledCache;
+
+			function debug(...args) {
+				// Disabled?
+				if (!debug.enabled) {
+					return;
+				}
+
+				const self = debug;
+
+				// Set `diff` timestamp
+				const curr = Number(new Date());
+				const ms = curr - (prevTime || curr);
+				self.diff = ms;
+				self.prev = prevTime;
+				self.curr = curr;
+				prevTime = curr;
+
+				args[0] = createDebug.coerce(args[0]);
+
+				if (typeof args[0] !== 'string') {
+					// Anything else let's inspect with %O
+					args.unshift('%O');
+				}
+
+				// Apply any `formatters` transformations
+				let index = 0;
+				args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+					// If we encounter an escaped % then don't increase the array index
+					if (match === '%%') {
+						return '%';
+					}
+					index++;
+					const formatter = createDebug.formatters[format];
+					if (typeof formatter === 'function') {
+						const val = args[index];
+						match = formatter.call(self, val);
+
+						// Now we need to remove `args[index]` since it's inlined in the `format`
+						args.splice(index, 1);
+						index--;
+					}
+					return match;
+				});
+
+				// Apply env-specific formatting (colors, etc.)
+				createDebug.formatArgs.call(self, args);
+
+				const logFn = self.log || createDebug.log;
+				logFn.apply(self, args);
+			}
+
+			debug.namespace = namespace;
+			debug.useColors = createDebug.useColors();
+			debug.color = createDebug.selectColor(namespace);
+			debug.extend = extend;
+			debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+			Object.defineProperty(debug, 'enabled', {
+				enumerable: true,
+				configurable: false,
+				get: () => {
+					if (enableOverride !== null) {
+						return enableOverride;
+					}
+					if (namespacesCache !== createDebug.namespaces) {
+						namespacesCache = createDebug.namespaces;
+						enabledCache = createDebug.enabled(namespace);
+					}
+
+					return enabledCache;
+				},
+				set: v => {
+					enableOverride = v;
+				}
+			});
+
+			// Env-specific initialization logic for debug instances
+			if (typeof createDebug.init === 'function') {
+				createDebug.init(debug);
+			}
+
+			return debug;
+		}
+
+		function extend(namespace, delimiter) {
+			const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+			newDebug.log = this.log;
+			return newDebug;
+		}
+
+		/**
+		* Enables a debug mode by namespaces. This can include modes
+		* separated by a colon and wildcards.
+		*
+		* @param {String} namespaces
+		* @api public
+		*/
+		function enable(namespaces) {
+			createDebug.save(namespaces);
+			createDebug.namespaces = namespaces;
+
+			createDebug.names = [];
+			createDebug.skips = [];
+
+			let i;
+			const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+			const len = split.length;
+
+			for (i = 0; i < len; i++) {
+				if (!split[i]) {
+					// ignore empty strings
+					continue;
+				}
+
+				namespaces = split[i].replace(/\*/g, '.*?');
+
+				if (namespaces[0] === '-') {
+					createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+				} else {
+					createDebug.names.push(new RegExp('^' + namespaces + '$'));
+				}
+			}
+		}
+
+		/**
+		* Disable debug output.
+		*
+		* @return {String} namespaces
+		* @api public
+		*/
+		function disable() {
+			const namespaces = [
+				...createDebug.names.map(toNamespace),
+				...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+			].join(',');
+			createDebug.enable('');
+			return namespaces;
+		}
+
+		/**
+		* Returns true if the given mode name is enabled, false otherwise.
+		*
+		* @param {String} name
+		* @return {Boolean}
+		* @api public
+		*/
+		function enabled(name) {
+			if (name[name.length - 1] === '*') {
+				return true;
+			}
+
+			let i;
+			let len;
+
+			for (i = 0, len = createDebug.skips.length; i < len; i++) {
+				if (createDebug.skips[i].test(name)) {
+					return false;
+				}
+			}
+
+			for (i = 0, len = createDebug.names.length; i < len; i++) {
+				if (createDebug.names[i].test(name)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		* Convert regexp to namespace
+		*
+		* @param {RegExp} regxep
+		* @return {String} namespace
+		* @api private
+		*/
+		function toNamespace(regexp) {
+			return regexp.toString()
+				.substring(2, regexp.toString().length - 2)
+				.replace(/\.\*\?$/, '*');
+		}
+
+		/**
+		* Coerce `val`.
+		*
+		* @param {Mixed} val
+		* @return {Mixed}
+		* @api private
+		*/
+		function coerce(val) {
+			if (val instanceof Error) {
+				return val.stack || val.message;
+			}
+			return val;
+		}
+
+		/**
+		* XXX DO NOT USE. This is a temporary stub function.
+		* XXX It WILL be removed in the next major release.
+		*/
+		function destroy() {
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+
+		createDebug.enable(createDebug.load());
+
+		return createDebug;
+	}
+
+	common$2 = setup;
+	return common$2;
+}
+
+/* eslint-env browser */
+
+var hasRequiredBrowser$2;
+
+function requireBrowser$2 () {
+	if (hasRequiredBrowser$2) return browser$2.exports;
+	hasRequiredBrowser$2 = 1;
+	(function (module, exports) {
+		/**
+		 * This is the web browser implementation of `debug()`.
+		 */
+
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.storage = localstorage();
+		exports.destroy = (() => {
+			let warned = false;
+
+			return () => {
+				if (!warned) {
+					warned = true;
+					console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+				}
+			};
+		})();
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [
+			'#0000CC',
+			'#0000FF',
+			'#0033CC',
+			'#0033FF',
+			'#0066CC',
+			'#0066FF',
+			'#0099CC',
+			'#0099FF',
+			'#00CC00',
+			'#00CC33',
+			'#00CC66',
+			'#00CC99',
+			'#00CCCC',
+			'#00CCFF',
+			'#3300CC',
+			'#3300FF',
+			'#3333CC',
+			'#3333FF',
+			'#3366CC',
+			'#3366FF',
+			'#3399CC',
+			'#3399FF',
+			'#33CC00',
+			'#33CC33',
+			'#33CC66',
+			'#33CC99',
+			'#33CCCC',
+			'#33CCFF',
+			'#6600CC',
+			'#6600FF',
+			'#6633CC',
+			'#6633FF',
+			'#66CC00',
+			'#66CC33',
+			'#9900CC',
+			'#9900FF',
+			'#9933CC',
+			'#9933FF',
+			'#99CC00',
+			'#99CC33',
+			'#CC0000',
+			'#CC0033',
+			'#CC0066',
+			'#CC0099',
+			'#CC00CC',
+			'#CC00FF',
+			'#CC3300',
+			'#CC3333',
+			'#CC3366',
+			'#CC3399',
+			'#CC33CC',
+			'#CC33FF',
+			'#CC6600',
+			'#CC6633',
+			'#CC9900',
+			'#CC9933',
+			'#CCCC00',
+			'#CCCC33',
+			'#FF0000',
+			'#FF0033',
+			'#FF0066',
+			'#FF0099',
+			'#FF00CC',
+			'#FF00FF',
+			'#FF3300',
+			'#FF3333',
+			'#FF3366',
+			'#FF3399',
+			'#FF33CC',
+			'#FF33FF',
+			'#FF6600',
+			'#FF6633',
+			'#FF9900',
+			'#FF9933',
+			'#FFCC00',
+			'#FFCC33'
+		];
+
+		/**
+		 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+		 * and the Firebug extension (any Firefox version) are known
+		 * to support "%c" CSS customizations.
+		 *
+		 * TODO: add a `localStorage` variable to explicitly enable/disable colors
+		 */
+
+		// eslint-disable-next-line complexity
+		function useColors() {
+			// NB: In an Electron preload script, document will be defined but not fully
+			// initialized. Since we know we're in Chrome, we'll just detect this case
+			// explicitly
+			if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+				return true;
+			}
+
+			// Internet Explorer and Edge do not support colors.
+			if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+				return false;
+			}
+
+			let m;
+
+			// Is webkit? http://stackoverflow.com/a/16459606/376773
+			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+				// Is firebug? http://stackoverflow.com/a/398120/376773
+				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+				// Is firefox >= v31?
+				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
+				// Double check webkit in userAgent just in case we are in a worker
+				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+		}
+
+		/**
+		 * Colorize log arguments if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			args[0] = (this.useColors ? '%c' : '') +
+				this.namespace +
+				(this.useColors ? ' %c' : ' ') +
+				args[0] +
+				(this.useColors ? '%c ' : ' ') +
+				'+' + module.exports.humanize(this.diff);
+
+			if (!this.useColors) {
+				return;
+			}
+
+			const c = 'color: ' + this.color;
+			args.splice(1, 0, c, 'color: inherit');
+
+			// The final "%c" is somewhat tricky, because there could be other
+			// arguments passed either before or after the %c, so we need to
+			// figure out the correct index to insert the CSS into
+			let index = 0;
+			let lastC = 0;
+			args[0].replace(/%[a-zA-Z%]/g, match => {
+				if (match === '%%') {
+					return;
+				}
+				index++;
+				if (match === '%c') {
+					// We only are interested in the *last* %c
+					// (the user may have provided their own)
+					lastC = index;
+				}
+			});
+
+			args.splice(lastC, 0, c);
+		}
+
+		/**
+		 * Invokes `console.debug()` when available.
+		 * No-op when `console.debug` is not a "function".
+		 * If `console.debug` is not available, falls back
+		 * to `console.log`.
+		 *
+		 * @api public
+		 */
+		exports.log = console.debug || console.log || (() => {});
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			try {
+				if (namespaces) {
+					exports.storage.setItem('debug', namespaces);
+				} else {
+					exports.storage.removeItem('debug');
+				}
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+		function load() {
+			let r;
+			try {
+				r = exports.storage.getItem('debug');
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+
+			// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+			if (!r && typeof process !== 'undefined' && 'env' in process) {
+				r = process.env.DEBUG;
+			}
+
+			return r;
+		}
+
+		/**
+		 * Localstorage attempts to return the localstorage.
+		 *
+		 * This is necessary because safari throws
+		 * when a user disables cookies/localstorage
+		 * and you attempt to access it.
+		 *
+		 * @return {LocalStorage}
+		 * @api private
+		 */
+
+		function localstorage() {
+			try {
+				// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+				// The Browser also has localStorage in the global context.
+				return localStorage;
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		module.exports = requireCommon$2()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+		 */
+
+		formatters.j = function (v) {
+			try {
+				return JSON.stringify(v);
+			} catch (error) {
+				return '[UnexpectedJSONParseError]: ' + error.message;
+			}
+		}; 
+	} (browser$2, browser$2.exports));
+	return browser$2.exports;
+}
+
+var node$2 = {exports: {}};
+
+/**
+ * Module dependencies.
+ */
+
+var hasRequiredNode$2;
+
+function requireNode$2 () {
+	if (hasRequiredNode$2) return node$2.exports;
+	hasRequiredNode$2 = 1;
+	(function (module, exports) {
+		const tty = require$$0$2;
+		const util = require$$1$1;
+
+		/**
+		 * This is the Node.js implementation of `debug()`.
+		 */
+
+		exports.init = init;
+		exports.log = log;
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.destroy = util.deprecate(
+			() => {},
+			'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+		);
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [6, 2, 3, 4, 5, 1];
+
+		try {
+			// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+			// eslint-disable-next-line import/no-extraneous-dependencies
+			const supportsColor = requireSupportsColor();
+
+			if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+				exports.colors = [
+					20,
+					21,
+					26,
+					27,
+					32,
+					33,
+					38,
+					39,
+					40,
+					41,
+					42,
+					43,
+					44,
+					45,
+					56,
+					57,
+					62,
+					63,
+					68,
+					69,
+					74,
+					75,
+					76,
+					77,
+					78,
+					79,
+					80,
+					81,
+					92,
+					93,
+					98,
+					99,
+					112,
+					113,
+					128,
+					129,
+					134,
+					135,
+					148,
+					149,
+					160,
+					161,
+					162,
+					163,
+					164,
+					165,
+					166,
+					167,
+					168,
+					169,
+					170,
+					171,
+					172,
+					173,
+					178,
+					179,
+					184,
+					185,
+					196,
+					197,
+					198,
+					199,
+					200,
+					201,
+					202,
+					203,
+					204,
+					205,
+					206,
+					207,
+					208,
+					209,
+					214,
+					215,
+					220,
+					221
+				];
+			}
+		} catch (error) {
+			// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+		}
+
+		/**
+		 * Build up the default `inspectOpts` object from the environment variables.
+		 *
+		 *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+		 */
+
+		exports.inspectOpts = Object.keys(process.env).filter(key => {
+			return /^debug_/i.test(key);
+		}).reduce((obj, key) => {
+			// Camel-case
+			const prop = key
+				.substring(6)
+				.toLowerCase()
+				.replace(/_([a-z])/g, (_, k) => {
+					return k.toUpperCase();
+				});
+
+			// Coerce string value into JS value
+			let val = process.env[key];
+			if (/^(yes|on|true|enabled)$/i.test(val)) {
+				val = true;
+			} else if (/^(no|off|false|disabled)$/i.test(val)) {
+				val = false;
+			} else if (val === 'null') {
+				val = null;
+			} else {
+				val = Number(val);
+			}
+
+			obj[prop] = val;
+			return obj;
+		}, {});
+
+		/**
+		 * Is stdout a TTY? Colored output is enabled when `true`.
+		 */
+
+		function useColors() {
+			return 'colors' in exports.inspectOpts ?
+				Boolean(exports.inspectOpts.colors) :
+				tty.isatty(process.stderr.fd);
+		}
+
+		/**
+		 * Adds ANSI color escape codes if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			const {namespace: name, useColors} = this;
+
+			if (useColors) {
+				const c = this.color;
+				const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+				const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+				args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+				args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+			} else {
+				args[0] = getDate() + name + ' ' + args[0];
+			}
+		}
+
+		function getDate() {
+			if (exports.inspectOpts.hideDate) {
+				return '';
+			}
+			return new Date().toISOString() + ' ';
+		}
+
+		/**
+		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
+		 */
+
+		function log(...args) {
+			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
+		}
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			if (namespaces) {
+				process.env.DEBUG = namespaces;
+			} else {
+				// If you set a process.env field to null or undefined, it gets cast to the
+				// string 'null' or 'undefined'. Just delete instead.
+				delete process.env.DEBUG;
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+
+		function load() {
+			return process.env.DEBUG;
+		}
+
+		/**
+		 * Init logic for `debug` instances.
+		 *
+		 * Create a new `inspectOpts` object in case `useColors` is set
+		 * differently for a particular `debug` instance.
+		 */
+
+		function init(debug) {
+			debug.inspectOpts = {};
+
+			const keys = Object.keys(exports.inspectOpts);
+			for (let i = 0; i < keys.length; i++) {
+				debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+			}
+		}
+
+		module.exports = requireCommon$2()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %o to `util.inspect()`, all on a single line.
+		 */
+
+		formatters.o = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts)
+				.split('\n')
+				.map(str => str.trim())
+				.join(' ');
+		};
+
+		/**
+		 * Map %O to `util.inspect()`, allowing multiple lines if needed.
+		 */
+
+		formatters.O = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts);
+		}; 
+	} (node$2, node$2.exports));
+	return node$2.exports;
+}
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	src$2.exports = requireBrowser$2();
+} else {
+	src$2.exports = requireNode$2();
+}
+
+var srcExports$2 = src$2.exports;
+
 (function (exports) {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.Decoder = exports.Encoder = exports.PacketType = exports.protocol = void 0;
 	const component_emitter_1 = require$$0;
 	const binary_js_1 = binary;
 	const is_binary_js_1 = isBinary$1;
-	const debug_1 = srcExports; // debug()
+	const debug_1 = srcExports$2; // debug()
 	const debug = (0, debug_1.default)("socket.io-parser"); // debug()
 	/**
 	 * These strings must not be used as event names, as they have a special meaning.
@@ -21742,12 +24273,867 @@ function _reconstructPacket(data, buffers) {
 	} 
 } (cjs));
 
+var src$1 = {exports: {}};
+
+var browser$1 = {exports: {}};
+
+var common$1;
+var hasRequiredCommon$1;
+
+function requireCommon$1 () {
+	if (hasRequiredCommon$1) return common$1;
+	hasRequiredCommon$1 = 1;
+	/**
+	 * This is the common logic for both the Node.js and web browser
+	 * implementations of `debug()`.
+	 */
+
+	function setup(env) {
+		createDebug.debug = createDebug;
+		createDebug.default = createDebug;
+		createDebug.coerce = coerce;
+		createDebug.disable = disable;
+		createDebug.enable = enable;
+		createDebug.enabled = enabled;
+		createDebug.humanize = requireMs();
+		createDebug.destroy = destroy;
+
+		Object.keys(env).forEach(key => {
+			createDebug[key] = env[key];
+		});
+
+		/**
+		* The currently active debug mode names, and names to skip.
+		*/
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		/**
+		* Map of special "%n" handling functions, for the debug "format" argument.
+		*
+		* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+		*/
+		createDebug.formatters = {};
+
+		/**
+		* Selects a color for a debug namespace
+		* @param {String} namespace The namespace string for the debug instance to be colored
+		* @return {Number|String} An ANSI color code for the given namespace
+		* @api private
+		*/
+		function selectColor(namespace) {
+			let hash = 0;
+
+			for (let i = 0; i < namespace.length; i++) {
+				hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+				hash |= 0; // Convert to 32bit integer
+			}
+
+			return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+		}
+		createDebug.selectColor = selectColor;
+
+		/**
+		* Create a debugger with the given `namespace`.
+		*
+		* @param {String} namespace
+		* @return {Function}
+		* @api public
+		*/
+		function createDebug(namespace) {
+			let prevTime;
+			let enableOverride = null;
+			let namespacesCache;
+			let enabledCache;
+
+			function debug(...args) {
+				// Disabled?
+				if (!debug.enabled) {
+					return;
+				}
+
+				const self = debug;
+
+				// Set `diff` timestamp
+				const curr = Number(new Date());
+				const ms = curr - (prevTime || curr);
+				self.diff = ms;
+				self.prev = prevTime;
+				self.curr = curr;
+				prevTime = curr;
+
+				args[0] = createDebug.coerce(args[0]);
+
+				if (typeof args[0] !== 'string') {
+					// Anything else let's inspect with %O
+					args.unshift('%O');
+				}
+
+				// Apply any `formatters` transformations
+				let index = 0;
+				args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+					// If we encounter an escaped % then don't increase the array index
+					if (match === '%%') {
+						return '%';
+					}
+					index++;
+					const formatter = createDebug.formatters[format];
+					if (typeof formatter === 'function') {
+						const val = args[index];
+						match = formatter.call(self, val);
+
+						// Now we need to remove `args[index]` since it's inlined in the `format`
+						args.splice(index, 1);
+						index--;
+					}
+					return match;
+				});
+
+				// Apply env-specific formatting (colors, etc.)
+				createDebug.formatArgs.call(self, args);
+
+				const logFn = self.log || createDebug.log;
+				logFn.apply(self, args);
+			}
+
+			debug.namespace = namespace;
+			debug.useColors = createDebug.useColors();
+			debug.color = createDebug.selectColor(namespace);
+			debug.extend = extend;
+			debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+			Object.defineProperty(debug, 'enabled', {
+				enumerable: true,
+				configurable: false,
+				get: () => {
+					if (enableOverride !== null) {
+						return enableOverride;
+					}
+					if (namespacesCache !== createDebug.namespaces) {
+						namespacesCache = createDebug.namespaces;
+						enabledCache = createDebug.enabled(namespace);
+					}
+
+					return enabledCache;
+				},
+				set: v => {
+					enableOverride = v;
+				}
+			});
+
+			// Env-specific initialization logic for debug instances
+			if (typeof createDebug.init === 'function') {
+				createDebug.init(debug);
+			}
+
+			return debug;
+		}
+
+		function extend(namespace, delimiter) {
+			const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+			newDebug.log = this.log;
+			return newDebug;
+		}
+
+		/**
+		* Enables a debug mode by namespaces. This can include modes
+		* separated by a colon and wildcards.
+		*
+		* @param {String} namespaces
+		* @api public
+		*/
+		function enable(namespaces) {
+			createDebug.save(namespaces);
+			createDebug.namespaces = namespaces;
+
+			createDebug.names = [];
+			createDebug.skips = [];
+
+			let i;
+			const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+			const len = split.length;
+
+			for (i = 0; i < len; i++) {
+				if (!split[i]) {
+					// ignore empty strings
+					continue;
+				}
+
+				namespaces = split[i].replace(/\*/g, '.*?');
+
+				if (namespaces[0] === '-') {
+					createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+				} else {
+					createDebug.names.push(new RegExp('^' + namespaces + '$'));
+				}
+			}
+		}
+
+		/**
+		* Disable debug output.
+		*
+		* @return {String} namespaces
+		* @api public
+		*/
+		function disable() {
+			const namespaces = [
+				...createDebug.names.map(toNamespace),
+				...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+			].join(',');
+			createDebug.enable('');
+			return namespaces;
+		}
+
+		/**
+		* Returns true if the given mode name is enabled, false otherwise.
+		*
+		* @param {String} name
+		* @return {Boolean}
+		* @api public
+		*/
+		function enabled(name) {
+			if (name[name.length - 1] === '*') {
+				return true;
+			}
+
+			let i;
+			let len;
+
+			for (i = 0, len = createDebug.skips.length; i < len; i++) {
+				if (createDebug.skips[i].test(name)) {
+					return false;
+				}
+			}
+
+			for (i = 0, len = createDebug.names.length; i < len; i++) {
+				if (createDebug.names[i].test(name)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		* Convert regexp to namespace
+		*
+		* @param {RegExp} regxep
+		* @return {String} namespace
+		* @api private
+		*/
+		function toNamespace(regexp) {
+			return regexp.toString()
+				.substring(2, regexp.toString().length - 2)
+				.replace(/\.\*\?$/, '*');
+		}
+
+		/**
+		* Coerce `val`.
+		*
+		* @param {Mixed} val
+		* @return {Mixed}
+		* @api private
+		*/
+		function coerce(val) {
+			if (val instanceof Error) {
+				return val.stack || val.message;
+			}
+			return val;
+		}
+
+		/**
+		* XXX DO NOT USE. This is a temporary stub function.
+		* XXX It WILL be removed in the next major release.
+		*/
+		function destroy() {
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+
+		createDebug.enable(createDebug.load());
+
+		return createDebug;
+	}
+
+	common$1 = setup;
+	return common$1;
+}
+
+/* eslint-env browser */
+
+var hasRequiredBrowser$1;
+
+function requireBrowser$1 () {
+	if (hasRequiredBrowser$1) return browser$1.exports;
+	hasRequiredBrowser$1 = 1;
+	(function (module, exports) {
+		/**
+		 * This is the web browser implementation of `debug()`.
+		 */
+
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.storage = localstorage();
+		exports.destroy = (() => {
+			let warned = false;
+
+			return () => {
+				if (!warned) {
+					warned = true;
+					console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+				}
+			};
+		})();
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [
+			'#0000CC',
+			'#0000FF',
+			'#0033CC',
+			'#0033FF',
+			'#0066CC',
+			'#0066FF',
+			'#0099CC',
+			'#0099FF',
+			'#00CC00',
+			'#00CC33',
+			'#00CC66',
+			'#00CC99',
+			'#00CCCC',
+			'#00CCFF',
+			'#3300CC',
+			'#3300FF',
+			'#3333CC',
+			'#3333FF',
+			'#3366CC',
+			'#3366FF',
+			'#3399CC',
+			'#3399FF',
+			'#33CC00',
+			'#33CC33',
+			'#33CC66',
+			'#33CC99',
+			'#33CCCC',
+			'#33CCFF',
+			'#6600CC',
+			'#6600FF',
+			'#6633CC',
+			'#6633FF',
+			'#66CC00',
+			'#66CC33',
+			'#9900CC',
+			'#9900FF',
+			'#9933CC',
+			'#9933FF',
+			'#99CC00',
+			'#99CC33',
+			'#CC0000',
+			'#CC0033',
+			'#CC0066',
+			'#CC0099',
+			'#CC00CC',
+			'#CC00FF',
+			'#CC3300',
+			'#CC3333',
+			'#CC3366',
+			'#CC3399',
+			'#CC33CC',
+			'#CC33FF',
+			'#CC6600',
+			'#CC6633',
+			'#CC9900',
+			'#CC9933',
+			'#CCCC00',
+			'#CCCC33',
+			'#FF0000',
+			'#FF0033',
+			'#FF0066',
+			'#FF0099',
+			'#FF00CC',
+			'#FF00FF',
+			'#FF3300',
+			'#FF3333',
+			'#FF3366',
+			'#FF3399',
+			'#FF33CC',
+			'#FF33FF',
+			'#FF6600',
+			'#FF6633',
+			'#FF9900',
+			'#FF9933',
+			'#FFCC00',
+			'#FFCC33'
+		];
+
+		/**
+		 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+		 * and the Firebug extension (any Firefox version) are known
+		 * to support "%c" CSS customizations.
+		 *
+		 * TODO: add a `localStorage` variable to explicitly enable/disable colors
+		 */
+
+		// eslint-disable-next-line complexity
+		function useColors() {
+			// NB: In an Electron preload script, document will be defined but not fully
+			// initialized. Since we know we're in Chrome, we'll just detect this case
+			// explicitly
+			if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+				return true;
+			}
+
+			// Internet Explorer and Edge do not support colors.
+			if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+				return false;
+			}
+
+			let m;
+
+			// Is webkit? http://stackoverflow.com/a/16459606/376773
+			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+				// Is firebug? http://stackoverflow.com/a/398120/376773
+				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+				// Is firefox >= v31?
+				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
+				// Double check webkit in userAgent just in case we are in a worker
+				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+		}
+
+		/**
+		 * Colorize log arguments if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			args[0] = (this.useColors ? '%c' : '') +
+				this.namespace +
+				(this.useColors ? ' %c' : ' ') +
+				args[0] +
+				(this.useColors ? '%c ' : ' ') +
+				'+' + module.exports.humanize(this.diff);
+
+			if (!this.useColors) {
+				return;
+			}
+
+			const c = 'color: ' + this.color;
+			args.splice(1, 0, c, 'color: inherit');
+
+			// The final "%c" is somewhat tricky, because there could be other
+			// arguments passed either before or after the %c, so we need to
+			// figure out the correct index to insert the CSS into
+			let index = 0;
+			let lastC = 0;
+			args[0].replace(/%[a-zA-Z%]/g, match => {
+				if (match === '%%') {
+					return;
+				}
+				index++;
+				if (match === '%c') {
+					// We only are interested in the *last* %c
+					// (the user may have provided their own)
+					lastC = index;
+				}
+			});
+
+			args.splice(lastC, 0, c);
+		}
+
+		/**
+		 * Invokes `console.debug()` when available.
+		 * No-op when `console.debug` is not a "function".
+		 * If `console.debug` is not available, falls back
+		 * to `console.log`.
+		 *
+		 * @api public
+		 */
+		exports.log = console.debug || console.log || (() => {});
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			try {
+				if (namespaces) {
+					exports.storage.setItem('debug', namespaces);
+				} else {
+					exports.storage.removeItem('debug');
+				}
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+		function load() {
+			let r;
+			try {
+				r = exports.storage.getItem('debug');
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+
+			// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+			if (!r && typeof process !== 'undefined' && 'env' in process) {
+				r = process.env.DEBUG;
+			}
+
+			return r;
+		}
+
+		/**
+		 * Localstorage attempts to return the localstorage.
+		 *
+		 * This is necessary because safari throws
+		 * when a user disables cookies/localstorage
+		 * and you attempt to access it.
+		 *
+		 * @return {LocalStorage}
+		 * @api private
+		 */
+
+		function localstorage() {
+			try {
+				// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+				// The Browser also has localStorage in the global context.
+				return localStorage;
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		module.exports = requireCommon$1()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+		 */
+
+		formatters.j = function (v) {
+			try {
+				return JSON.stringify(v);
+			} catch (error) {
+				return '[UnexpectedJSONParseError]: ' + error.message;
+			}
+		}; 
+	} (browser$1, browser$1.exports));
+	return browser$1.exports;
+}
+
+var node$1 = {exports: {}};
+
+/**
+ * Module dependencies.
+ */
+
+var hasRequiredNode$1;
+
+function requireNode$1 () {
+	if (hasRequiredNode$1) return node$1.exports;
+	hasRequiredNode$1 = 1;
+	(function (module, exports) {
+		const tty = require$$0$2;
+		const util = require$$1$1;
+
+		/**
+		 * This is the Node.js implementation of `debug()`.
+		 */
+
+		exports.init = init;
+		exports.log = log;
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.destroy = util.deprecate(
+			() => {},
+			'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+		);
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [6, 2, 3, 4, 5, 1];
+
+		try {
+			// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+			// eslint-disable-next-line import/no-extraneous-dependencies
+			const supportsColor = requireSupportsColor();
+
+			if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+				exports.colors = [
+					20,
+					21,
+					26,
+					27,
+					32,
+					33,
+					38,
+					39,
+					40,
+					41,
+					42,
+					43,
+					44,
+					45,
+					56,
+					57,
+					62,
+					63,
+					68,
+					69,
+					74,
+					75,
+					76,
+					77,
+					78,
+					79,
+					80,
+					81,
+					92,
+					93,
+					98,
+					99,
+					112,
+					113,
+					128,
+					129,
+					134,
+					135,
+					148,
+					149,
+					160,
+					161,
+					162,
+					163,
+					164,
+					165,
+					166,
+					167,
+					168,
+					169,
+					170,
+					171,
+					172,
+					173,
+					178,
+					179,
+					184,
+					185,
+					196,
+					197,
+					198,
+					199,
+					200,
+					201,
+					202,
+					203,
+					204,
+					205,
+					206,
+					207,
+					208,
+					209,
+					214,
+					215,
+					220,
+					221
+				];
+			}
+		} catch (error) {
+			// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+		}
+
+		/**
+		 * Build up the default `inspectOpts` object from the environment variables.
+		 *
+		 *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+		 */
+
+		exports.inspectOpts = Object.keys(process.env).filter(key => {
+			return /^debug_/i.test(key);
+		}).reduce((obj, key) => {
+			// Camel-case
+			const prop = key
+				.substring(6)
+				.toLowerCase()
+				.replace(/_([a-z])/g, (_, k) => {
+					return k.toUpperCase();
+				});
+
+			// Coerce string value into JS value
+			let val = process.env[key];
+			if (/^(yes|on|true|enabled)$/i.test(val)) {
+				val = true;
+			} else if (/^(no|off|false|disabled)$/i.test(val)) {
+				val = false;
+			} else if (val === 'null') {
+				val = null;
+			} else {
+				val = Number(val);
+			}
+
+			obj[prop] = val;
+			return obj;
+		}, {});
+
+		/**
+		 * Is stdout a TTY? Colored output is enabled when `true`.
+		 */
+
+		function useColors() {
+			return 'colors' in exports.inspectOpts ?
+				Boolean(exports.inspectOpts.colors) :
+				tty.isatty(process.stderr.fd);
+		}
+
+		/**
+		 * Adds ANSI color escape codes if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			const {namespace: name, useColors} = this;
+
+			if (useColors) {
+				const c = this.color;
+				const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+				const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+				args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+				args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+			} else {
+				args[0] = getDate() + name + ' ' + args[0];
+			}
+		}
+
+		function getDate() {
+			if (exports.inspectOpts.hideDate) {
+				return '';
+			}
+			return new Date().toISOString() + ' ';
+		}
+
+		/**
+		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
+		 */
+
+		function log(...args) {
+			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
+		}
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			if (namespaces) {
+				process.env.DEBUG = namespaces;
+			} else {
+				// If you set a process.env field to null or undefined, it gets cast to the
+				// string 'null' or 'undefined'. Just delete instead.
+				delete process.env.DEBUG;
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+
+		function load() {
+			return process.env.DEBUG;
+		}
+
+		/**
+		 * Init logic for `debug` instances.
+		 *
+		 * Create a new `inspectOpts` object in case `useColors` is set
+		 * differently for a particular `debug` instance.
+		 */
+
+		function init(debug) {
+			debug.inspectOpts = {};
+
+			const keys = Object.keys(exports.inspectOpts);
+			for (let i = 0; i < keys.length; i++) {
+				debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+			}
+		}
+
+		module.exports = requireCommon$1()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %o to `util.inspect()`, all on a single line.
+		 */
+
+		formatters.o = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts)
+				.split('\n')
+				.map(str => str.trim())
+				.join(' ');
+		};
+
+		/**
+		 * Map %O to `util.inspect()`, allowing multiple lines if needed.
+		 */
+
+		formatters.O = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts);
+		}; 
+	} (node$1, node$1.exports));
+	return node$1.exports;
+}
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	src$1.exports = requireBrowser$1();
+} else {
+	src$1.exports = requireNode$1();
+}
+
+var srcExports$1 = src$1.exports;
+
 Object.defineProperty(client, "__esModule", { value: true });
 client.Client = void 0;
-const socket_io_parser_1 = cjs;
-const debugModule = srcExports;
+const socket_io_parser_1$2 = cjs;
+const debugModule = srcExports$1;
 const url = require$$3$1;
-const debug$2 = debugModule("socket.io:client");
+const debug$3 = debugModule("socket.io:client");
 class Client {
     /**
      * Client constructor.
@@ -21791,11 +25177,11 @@ class Client {
         this.conn.on("close", this.onclose);
         this.connectTimeout = setTimeout(() => {
             if (this.nsps.size === 0) {
-                debug$2("no namespace joined yet, close the client");
+                debug$3("no namespace joined yet, close the client");
                 this.close();
             }
             else {
-                debug$2("the client has already joined a namespace, nothing to do");
+                debug$3("the client has already joined a namespace, nothing to do");
             }
         }, this.server._connectTimeout);
     }
@@ -21808,7 +25194,7 @@ class Client {
      */
     connect(name, auth = {}) {
         if (this.server._nsps.has(name)) {
-            debug$2("connecting to namespace %s", name);
+            debug$3("connecting to namespace %s", name);
             return this.doConnect(name, auth);
         }
         this.server._checkNamespace(name, auth, (dynamicNspName) => {
@@ -21816,9 +25202,9 @@ class Client {
                 this.doConnect(name, auth);
             }
             else {
-                debug$2("creation of namespace %s was denied", name);
+                debug$3("creation of namespace %s was denied", name);
                 this._packet({
-                    type: socket_io_parser_1.PacketType.CONNECT_ERROR,
+                    type: socket_io_parser_1$2.PacketType.CONNECT_ERROR,
                     nsp: name,
                     data: {
                         message: "Invalid namespace",
@@ -21870,7 +25256,7 @@ class Client {
             this.nsps.delete(nsp);
         }
         else {
-            debug$2("ignoring remove for %s", socket.id);
+            debug$3("ignoring remove for %s", socket.id);
         }
     }
     /**
@@ -21880,7 +25266,7 @@ class Client {
      */
     close() {
         if ("open" === this.conn.readyState) {
-            debug$2("forcing transport close");
+            debug$3("forcing transport close");
             this.conn.close();
             this.onclose("forced server close");
         }
@@ -21894,7 +25280,7 @@ class Client {
      */
     _packet(packet, opts = {}) {
         if (this.conn.readyState !== "open") {
-            debug$2("ignoring packet write %j", packet);
+            debug$3("ignoring packet write %j", packet);
             return;
         }
         const encodedPackets = opts.preEncoded
@@ -21904,7 +25290,7 @@ class Client {
     }
     writeToEngine(encodedPackets, opts) {
         if (opts.volatile && !this.conn.transport.writable) {
-            debug$2("volatile packet is discarded since the transport is not currently writable");
+            debug$3("volatile packet is discarded since the transport is not currently writable");
             return;
         }
         const packets = Array.isArray(encodedPackets)
@@ -21925,7 +25311,7 @@ class Client {
             this.decoder.add(data);
         }
         catch (e) {
-            debug$2("invalid packet format");
+            debug$3("invalid packet format");
             this.onerror(e);
         }
     }
@@ -21947,18 +25333,18 @@ class Client {
             authPayload = packet.data;
         }
         const socket = this.nsps.get(namespace);
-        if (!socket && packet.type === socket_io_parser_1.PacketType.CONNECT) {
+        if (!socket && packet.type === socket_io_parser_1$2.PacketType.CONNECT) {
             this.connect(namespace, authPayload);
         }
         else if (socket &&
-            packet.type !== socket_io_parser_1.PacketType.CONNECT &&
-            packet.type !== socket_io_parser_1.PacketType.CONNECT_ERROR) {
+            packet.type !== socket_io_parser_1$2.PacketType.CONNECT &&
+            packet.type !== socket_io_parser_1$2.PacketType.CONNECT_ERROR) {
             process.nextTick(function () {
                 socket._onpacket(packet);
             });
         }
         else {
-            debug$2("invalid state (packet type: %s)", packet.type);
+            debug$3("invalid state (packet type: %s)", packet.type);
             this.close();
         }
     }
@@ -21982,7 +25368,7 @@ class Client {
      * @private
      */
     onclose(reason, description) {
-        debug$2("client close with reason %s", reason);
+        debug$3("client close with reason %s", reason);
         // ignore a potential subsequent `close` event
         this.destroy();
         // `nsps` and `sockets` are cleaned up seamlessly
@@ -22018,7 +25404,7 @@ var typedEvents = {};
 
 Object.defineProperty(typedEvents, "__esModule", { value: true });
 typedEvents.StrictEventEmitter = void 0;
-const events_1$1 = require$$0$2;
+const events_1$1 = require$$0$3;
 /**
  * Strictly typed version of an `EventEmitter`. A `TypedEventEmitter` takes type
  * parameters for mappings of event names to event data types, and strictly
@@ -22099,1442 +25485,1431 @@ typedEvents.StrictEventEmitter = StrictEventEmitter;
 
 var broadcastOperator = {};
 
-var hasRequiredBroadcastOperator;
+var socketTypes = {};
 
-function requireBroadcastOperator () {
-	if (hasRequiredBroadcastOperator) return broadcastOperator;
-	hasRequiredBroadcastOperator = 1;
-	Object.defineProperty(broadcastOperator, "__esModule", { value: true });
-	broadcastOperator.RemoteSocket = broadcastOperator.BroadcastOperator = void 0;
-	const socket_1 = requireSocket();
-	const socket_io_parser_1 = cjs;
-	class BroadcastOperator {
-	    constructor(adapter, rooms = new Set(), exceptRooms = new Set(), flags = {}) {
-	        this.adapter = adapter;
-	        this.rooms = rooms;
-	        this.exceptRooms = exceptRooms;
-	        this.flags = flags;
-	    }
-	    /**
-	     * Targets a room when emitting.
-	     *
-	     * @example
-	     * // the “foo” event will be broadcast to all connected clients in the “room-101” room
-	     * io.to("room-101").emit("foo", "bar");
-	     *
-	     * // with an array of rooms (a client will be notified at most once)
-	     * io.to(["room-101", "room-102"]).emit("foo", "bar");
-	     *
-	     * // with multiple chained calls
-	     * io.to("room-101").to("room-102").emit("foo", "bar");
-	     *
-	     * @param room - a room, or an array of rooms
-	     * @return a new {@link BroadcastOperator} instance for chaining
-	     */
-	    to(room) {
-	        const rooms = new Set(this.rooms);
-	        if (Array.isArray(room)) {
-	            room.forEach((r) => rooms.add(r));
-	        }
-	        else {
-	            rooms.add(room);
-	        }
-	        return new BroadcastOperator(this.adapter, rooms, this.exceptRooms, this.flags);
-	    }
-	    /**
-	     * Targets a room when emitting. Similar to `to()`, but might feel clearer in some cases:
-	     *
-	     * @example
-	     * // disconnect all clients in the "room-101" room
-	     * io.in("room-101").disconnectSockets();
-	     *
-	     * @param room - a room, or an array of rooms
-	     * @return a new {@link BroadcastOperator} instance for chaining
-	     */
-	    in(room) {
-	        return this.to(room);
-	    }
-	    /**
-	     * Excludes a room when emitting.
-	     *
-	     * @example
-	     * // the "foo" event will be broadcast to all connected clients, except the ones that are in the "room-101" room
-	     * io.except("room-101").emit("foo", "bar");
-	     *
-	     * // with an array of rooms
-	     * io.except(["room-101", "room-102"]).emit("foo", "bar");
-	     *
-	     * // with multiple chained calls
-	     * io.except("room-101").except("room-102").emit("foo", "bar");
-	     *
-	     * @param room - a room, or an array of rooms
-	     * @return a new {@link BroadcastOperator} instance for chaining
-	     */
-	    except(room) {
-	        const exceptRooms = new Set(this.exceptRooms);
-	        if (Array.isArray(room)) {
-	            room.forEach((r) => exceptRooms.add(r));
-	        }
-	        else {
-	            exceptRooms.add(room);
-	        }
-	        return new BroadcastOperator(this.adapter, this.rooms, exceptRooms, this.flags);
-	    }
-	    /**
-	     * Sets the compress flag.
-	     *
-	     * @example
-	     * io.compress(false).emit("hello");
-	     *
-	     * @param compress - if `true`, compresses the sending data
-	     * @return a new BroadcastOperator instance
-	     */
-	    compress(compress) {
-	        const flags = Object.assign({}, this.flags, { compress });
-	        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
-	    }
-	    /**
-	     * Sets a modifier for a subsequent event emission that the event data may be lost if the client is not ready to
-	     * receive messages (because of network slowness or other issues, or because they’re connected through long polling
-	     * and is in the middle of a request-response cycle).
-	     *
-	     * @example
-	     * io.volatile.emit("hello"); // the clients may or may not receive it
-	     *
-	     * @return a new BroadcastOperator instance
-	     */
-	    get volatile() {
-	        const flags = Object.assign({}, this.flags, { volatile: true });
-	        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
-	    }
-	    /**
-	     * Sets a modifier for a subsequent event emission that the event data will only be broadcast to the current node.
-	     *
-	     * @example
-	     * // the “foo” event will be broadcast to all connected clients on this node
-	     * io.local.emit("foo", "bar");
-	     *
-	     * @return a new {@link BroadcastOperator} instance for chaining
-	     */
-	    get local() {
-	        const flags = Object.assign({}, this.flags, { local: true });
-	        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
-	    }
-	    /**
-	     * Adds a timeout in milliseconds for the next operation
-	     *
-	     * @example
-	     * io.timeout(1000).emit("some-event", (err, responses) => {
-	     *   if (err) {
-	     *     // some clients did not acknowledge the event in the given delay
-	     *   } else {
-	     *     console.log(responses); // one response per client
-	     *   }
-	     * });
-	     *
-	     * @param timeout
-	     */
-	    timeout(timeout) {
-	        const flags = Object.assign({}, this.flags, { timeout });
-	        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
-	    }
-	    /**
-	     * Emits to all clients.
-	     *
-	     * @example
-	     * // the “foo” event will be broadcast to all connected clients
-	     * io.emit("foo", "bar");
-	     *
-	     * // the “foo” event will be broadcast to all connected clients in the “room-101” room
-	     * io.to("room-101").emit("foo", "bar");
-	     *
-	     * // with an acknowledgement expected from all connected clients
-	     * io.timeout(1000).emit("some-event", (err, responses) => {
-	     *   if (err) {
-	     *     // some clients did not acknowledge the event in the given delay
-	     *   } else {
-	     *     console.log(responses); // one response per client
-	     *   }
-	     * });
-	     *
-	     * @return Always true
-	     */
-	    emit(ev, ...args) {
-	        if (socket_1.RESERVED_EVENTS.has(ev)) {
-	            throw new Error(`"${String(ev)}" is a reserved event name`);
-	        }
-	        // set up packet object
-	        const data = [ev, ...args];
-	        const packet = {
-	            type: socket_io_parser_1.PacketType.EVENT,
-	            data: data,
-	        };
-	        const withAck = typeof data[data.length - 1] === "function";
-	        if (!withAck) {
-	            this.adapter.broadcast(packet, {
-	                rooms: this.rooms,
-	                except: this.exceptRooms,
-	                flags: this.flags,
-	            });
-	            return true;
-	        }
-	        const ack = data.pop();
-	        let timedOut = false;
-	        let responses = [];
-	        const timer = setTimeout(() => {
-	            timedOut = true;
-	            ack.apply(this, [
-	                new Error("operation has timed out"),
-	                this.flags.expectSingleResponse ? null : responses,
-	            ]);
-	        }, this.flags.timeout);
-	        let expectedServerCount = -1;
-	        let actualServerCount = 0;
-	        let expectedClientCount = 0;
-	        const checkCompleteness = () => {
-	            if (!timedOut &&
-	                expectedServerCount === actualServerCount &&
-	                responses.length === expectedClientCount) {
-	                clearTimeout(timer);
-	                ack.apply(this, [
-	                    null,
-	                    this.flags.expectSingleResponse ? null : responses,
-	                ]);
-	            }
-	        };
-	        this.adapter.broadcastWithAck(packet, {
-	            rooms: this.rooms,
-	            except: this.exceptRooms,
-	            flags: this.flags,
-	        }, (clientCount) => {
-	            // each Socket.IO server in the cluster sends the number of clients that were notified
-	            expectedClientCount += clientCount;
-	            actualServerCount++;
-	            checkCompleteness();
-	        }, (clientResponse) => {
-	            // each client sends an acknowledgement
-	            responses.push(clientResponse);
-	            checkCompleteness();
-	        });
-	        this.adapter.serverCount().then((serverCount) => {
-	            expectedServerCount = serverCount;
-	            checkCompleteness();
-	        });
-	        return true;
-	    }
-	    /**
-	     * Emits an event and waits for an acknowledgement from all clients.
-	     *
-	     * @example
-	     * try {
-	     *   const responses = await io.timeout(1000).emitWithAck("some-event");
-	     *   console.log(responses); // one response per client
-	     * } catch (e) {
-	     *   // some clients did not acknowledge the event in the given delay
-	     * }
-	     *
-	     * @return a Promise that will be fulfilled when all clients have acknowledged the event
-	     */
-	    emitWithAck(ev, ...args) {
-	        return new Promise((resolve, reject) => {
-	            args.push((err, responses) => {
-	                if (err) {
-	                    err.responses = responses;
-	                    return reject(err);
-	                }
-	                else {
-	                    return resolve(responses);
-	                }
-	            });
-	            this.emit(ev, ...args);
-	        });
-	    }
-	    /**
-	     * Gets a list of clients.
-	     *
-	     * @deprecated this method will be removed in the next major release, please use {@link Server#serverSideEmit} or
-	     * {@link fetchSockets} instead.
-	     */
-	    allSockets() {
-	        if (!this.adapter) {
-	            throw new Error("No adapter for this namespace, are you trying to get the list of clients of a dynamic namespace?");
-	        }
-	        return this.adapter.sockets(this.rooms);
-	    }
-	    /**
-	     * Returns the matching socket instances. This method works across a cluster of several Socket.IO servers.
-	     *
-	     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
-	     *
-	     * @example
-	     * // return all Socket instances
-	     * const sockets = await io.fetchSockets();
-	     *
-	     * // return all Socket instances in the "room1" room
-	     * const sockets = await io.in("room1").fetchSockets();
-	     *
-	     * for (const socket of sockets) {
-	     *   console.log(socket.id);
-	     *   console.log(socket.handshake);
-	     *   console.log(socket.rooms);
-	     *   console.log(socket.data);
-	     *
-	     *   socket.emit("hello");
-	     *   socket.join("room1");
-	     *   socket.leave("room2");
-	     *   socket.disconnect();
-	     * }
-	     */
-	    fetchSockets() {
-	        return this.adapter
-	            .fetchSockets({
-	            rooms: this.rooms,
-	            except: this.exceptRooms,
-	            flags: this.flags,
-	        })
-	            .then((sockets) => {
-	            return sockets.map((socket) => {
-	                if (socket instanceof socket_1.Socket) {
-	                    // FIXME the TypeScript compiler complains about missing private properties
-	                    return socket;
-	                }
-	                else {
-	                    return new RemoteSocket(this.adapter, socket);
-	                }
-	            });
-	        });
-	    }
-	    /**
-	     * Makes the matching socket instances join the specified rooms.
-	     *
-	     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
-	     *
-	     * @example
-	     *
-	     * // make all socket instances join the "room1" room
-	     * io.socketsJoin("room1");
-	     *
-	     * // make all socket instances in the "room1" room join the "room2" and "room3" rooms
-	     * io.in("room1").socketsJoin(["room2", "room3"]);
-	     *
-	     * @param room - a room, or an array of rooms
-	     */
-	    socketsJoin(room) {
-	        this.adapter.addSockets({
-	            rooms: this.rooms,
-	            except: this.exceptRooms,
-	            flags: this.flags,
-	        }, Array.isArray(room) ? room : [room]);
-	    }
-	    /**
-	     * Makes the matching socket instances leave the specified rooms.
-	     *
-	     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
-	     *
-	     * @example
-	     * // make all socket instances leave the "room1" room
-	     * io.socketsLeave("room1");
-	     *
-	     * // make all socket instances in the "room1" room leave the "room2" and "room3" rooms
-	     * io.in("room1").socketsLeave(["room2", "room3"]);
-	     *
-	     * @param room - a room, or an array of rooms
-	     */
-	    socketsLeave(room) {
-	        this.adapter.delSockets({
-	            rooms: this.rooms,
-	            except: this.exceptRooms,
-	            flags: this.flags,
-	        }, Array.isArray(room) ? room : [room]);
-	    }
-	    /**
-	     * Makes the matching socket instances disconnect.
-	     *
-	     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
-	     *
-	     * @example
-	     * // make all socket instances disconnect (the connections might be kept alive for other namespaces)
-	     * io.disconnectSockets();
-	     *
-	     * // make all socket instances in the "room1" room disconnect and close the underlying connections
-	     * io.in("room1").disconnectSockets(true);
-	     *
-	     * @param close - whether to close the underlying connection
-	     */
-	    disconnectSockets(close = false) {
-	        this.adapter.disconnectSockets({
-	            rooms: this.rooms,
-	            except: this.exceptRooms,
-	            flags: this.flags,
-	        }, close);
-	    }
-	}
-	broadcastOperator.BroadcastOperator = BroadcastOperator;
-	/**
-	 * Expose of subset of the attributes and methods of the Socket class
-	 */
-	class RemoteSocket {
-	    constructor(adapter, details) {
-	        this.id = details.id;
-	        this.handshake = details.handshake;
-	        this.rooms = new Set(details.rooms);
-	        this.data = details.data;
-	        this.operator = new BroadcastOperator(adapter, new Set([this.id]), new Set(), {
-	            expectSingleResponse: true, // so that remoteSocket.emit() with acknowledgement behaves like socket.emit()
-	        });
-	    }
-	    /**
-	     * Adds a timeout in milliseconds for the next operation.
-	     *
-	     * @example
-	     * const sockets = await io.fetchSockets();
-	     *
-	     * for (const socket of sockets) {
-	     *   if (someCondition) {
-	     *     socket.timeout(1000).emit("some-event", (err) => {
-	     *       if (err) {
-	     *         // the client did not acknowledge the event in the given delay
-	     *       }
-	     *     });
-	     *   }
-	     * }
-	     *
-	     * // note: if possible, using a room instead of looping over all sockets is preferable
-	     * io.timeout(1000).to(someConditionRoom).emit("some-event", (err, responses) => {
-	     *   // ...
-	     * });
-	     *
-	     * @param timeout
-	     */
-	    timeout(timeout) {
-	        return this.operator.timeout(timeout);
-	    }
-	    emit(ev, ...args) {
-	        return this.operator.emit(ev, ...args);
-	    }
-	    /**
-	     * Joins a room.
-	     *
-	     * @param {String|Array} room - room or array of rooms
-	     */
-	    join(room) {
-	        return this.operator.socketsJoin(room);
-	    }
-	    /**
-	     * Leaves a room.
-	     *
-	     * @param {String} room
-	     */
-	    leave(room) {
-	        return this.operator.socketsLeave(room);
-	    }
-	    /**
-	     * Disconnects this client.
-	     *
-	     * @param {Boolean} close - if `true`, closes the underlying connection
-	     * @return {Socket} self
-	     */
-	    disconnect(close = false) {
-	        this.operator.disconnectSockets(close);
-	        return this;
-	    }
-	}
-	broadcastOperator.RemoteSocket = RemoteSocket;
-	return broadcastOperator;
+Object.defineProperty(socketTypes, "__esModule", { value: true });
+socketTypes.RESERVED_EVENTS = void 0;
+socketTypes.RESERVED_EVENTS = new Set([
+    "connect",
+    "connect_error",
+    "disconnect",
+    "disconnecting",
+    "newListener",
+    "removeListener",
+]);
+
+Object.defineProperty(broadcastOperator, "__esModule", { value: true });
+broadcastOperator.RemoteSocket = broadcastOperator.BroadcastOperator = void 0;
+const socket_types_1$1 = socketTypes;
+const socket_io_parser_1$1 = cjs;
+class BroadcastOperator {
+    constructor(adapter, rooms = new Set(), exceptRooms = new Set(), flags = {}) {
+        this.adapter = adapter;
+        this.rooms = rooms;
+        this.exceptRooms = exceptRooms;
+        this.flags = flags;
+    }
+    /**
+     * Targets a room when emitting.
+     *
+     * @example
+     * // the “foo” event will be broadcast to all connected clients in the “room-101” room
+     * io.to("room-101").emit("foo", "bar");
+     *
+     * // with an array of rooms (a client will be notified at most once)
+     * io.to(["room-101", "room-102"]).emit("foo", "bar");
+     *
+     * // with multiple chained calls
+     * io.to("room-101").to("room-102").emit("foo", "bar");
+     *
+     * @param room - a room, or an array of rooms
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    to(room) {
+        const rooms = new Set(this.rooms);
+        if (Array.isArray(room)) {
+            room.forEach((r) => rooms.add(r));
+        }
+        else {
+            rooms.add(room);
+        }
+        return new BroadcastOperator(this.adapter, rooms, this.exceptRooms, this.flags);
+    }
+    /**
+     * Targets a room when emitting. Similar to `to()`, but might feel clearer in some cases:
+     *
+     * @example
+     * // disconnect all clients in the "room-101" room
+     * io.in("room-101").disconnectSockets();
+     *
+     * @param room - a room, or an array of rooms
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    in(room) {
+        return this.to(room);
+    }
+    /**
+     * Excludes a room when emitting.
+     *
+     * @example
+     * // the "foo" event will be broadcast to all connected clients, except the ones that are in the "room-101" room
+     * io.except("room-101").emit("foo", "bar");
+     *
+     * // with an array of rooms
+     * io.except(["room-101", "room-102"]).emit("foo", "bar");
+     *
+     * // with multiple chained calls
+     * io.except("room-101").except("room-102").emit("foo", "bar");
+     *
+     * @param room - a room, or an array of rooms
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    except(room) {
+        const exceptRooms = new Set(this.exceptRooms);
+        if (Array.isArray(room)) {
+            room.forEach((r) => exceptRooms.add(r));
+        }
+        else {
+            exceptRooms.add(room);
+        }
+        return new BroadcastOperator(this.adapter, this.rooms, exceptRooms, this.flags);
+    }
+    /**
+     * Sets the compress flag.
+     *
+     * @example
+     * io.compress(false).emit("hello");
+     *
+     * @param compress - if `true`, compresses the sending data
+     * @return a new BroadcastOperator instance
+     */
+    compress(compress) {
+        const flags = Object.assign({}, this.flags, { compress });
+        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
+    }
+    /**
+     * Sets a modifier for a subsequent event emission that the event data may be lost if the client is not ready to
+     * receive messages (because of network slowness or other issues, or because they’re connected through long polling
+     * and is in the middle of a request-response cycle).
+     *
+     * @example
+     * io.volatile.emit("hello"); // the clients may or may not receive it
+     *
+     * @return a new BroadcastOperator instance
+     */
+    get volatile() {
+        const flags = Object.assign({}, this.flags, { volatile: true });
+        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
+    }
+    /**
+     * Sets a modifier for a subsequent event emission that the event data will only be broadcast to the current node.
+     *
+     * @example
+     * // the “foo” event will be broadcast to all connected clients on this node
+     * io.local.emit("foo", "bar");
+     *
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    get local() {
+        const flags = Object.assign({}, this.flags, { local: true });
+        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
+    }
+    /**
+     * Adds a timeout in milliseconds for the next operation
+     *
+     * @example
+     * io.timeout(1000).emit("some-event", (err, responses) => {
+     *   if (err) {
+     *     // some clients did not acknowledge the event in the given delay
+     *   } else {
+     *     console.log(responses); // one response per client
+     *   }
+     * });
+     *
+     * @param timeout
+     */
+    timeout(timeout) {
+        const flags = Object.assign({}, this.flags, { timeout });
+        return new BroadcastOperator(this.adapter, this.rooms, this.exceptRooms, flags);
+    }
+    /**
+     * Emits to all clients.
+     *
+     * @example
+     * // the “foo” event will be broadcast to all connected clients
+     * io.emit("foo", "bar");
+     *
+     * // the “foo” event will be broadcast to all connected clients in the “room-101” room
+     * io.to("room-101").emit("foo", "bar");
+     *
+     * // with an acknowledgement expected from all connected clients
+     * io.timeout(1000).emit("some-event", (err, responses) => {
+     *   if (err) {
+     *     // some clients did not acknowledge the event in the given delay
+     *   } else {
+     *     console.log(responses); // one response per client
+     *   }
+     * });
+     *
+     * @return Always true
+     */
+    emit(ev, ...args) {
+        if (socket_types_1$1.RESERVED_EVENTS.has(ev)) {
+            throw new Error(`"${String(ev)}" is a reserved event name`);
+        }
+        // set up packet object
+        const data = [ev, ...args];
+        const packet = {
+            type: socket_io_parser_1$1.PacketType.EVENT,
+            data: data,
+        };
+        const withAck = typeof data[data.length - 1] === "function";
+        if (!withAck) {
+            this.adapter.broadcast(packet, {
+                rooms: this.rooms,
+                except: this.exceptRooms,
+                flags: this.flags,
+            });
+            return true;
+        }
+        const ack = data.pop();
+        let timedOut = false;
+        let responses = [];
+        const timer = setTimeout(() => {
+            timedOut = true;
+            ack.apply(this, [
+                new Error("operation has timed out"),
+                this.flags.expectSingleResponse ? null : responses,
+            ]);
+        }, this.flags.timeout);
+        let expectedServerCount = -1;
+        let actualServerCount = 0;
+        let expectedClientCount = 0;
+        const checkCompleteness = () => {
+            if (!timedOut &&
+                expectedServerCount === actualServerCount &&
+                responses.length === expectedClientCount) {
+                clearTimeout(timer);
+                ack.apply(this, [
+                    null,
+                    this.flags.expectSingleResponse ? responses[0] : responses,
+                ]);
+            }
+        };
+        this.adapter.broadcastWithAck(packet, {
+            rooms: this.rooms,
+            except: this.exceptRooms,
+            flags: this.flags,
+        }, (clientCount) => {
+            // each Socket.IO server in the cluster sends the number of clients that were notified
+            expectedClientCount += clientCount;
+            actualServerCount++;
+            checkCompleteness();
+        }, (clientResponse) => {
+            // each client sends an acknowledgement
+            responses.push(clientResponse);
+            checkCompleteness();
+        });
+        this.adapter.serverCount().then((serverCount) => {
+            expectedServerCount = serverCount;
+            checkCompleteness();
+        });
+        return true;
+    }
+    /**
+     * Emits an event and waits for an acknowledgement from all clients.
+     *
+     * @example
+     * try {
+     *   const responses = await io.timeout(1000).emitWithAck("some-event");
+     *   console.log(responses); // one response per client
+     * } catch (e) {
+     *   // some clients did not acknowledge the event in the given delay
+     * }
+     *
+     * @return a Promise that will be fulfilled when all clients have acknowledged the event
+     */
+    emitWithAck(ev, ...args) {
+        return new Promise((resolve, reject) => {
+            args.push((err, responses) => {
+                if (err) {
+                    err.responses = responses;
+                    return reject(err);
+                }
+                else {
+                    return resolve(responses);
+                }
+            });
+            this.emit(ev, ...args);
+        });
+    }
+    /**
+     * Gets a list of clients.
+     *
+     * @deprecated this method will be removed in the next major release, please use {@link Server#serverSideEmit} or
+     * {@link fetchSockets} instead.
+     */
+    allSockets() {
+        if (!this.adapter) {
+            throw new Error("No adapter for this namespace, are you trying to get the list of clients of a dynamic namespace?");
+        }
+        return this.adapter.sockets(this.rooms);
+    }
+    /**
+     * Returns the matching socket instances. This method works across a cluster of several Socket.IO servers.
+     *
+     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
+     *
+     * @example
+     * // return all Socket instances
+     * const sockets = await io.fetchSockets();
+     *
+     * // return all Socket instances in the "room1" room
+     * const sockets = await io.in("room1").fetchSockets();
+     *
+     * for (const socket of sockets) {
+     *   console.log(socket.id);
+     *   console.log(socket.handshake);
+     *   console.log(socket.rooms);
+     *   console.log(socket.data);
+     *
+     *   socket.emit("hello");
+     *   socket.join("room1");
+     *   socket.leave("room2");
+     *   socket.disconnect();
+     * }
+     */
+    fetchSockets() {
+        return this.adapter
+            .fetchSockets({
+            rooms: this.rooms,
+            except: this.exceptRooms,
+            flags: this.flags,
+        })
+            .then((sockets) => {
+            return sockets.map((socket) => {
+                if (socket.server) {
+                    return socket; // local instance
+                }
+                else {
+                    return new RemoteSocket(this.adapter, socket);
+                }
+            });
+        });
+    }
+    /**
+     * Makes the matching socket instances join the specified rooms.
+     *
+     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
+     *
+     * @example
+     *
+     * // make all socket instances join the "room1" room
+     * io.socketsJoin("room1");
+     *
+     * // make all socket instances in the "room1" room join the "room2" and "room3" rooms
+     * io.in("room1").socketsJoin(["room2", "room3"]);
+     *
+     * @param room - a room, or an array of rooms
+     */
+    socketsJoin(room) {
+        this.adapter.addSockets({
+            rooms: this.rooms,
+            except: this.exceptRooms,
+            flags: this.flags,
+        }, Array.isArray(room) ? room : [room]);
+    }
+    /**
+     * Makes the matching socket instances leave the specified rooms.
+     *
+     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
+     *
+     * @example
+     * // make all socket instances leave the "room1" room
+     * io.socketsLeave("room1");
+     *
+     * // make all socket instances in the "room1" room leave the "room2" and "room3" rooms
+     * io.in("room1").socketsLeave(["room2", "room3"]);
+     *
+     * @param room - a room, or an array of rooms
+     */
+    socketsLeave(room) {
+        this.adapter.delSockets({
+            rooms: this.rooms,
+            except: this.exceptRooms,
+            flags: this.flags,
+        }, Array.isArray(room) ? room : [room]);
+    }
+    /**
+     * Makes the matching socket instances disconnect.
+     *
+     * Note: this method also works within a cluster of multiple Socket.IO servers, with a compatible {@link Adapter}.
+     *
+     * @example
+     * // make all socket instances disconnect (the connections might be kept alive for other namespaces)
+     * io.disconnectSockets();
+     *
+     * // make all socket instances in the "room1" room disconnect and close the underlying connections
+     * io.in("room1").disconnectSockets(true);
+     *
+     * @param close - whether to close the underlying connection
+     */
+    disconnectSockets(close = false) {
+        this.adapter.disconnectSockets({
+            rooms: this.rooms,
+            except: this.exceptRooms,
+            flags: this.flags,
+        }, close);
+    }
 }
-
-var hasRequiredSocket;
-
-function requireSocket () {
-	if (hasRequiredSocket) return socket;
-	hasRequiredSocket = 1;
-	(function (exports) {
-		var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-		    return (mod && mod.__esModule) ? mod : { "default": mod };
-		};
-		Object.defineProperty(exports, "__esModule", { value: true });
-		exports.Socket = exports.RESERVED_EVENTS = void 0;
-		const socket_io_parser_1 = cjs;
-		const debug_1 = __importDefault(srcExports);
-		const typed_events_1 = typedEvents;
-		const base64id_1 = __importDefault(base64idExports);
-		const broadcast_operator_1 = requireBroadcastOperator();
-		const debug = (0, debug_1.default)("socket.io:socket");
-		const RECOVERABLE_DISCONNECT_REASONS = new Set([
-		    "transport error",
-		    "transport close",
-		    "forced close",
-		    "ping timeout",
-		    "server shutting down",
-		    "forced server close",
-		]);
-		exports.RESERVED_EVENTS = new Set([
-		    "connect",
-		    "connect_error",
-		    "disconnect",
-		    "disconnecting",
-		    "newListener",
-		    "removeListener",
-		]);
-		function noop() { }
-		/**
-		 * This is the main object for interacting with a client.
-		 *
-		 * A Socket belongs to a given {@link Namespace} and uses an underlying {@link Client} to communicate.
-		 *
-		 * Within each {@link Namespace}, you can also define arbitrary channels (called "rooms") that the {@link Socket} can
-		 * join and leave. That provides a convenient way to broadcast to a group of socket instances.
-		 *
-		 * @example
-		 * io.on("connection", (socket) => {
-		 *   console.log(`socket ${socket.id} connected`);
-		 *
-		 *   // send an event to the client
-		 *   socket.emit("foo", "bar");
-		 *
-		 *   socket.on("foobar", () => {
-		 *     // an event was received from the client
-		 *   });
-		 *
-		 *   // join the room named "room1"
-		 *   socket.join("room1");
-		 *
-		 *   // broadcast to everyone in the room named "room1"
-		 *   io.to("room1").emit("hello");
-		 *
-		 *   // upon disconnection
-		 *   socket.on("disconnect", (reason) => {
-		 *     console.log(`socket ${socket.id} disconnected due to ${reason}`);
-		 *   });
-		 * });
-		 */
-		class Socket extends typed_events_1.StrictEventEmitter {
-		    /**
-		     * Interface to a `Client` for a given `Namespace`.
-		     *
-		     * @param {Namespace} nsp
-		     * @param {Client} client
-		     * @param {Object} auth
-		     * @package
-		     */
-		    constructor(nsp, client, auth, previousSession) {
-		        super();
-		        this.nsp = nsp;
-		        this.client = client;
-		        /**
-		         * Whether the connection state was recovered after a temporary disconnection. In that case, any missed packets will
-		         * be transmitted to the client, the data attribute and the rooms will be restored.
-		         */
-		        this.recovered = false;
-		        /**
-		         * Additional information that can be attached to the Socket instance and which will be used in the
-		         * {@link Server.fetchSockets()} method.
-		         */
-		        this.data = {};
-		        /**
-		         * Whether the socket is currently connected or not.
-		         *
-		         * @example
-		         * io.use((socket, next) => {
-		         *   console.log(socket.connected); // false
-		         *   next();
-		         * });
-		         *
-		         * io.on("connection", (socket) => {
-		         *   console.log(socket.connected); // true
-		         * });
-		         */
-		        this.connected = false;
-		        this.acks = new Map();
-		        this.fns = [];
-		        this.flags = {};
-		        this.server = nsp.server;
-		        this.adapter = this.nsp.adapter;
-		        if (previousSession) {
-		            this.id = previousSession.sid;
-		            this.pid = previousSession.pid;
-		            previousSession.rooms.forEach((room) => this.join(room));
-		            this.data = previousSession.data;
-		            previousSession.missedPackets.forEach((packet) => {
-		                this.packet({
-		                    type: socket_io_parser_1.PacketType.EVENT,
-		                    data: packet,
-		                });
-		            });
-		            this.recovered = true;
-		        }
-		        else {
-		            if (client.conn.protocol === 3) {
-		                // @ts-ignore
-		                this.id = nsp.name !== "/" ? nsp.name + "#" + client.id : client.id;
-		            }
-		            else {
-		                this.id = base64id_1.default.generateId(); // don't reuse the Engine.IO id because it's sensitive information
-		            }
-		            if (this.server._opts.connectionStateRecovery) {
-		                this.pid = base64id_1.default.generateId();
-		            }
-		        }
-		        this.handshake = this.buildHandshake(auth);
-		        // prevents crash when the socket receives an "error" event without listener
-		        this.on("error", noop);
-		    }
-		    /**
-		     * Builds the `handshake` BC object
-		     *
-		     * @private
-		     */
-		    buildHandshake(auth) {
-		        var _a, _b, _c, _d;
-		        return {
-		            headers: ((_a = this.request) === null || _a === void 0 ? void 0 : _a.headers) || {},
-		            time: new Date() + "",
-		            address: this.conn.remoteAddress,
-		            xdomain: !!((_b = this.request) === null || _b === void 0 ? void 0 : _b.headers.origin),
-		            // @ts-ignore
-		            secure: !this.request || !!this.request.connection.encrypted,
-		            issued: +new Date(),
-		            url: (_c = this.request) === null || _c === void 0 ? void 0 : _c.url,
-		            // @ts-ignore
-		            query: ((_d = this.request) === null || _d === void 0 ? void 0 : _d._query) || {},
-		            auth,
-		        };
-		    }
-		    /**
-		     * Emits to this client.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.emit("hello", "world");
-		     *
-		     *   // all serializable datastructures are supported (no need to call JSON.stringify)
-		     *   socket.emit("hello", 1, "2", { 3: ["4"], 5: Buffer.from([6]) });
-		     *
-		     *   // with an acknowledgement from the client
-		     *   socket.emit("hello", "world", (val) => {
-		     *     // ...
-		     *   });
-		     * });
-		     *
-		     * @return Always returns `true`.
-		     */
-		    emit(ev, ...args) {
-		        if (exports.RESERVED_EVENTS.has(ev)) {
-		            throw new Error(`"${String(ev)}" is a reserved event name`);
-		        }
-		        const data = [ev, ...args];
-		        const packet = {
-		            type: socket_io_parser_1.PacketType.EVENT,
-		            data: data,
-		        };
-		        // access last argument to see if it's an ACK callback
-		        if (typeof data[data.length - 1] === "function") {
-		            const id = this.nsp._ids++;
-		            debug("emitting packet with ack id %d", id);
-		            this.registerAckCallback(id, data.pop());
-		            packet.id = id;
-		        }
-		        const flags = Object.assign({}, this.flags);
-		        this.flags = {};
-		        // @ts-ignore
-		        if (this.nsp.server.opts.connectionStateRecovery) {
-		            // this ensures the packet is stored and can be transmitted upon reconnection
-		            this.adapter.broadcast(packet, {
-		                rooms: new Set([this.id]),
-		                except: new Set(),
-		                flags,
-		            });
-		        }
-		        else {
-		            this.notifyOutgoingListeners(packet);
-		            this.packet(packet, flags);
-		        }
-		        return true;
-		    }
-		    /**
-		     * Emits an event and waits for an acknowledgement
-		     *
-		     * @example
-		     * io.on("connection", async (socket) => {
-		     *   // without timeout
-		     *   const response = await socket.emitWithAck("hello", "world");
-		     *
-		     *   // with a specific timeout
-		     *   try {
-		     *     const response = await socket.timeout(1000).emitWithAck("hello", "world");
-		     *   } catch (err) {
-		     *     // the client did not acknowledge the event in the given delay
-		     *   }
-		     * });
-		     *
-		     * @return a Promise that will be fulfilled when the client acknowledges the event
-		     */
-		    emitWithAck(ev, ...args) {
-		        // the timeout flag is optional
-		        const withErr = this.flags.timeout !== undefined;
-		        return new Promise((resolve, reject) => {
-		            args.push((arg1, arg2) => {
-		                if (withErr) {
-		                    return arg1 ? reject(arg1) : resolve(arg2);
-		                }
-		                else {
-		                    return resolve(arg1);
-		                }
-		            });
-		            this.emit(ev, ...args);
-		        });
-		    }
-		    /**
-		     * @private
-		     */
-		    registerAckCallback(id, ack) {
-		        const timeout = this.flags.timeout;
-		        if (timeout === undefined) {
-		            this.acks.set(id, ack);
-		            return;
-		        }
-		        const timer = setTimeout(() => {
-		            debug("event with ack id %d has timed out after %d ms", id, timeout);
-		            this.acks.delete(id);
-		            ack.call(this, new Error("operation has timed out"));
-		        }, timeout);
-		        this.acks.set(id, (...args) => {
-		            clearTimeout(timer);
-		            ack.apply(this, [null, ...args]);
-		        });
-		    }
-		    /**
-		     * Targets a room when broadcasting.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // the “foo” event will be broadcast to all connected clients in the “room-101” room, except this socket
-		     *   socket.to("room-101").emit("foo", "bar");
-		     *
-		     *   // the code above is equivalent to:
-		     *   io.to("room-101").except(socket.id).emit("foo", "bar");
-		     *
-		     *   // with an array of rooms (a client will be notified at most once)
-		     *   socket.to(["room-101", "room-102"]).emit("foo", "bar");
-		     *
-		     *   // with multiple chained calls
-		     *   socket.to("room-101").to("room-102").emit("foo", "bar");
-		     * });
-		     *
-		     * @param room - a room, or an array of rooms
-		     * @return a new {@link BroadcastOperator} instance for chaining
-		     */
-		    to(room) {
-		        return this.newBroadcastOperator().to(room);
-		    }
-		    /**
-		     * Targets a room when broadcasting. Similar to `to()`, but might feel clearer in some cases:
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // disconnect all clients in the "room-101" room, except this socket
-		     *   socket.in("room-101").disconnectSockets();
-		     * });
-		     *
-		     * @param room - a room, or an array of rooms
-		     * @return a new {@link BroadcastOperator} instance for chaining
-		     */
-		    in(room) {
-		        return this.newBroadcastOperator().in(room);
-		    }
-		    /**
-		     * Excludes a room when broadcasting.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // the "foo" event will be broadcast to all connected clients, except the ones that are in the "room-101" room
-		     *   // and this socket
-		     *   socket.except("room-101").emit("foo", "bar");
-		     *
-		     *   // with an array of rooms
-		     *   socket.except(["room-101", "room-102"]).emit("foo", "bar");
-		     *
-		     *   // with multiple chained calls
-		     *   socket.except("room-101").except("room-102").emit("foo", "bar");
-		     * });
-		     *
-		     * @param room - a room, or an array of rooms
-		     * @return a new {@link BroadcastOperator} instance for chaining
-		     */
-		    except(room) {
-		        return this.newBroadcastOperator().except(room);
-		    }
-		    /**
-		     * Sends a `message` event.
-		     *
-		     * This method mimics the WebSocket.send() method.
-		     *
-		     * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/send
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.send("hello");
-		     *
-		     *   // this is equivalent to
-		     *   socket.emit("message", "hello");
-		     * });
-		     *
-		     * @return self
-		     */
-		    send(...args) {
-		        this.emit("message", ...args);
-		        return this;
-		    }
-		    /**
-		     * Sends a `message` event. Alias of {@link send}.
-		     *
-		     * @return self
-		     */
-		    write(...args) {
-		        this.emit("message", ...args);
-		        return this;
-		    }
-		    /**
-		     * Writes a packet.
-		     *
-		     * @param {Object} packet - packet object
-		     * @param {Object} opts - options
-		     * @private
-		     */
-		    packet(packet, opts = {}) {
-		        packet.nsp = this.nsp.name;
-		        opts.compress = false !== opts.compress;
-		        this.client._packet(packet, opts);
-		    }
-		    /**
-		     * Joins a room.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // join a single room
-		     *   socket.join("room1");
-		     *
-		     *   // join multiple rooms
-		     *   socket.join(["room1", "room2"]);
-		     * });
-		     *
-		     * @param {String|Array} rooms - room or array of rooms
-		     * @return a Promise or nothing, depending on the adapter
-		     */
-		    join(rooms) {
-		        debug("join room %s", rooms);
-		        return this.adapter.addAll(this.id, new Set(Array.isArray(rooms) ? rooms : [rooms]));
-		    }
-		    /**
-		     * Leaves a room.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // leave a single room
-		     *   socket.leave("room1");
-		     *
-		     *   // leave multiple rooms
-		     *   socket.leave("room1").leave("room2");
-		     * });
-		     *
-		     * @param {String} room
-		     * @return a Promise or nothing, depending on the adapter
-		     */
-		    leave(room) {
-		        debug("leave room %s", room);
-		        return this.adapter.del(this.id, room);
-		    }
-		    /**
-		     * Leave all rooms.
-		     *
-		     * @private
-		     */
-		    leaveAll() {
-		        this.adapter.delAll(this.id);
-		    }
-		    /**
-		     * Called by `Namespace` upon successful
-		     * middleware execution (ie: authorization).
-		     * Socket is added to namespace array before
-		     * call to join, so adapters can access it.
-		     *
-		     * @private
-		     */
-		    _onconnect() {
-		        debug("socket connected - writing packet");
-		        this.connected = true;
-		        this.join(this.id);
-		        if (this.conn.protocol === 3) {
-		            this.packet({ type: socket_io_parser_1.PacketType.CONNECT });
-		        }
-		        else {
-		            this.packet({
-		                type: socket_io_parser_1.PacketType.CONNECT,
-		                data: { sid: this.id, pid: this.pid },
-		            });
-		        }
-		    }
-		    /**
-		     * Called with each packet. Called by `Client`.
-		     *
-		     * @param {Object} packet
-		     * @private
-		     */
-		    _onpacket(packet) {
-		        debug("got packet %j", packet);
-		        switch (packet.type) {
-		            case socket_io_parser_1.PacketType.EVENT:
-		                this.onevent(packet);
-		                break;
-		            case socket_io_parser_1.PacketType.BINARY_EVENT:
-		                this.onevent(packet);
-		                break;
-		            case socket_io_parser_1.PacketType.ACK:
-		                this.onack(packet);
-		                break;
-		            case socket_io_parser_1.PacketType.BINARY_ACK:
-		                this.onack(packet);
-		                break;
-		            case socket_io_parser_1.PacketType.DISCONNECT:
-		                this.ondisconnect();
-		                break;
-		        }
-		    }
-		    /**
-		     * Called upon event packet.
-		     *
-		     * @param {Packet} packet - packet object
-		     * @private
-		     */
-		    onevent(packet) {
-		        const args = packet.data || [];
-		        debug("emitting event %j", args);
-		        if (null != packet.id) {
-		            debug("attaching ack callback to event");
-		            args.push(this.ack(packet.id));
-		        }
-		        if (this._anyListeners && this._anyListeners.length) {
-		            const listeners = this._anyListeners.slice();
-		            for (const listener of listeners) {
-		                listener.apply(this, args);
-		            }
-		        }
-		        this.dispatch(args);
-		    }
-		    /**
-		     * Produces an ack callback to emit with an event.
-		     *
-		     * @param {Number} id - packet id
-		     * @private
-		     */
-		    ack(id) {
-		        const self = this;
-		        let sent = false;
-		        return function () {
-		            // prevent double callbacks
-		            if (sent)
-		                return;
-		            const args = Array.prototype.slice.call(arguments);
-		            debug("sending ack %j", args);
-		            self.packet({
-		                id: id,
-		                type: socket_io_parser_1.PacketType.ACK,
-		                data: args,
-		            });
-		            sent = true;
-		        };
-		    }
-		    /**
-		     * Called upon ack packet.
-		     *
-		     * @private
-		     */
-		    onack(packet) {
-		        const ack = this.acks.get(packet.id);
-		        if ("function" == typeof ack) {
-		            debug("calling ack %s with %j", packet.id, packet.data);
-		            ack.apply(this, packet.data);
-		            this.acks.delete(packet.id);
-		        }
-		        else {
-		            debug("bad ack %s", packet.id);
-		        }
-		    }
-		    /**
-		     * Called upon client disconnect packet.
-		     *
-		     * @private
-		     */
-		    ondisconnect() {
-		        debug("got disconnect packet");
-		        this._onclose("client namespace disconnect");
-		    }
-		    /**
-		     * Handles a client error.
-		     *
-		     * @private
-		     */
-		    _onerror(err) {
-		        // FIXME the meaning of the "error" event is overloaded:
-		        //  - it can be sent by the client (`socket.emit("error")`)
-		        //  - it can be emitted when the connection encounters an error (an invalid packet for example)
-		        //  - it can be emitted when a packet is rejected in a middleware (`socket.use()`)
-		        this.emitReserved("error", err);
-		    }
-		    /**
-		     * Called upon closing. Called by `Client`.
-		     *
-		     * @param {String} reason
-		     * @param description
-		     * @throw {Error} optional error object
-		     *
-		     * @private
-		     */
-		    _onclose(reason, description) {
-		        if (!this.connected)
-		            return this;
-		        debug("closing socket - reason %s", reason);
-		        this.emitReserved("disconnecting", reason, description);
-		        if (this.server._opts.connectionStateRecovery &&
-		            RECOVERABLE_DISCONNECT_REASONS.has(reason)) {
-		            debug("connection state recovery is enabled for sid %s", this.id);
-		            this.adapter.persistSession({
-		                sid: this.id,
-		                pid: this.pid,
-		                rooms: [...this.rooms],
-		                data: this.data,
-		            });
-		        }
-		        this._cleanup();
-		        this.client._remove(this);
-		        this.connected = false;
-		        this.emitReserved("disconnect", reason, description);
-		        return;
-		    }
-		    /**
-		     * Makes the socket leave all the rooms it was part of and prevents it from joining any other room
-		     *
-		     * @private
-		     */
-		    _cleanup() {
-		        this.leaveAll();
-		        this.nsp._remove(this);
-		        this.join = noop;
-		    }
-		    /**
-		     * Produces an `error` packet.
-		     *
-		     * @param {Object} err - error object
-		     *
-		     * @private
-		     */
-		    _error(err) {
-		        this.packet({ type: socket_io_parser_1.PacketType.CONNECT_ERROR, data: err });
-		    }
-		    /**
-		     * Disconnects this client.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // disconnect this socket (the connection might be kept alive for other namespaces)
-		     *   socket.disconnect();
-		     *
-		     *   // disconnect this socket and close the underlying connection
-		     *   socket.disconnect(true);
-		     * })
-		     *
-		     * @param {Boolean} close - if `true`, closes the underlying connection
-		     * @return self
-		     */
-		    disconnect(close = false) {
-		        if (!this.connected)
-		            return this;
-		        if (close) {
-		            this.client._disconnect();
-		        }
-		        else {
-		            this.packet({ type: socket_io_parser_1.PacketType.DISCONNECT });
-		            this._onclose("server namespace disconnect");
-		        }
-		        return this;
-		    }
-		    /**
-		     * Sets the compress flag.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.compress(false).emit("hello");
-		     * });
-		     *
-		     * @param {Boolean} compress - if `true`, compresses the sending data
-		     * @return {Socket} self
-		     */
-		    compress(compress) {
-		        this.flags.compress = compress;
-		        return this;
-		    }
-		    /**
-		     * Sets a modifier for a subsequent event emission that the event data may be lost if the client is not ready to
-		     * receive messages (because of network slowness or other issues, or because they’re connected through long polling
-		     * and is in the middle of a request-response cycle).
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.volatile.emit("hello"); // the client may or may not receive it
-		     * });
-		     *
-		     * @return {Socket} self
-		     */
-		    get volatile() {
-		        this.flags.volatile = true;
-		        return this;
-		    }
-		    /**
-		     * Sets a modifier for a subsequent event emission that the event data will only be broadcast to every sockets but the
-		     * sender.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // the “foo” event will be broadcast to all connected clients, except this socket
-		     *   socket.broadcast.emit("foo", "bar");
-		     * });
-		     *
-		     * @return a new {@link BroadcastOperator} instance for chaining
-		     */
-		    get broadcast() {
-		        return this.newBroadcastOperator();
-		    }
-		    /**
-		     * Sets a modifier for a subsequent event emission that the event data will only be broadcast to the current node.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   // the “foo” event will be broadcast to all connected clients on this node, except this socket
-		     *   socket.local.emit("foo", "bar");
-		     * });
-		     *
-		     * @return a new {@link BroadcastOperator} instance for chaining
-		     */
-		    get local() {
-		        return this.newBroadcastOperator().local;
-		    }
-		    /**
-		     * Sets a modifier for a subsequent event emission that the callback will be called with an error when the
-		     * given number of milliseconds have elapsed without an acknowledgement from the client:
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.timeout(5000).emit("my-event", (err) => {
-		     *     if (err) {
-		     *       // the client did not acknowledge the event in the given delay
-		     *     }
-		     *   });
-		     * });
-		     *
-		     * @returns self
-		     */
-		    timeout(timeout) {
-		        this.flags.timeout = timeout;
-		        return this;
-		    }
-		    /**
-		     * Dispatch incoming event to socket listeners.
-		     *
-		     * @param {Array} event - event that will get emitted
-		     * @private
-		     */
-		    dispatch(event) {
-		        debug("dispatching an event %j", event);
-		        this.run(event, (err) => {
-		            process.nextTick(() => {
-		                if (err) {
-		                    return this._onerror(err);
-		                }
-		                if (this.connected) {
-		                    super.emitUntyped.apply(this, event);
-		                }
-		                else {
-		                    debug("ignore packet received after disconnection");
-		                }
-		            });
-		        });
-		    }
-		    /**
-		     * Sets up socket middleware.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.use(([event, ...args], next) => {
-		     *     if (isUnauthorized(event)) {
-		     *       return next(new Error("unauthorized event"));
-		     *     }
-		     *     // do not forget to call next
-		     *     next();
-		     *   });
-		     *
-		     *   socket.on("error", (err) => {
-		     *     if (err && err.message === "unauthorized event") {
-		     *       socket.disconnect();
-		     *     }
-		     *   });
-		     * });
-		     *
-		     * @param {Function} fn - middleware function (event, next)
-		     * @return {Socket} self
-		     */
-		    use(fn) {
-		        this.fns.push(fn);
-		        return this;
-		    }
-		    /**
-		     * Executes the middleware for an incoming event.
-		     *
-		     * @param {Array} event - event that will get emitted
-		     * @param {Function} fn - last fn call in the middleware
-		     * @private
-		     */
-		    run(event, fn) {
-		        const fns = this.fns.slice(0);
-		        if (!fns.length)
-		            return fn(null);
-		        function run(i) {
-		            fns[i](event, function (err) {
-		                // upon error, short-circuit
-		                if (err)
-		                    return fn(err);
-		                // if no middleware left, summon callback
-		                if (!fns[i + 1])
-		                    return fn(null);
-		                // go on to next
-		                run(i + 1);
-		            });
-		        }
-		        run(0);
-		    }
-		    /**
-		     * Whether the socket is currently disconnected
-		     */
-		    get disconnected() {
-		        return !this.connected;
-		    }
-		    /**
-		     * A reference to the request that originated the underlying Engine.IO Socket.
-		     */
-		    get request() {
-		        return this.client.request;
-		    }
-		    /**
-		     * A reference to the underlying Client transport connection (Engine.IO Socket object).
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   console.log(socket.conn.transport.name); // prints "polling" or "websocket"
-		     *
-		     *   socket.conn.once("upgrade", () => {
-		     *     console.log(socket.conn.transport.name); // prints "websocket"
-		     *   });
-		     * });
-		     */
-		    get conn() {
-		        return this.client.conn;
-		    }
-		    /**
-		     * Returns the rooms the socket is currently in.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   console.log(socket.rooms); // Set { <socket.id> }
-		     *
-		     *   socket.join("room1");
-		     *
-		     *   console.log(socket.rooms); // Set { <socket.id>, "room1" }
-		     * });
-		     */
-		    get rooms() {
-		        return this.adapter.socketRooms(this.id) || new Set();
-		    }
-		    /**
-		     * Adds a listener that will be fired when any event is received. The event name is passed as the first argument to
-		     * the callback.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.onAny((event, ...args) => {
-		     *     console.log(`got event ${event}`);
-		     *   });
-		     * });
-		     *
-		     * @param listener
-		     */
-		    onAny(listener) {
-		        this._anyListeners = this._anyListeners || [];
-		        this._anyListeners.push(listener);
-		        return this;
-		    }
-		    /**
-		     * Adds a listener that will be fired when any event is received. The event name is passed as the first argument to
-		     * the callback. The listener is added to the beginning of the listeners array.
-		     *
-		     * @param listener
-		     */
-		    prependAny(listener) {
-		        this._anyListeners = this._anyListeners || [];
-		        this._anyListeners.unshift(listener);
-		        return this;
-		    }
-		    /**
-		     * Removes the listener that will be fired when any event is received.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   const catchAllListener = (event, ...args) => {
-		     *     console.log(`got event ${event}`);
-		     *   }
-		     *
-		     *   socket.onAny(catchAllListener);
-		     *
-		     *   // remove a specific listener
-		     *   socket.offAny(catchAllListener);
-		     *
-		     *   // or remove all listeners
-		     *   socket.offAny();
-		     * });
-		     *
-		     * @param listener
-		     */
-		    offAny(listener) {
-		        if (!this._anyListeners) {
-		            return this;
-		        }
-		        if (listener) {
-		            const listeners = this._anyListeners;
-		            for (let i = 0; i < listeners.length; i++) {
-		                if (listener === listeners[i]) {
-		                    listeners.splice(i, 1);
-		                    return this;
-		                }
-		            }
-		        }
-		        else {
-		            this._anyListeners = [];
-		        }
-		        return this;
-		    }
-		    /**
-		     * Returns an array of listeners that are listening for any event that is specified. This array can be manipulated,
-		     * e.g. to remove listeners.
-		     */
-		    listenersAny() {
-		        return this._anyListeners || [];
-		    }
-		    /**
-		     * Adds a listener that will be fired when any event is sent. The event name is passed as the first argument to
-		     * the callback.
-		     *
-		     * Note: acknowledgements sent to the client are not included.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.onAnyOutgoing((event, ...args) => {
-		     *     console.log(`sent event ${event}`);
-		     *   });
-		     * });
-		     *
-		     * @param listener
-		     */
-		    onAnyOutgoing(listener) {
-		        this._anyOutgoingListeners = this._anyOutgoingListeners || [];
-		        this._anyOutgoingListeners.push(listener);
-		        return this;
-		    }
-		    /**
-		     * Adds a listener that will be fired when any event is emitted. The event name is passed as the first argument to the
-		     * callback. The listener is added to the beginning of the listeners array.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   socket.prependAnyOutgoing((event, ...args) => {
-		     *     console.log(`sent event ${event}`);
-		     *   });
-		     * });
-		     *
-		     * @param listener
-		     */
-		    prependAnyOutgoing(listener) {
-		        this._anyOutgoingListeners = this._anyOutgoingListeners || [];
-		        this._anyOutgoingListeners.unshift(listener);
-		        return this;
-		    }
-		    /**
-		     * Removes the listener that will be fired when any event is sent.
-		     *
-		     * @example
-		     * io.on("connection", (socket) => {
-		     *   const catchAllListener = (event, ...args) => {
-		     *     console.log(`sent event ${event}`);
-		     *   }
-		     *
-		     *   socket.onAnyOutgoing(catchAllListener);
-		     *
-		     *   // remove a specific listener
-		     *   socket.offAnyOutgoing(catchAllListener);
-		     *
-		     *   // or remove all listeners
-		     *   socket.offAnyOutgoing();
-		     * });
-		     *
-		     * @param listener - the catch-all listener
-		     */
-		    offAnyOutgoing(listener) {
-		        if (!this._anyOutgoingListeners) {
-		            return this;
-		        }
-		        if (listener) {
-		            const listeners = this._anyOutgoingListeners;
-		            for (let i = 0; i < listeners.length; i++) {
-		                if (listener === listeners[i]) {
-		                    listeners.splice(i, 1);
-		                    return this;
-		                }
-		            }
-		        }
-		        else {
-		            this._anyOutgoingListeners = [];
-		        }
-		        return this;
-		    }
-		    /**
-		     * Returns an array of listeners that are listening for any event that is specified. This array can be manipulated,
-		     * e.g. to remove listeners.
-		     */
-		    listenersAnyOutgoing() {
-		        return this._anyOutgoingListeners || [];
-		    }
-		    /**
-		     * Notify the listeners for each packet sent (emit or broadcast)
-		     *
-		     * @param packet
-		     *
-		     * @private
-		     */
-		    notifyOutgoingListeners(packet) {
-		        if (this._anyOutgoingListeners && this._anyOutgoingListeners.length) {
-		            const listeners = this._anyOutgoingListeners.slice();
-		            for (const listener of listeners) {
-		                listener.apply(this, packet.data);
-		            }
-		        }
-		    }
-		    newBroadcastOperator() {
-		        const flags = Object.assign({}, this.flags);
-		        this.flags = {};
-		        return new broadcast_operator_1.BroadcastOperator(this.adapter, new Set(), new Set([this.id]), flags);
-		    }
-		}
-		exports.Socket = Socket; 
-	} (socket));
-	return socket;
+broadcastOperator.BroadcastOperator = BroadcastOperator;
+/**
+ * Expose of subset of the attributes and methods of the Socket class
+ */
+class RemoteSocket {
+    constructor(adapter, details) {
+        this.id = details.id;
+        this.handshake = details.handshake;
+        this.rooms = new Set(details.rooms);
+        this.data = details.data;
+        this.operator = new BroadcastOperator(adapter, new Set([this.id]), new Set(), {
+            expectSingleResponse: true, // so that remoteSocket.emit() with acknowledgement behaves like socket.emit()
+        });
+    }
+    /**
+     * Adds a timeout in milliseconds for the next operation.
+     *
+     * @example
+     * const sockets = await io.fetchSockets();
+     *
+     * for (const socket of sockets) {
+     *   if (someCondition) {
+     *     socket.timeout(1000).emit("some-event", (err) => {
+     *       if (err) {
+     *         // the client did not acknowledge the event in the given delay
+     *       }
+     *     });
+     *   }
+     * }
+     *
+     * // note: if possible, using a room instead of looping over all sockets is preferable
+     * io.timeout(1000).to(someConditionRoom).emit("some-event", (err, responses) => {
+     *   // ...
+     * });
+     *
+     * @param timeout
+     */
+    timeout(timeout) {
+        return this.operator.timeout(timeout);
+    }
+    emit(ev, ...args) {
+        return this.operator.emit(ev, ...args);
+    }
+    /**
+     * Joins a room.
+     *
+     * @param {String|Array} room - room or array of rooms
+     */
+    join(room) {
+        return this.operator.socketsJoin(room);
+    }
+    /**
+     * Leaves a room.
+     *
+     * @param {String} room
+     */
+    leave(room) {
+        return this.operator.socketsLeave(room);
+    }
+    /**
+     * Disconnects this client.
+     *
+     * @param {Boolean} close - if `true`, closes the underlying connection
+     * @return {Socket} self
+     */
+    disconnect(close = false) {
+        this.operator.disconnectSockets(close);
+        return this;
+    }
 }
+broadcastOperator.RemoteSocket = RemoteSocket;
+
+var __importDefault$2 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(socket, "__esModule", { value: true });
+socket.Socket = void 0;
+const socket_io_parser_1 = cjs;
+const debug_1$2 = __importDefault$2(srcExports$1);
+const typed_events_1 = typedEvents;
+const base64id_1 = __importDefault$2(base64idExports);
+const broadcast_operator_1 = broadcastOperator;
+const socket_types_1 = socketTypes;
+const debug$2 = (0, debug_1$2.default)("socket.io:socket");
+const RECOVERABLE_DISCONNECT_REASONS = new Set([
+    "transport error",
+    "transport close",
+    "forced close",
+    "ping timeout",
+    "server shutting down",
+    "forced server close",
+]);
+function noop() { }
+/**
+ * This is the main object for interacting with a client.
+ *
+ * A Socket belongs to a given {@link Namespace} and uses an underlying {@link Client} to communicate.
+ *
+ * Within each {@link Namespace}, you can also define arbitrary channels (called "rooms") that the {@link Socket} can
+ * join and leave. That provides a convenient way to broadcast to a group of socket instances.
+ *
+ * @example
+ * io.on("connection", (socket) => {
+ *   console.log(`socket ${socket.id} connected`);
+ *
+ *   // send an event to the client
+ *   socket.emit("foo", "bar");
+ *
+ *   socket.on("foobar", () => {
+ *     // an event was received from the client
+ *   });
+ *
+ *   // join the room named "room1"
+ *   socket.join("room1");
+ *
+ *   // broadcast to everyone in the room named "room1"
+ *   io.to("room1").emit("hello");
+ *
+ *   // upon disconnection
+ *   socket.on("disconnect", (reason) => {
+ *     console.log(`socket ${socket.id} disconnected due to ${reason}`);
+ *   });
+ * });
+ */
+let Socket$1 = class Socket extends typed_events_1.StrictEventEmitter {
+    /**
+     * Interface to a `Client` for a given `Namespace`.
+     *
+     * @param {Namespace} nsp
+     * @param {Client} client
+     * @param {Object} auth
+     * @package
+     */
+    constructor(nsp, client, auth, previousSession) {
+        super();
+        this.nsp = nsp;
+        this.client = client;
+        /**
+         * Whether the connection state was recovered after a temporary disconnection. In that case, any missed packets will
+         * be transmitted to the client, the data attribute and the rooms will be restored.
+         */
+        this.recovered = false;
+        /**
+         * Additional information that can be attached to the Socket instance and which will be used in the
+         * {@link Server.fetchSockets()} method.
+         */
+        this.data = {};
+        /**
+         * Whether the socket is currently connected or not.
+         *
+         * @example
+         * io.use((socket, next) => {
+         *   console.log(socket.connected); // false
+         *   next();
+         * });
+         *
+         * io.on("connection", (socket) => {
+         *   console.log(socket.connected); // true
+         * });
+         */
+        this.connected = false;
+        this.acks = new Map();
+        this.fns = [];
+        this.flags = {};
+        this.server = nsp.server;
+        this.adapter = this.nsp.adapter;
+        if (previousSession) {
+            this.id = previousSession.sid;
+            this.pid = previousSession.pid;
+            previousSession.rooms.forEach((room) => this.join(room));
+            this.data = previousSession.data;
+            previousSession.missedPackets.forEach((packet) => {
+                this.packet({
+                    type: socket_io_parser_1.PacketType.EVENT,
+                    data: packet,
+                });
+            });
+            this.recovered = true;
+        }
+        else {
+            if (client.conn.protocol === 3) {
+                // @ts-ignore
+                this.id = nsp.name !== "/" ? nsp.name + "#" + client.id : client.id;
+            }
+            else {
+                this.id = base64id_1.default.generateId(); // don't reuse the Engine.IO id because it's sensitive information
+            }
+            if (this.server._opts.connectionStateRecovery) {
+                this.pid = base64id_1.default.generateId();
+            }
+        }
+        this.handshake = this.buildHandshake(auth);
+        // prevents crash when the socket receives an "error" event without listener
+        this.on("error", noop);
+    }
+    /**
+     * Builds the `handshake` BC object
+     *
+     * @private
+     */
+    buildHandshake(auth) {
+        var _a, _b, _c, _d;
+        return {
+            headers: ((_a = this.request) === null || _a === void 0 ? void 0 : _a.headers) || {},
+            time: new Date() + "",
+            address: this.conn.remoteAddress,
+            xdomain: !!((_b = this.request) === null || _b === void 0 ? void 0 : _b.headers.origin),
+            // @ts-ignore
+            secure: !this.request || !!this.request.connection.encrypted,
+            issued: +new Date(),
+            url: (_c = this.request) === null || _c === void 0 ? void 0 : _c.url,
+            // @ts-ignore
+            query: ((_d = this.request) === null || _d === void 0 ? void 0 : _d._query) || {},
+            auth,
+        };
+    }
+    /**
+     * Emits to this client.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.emit("hello", "world");
+     *
+     *   // all serializable datastructures are supported (no need to call JSON.stringify)
+     *   socket.emit("hello", 1, "2", { 3: ["4"], 5: Buffer.from([6]) });
+     *
+     *   // with an acknowledgement from the client
+     *   socket.emit("hello", "world", (val) => {
+     *     // ...
+     *   });
+     * });
+     *
+     * @return Always returns `true`.
+     */
+    emit(ev, ...args) {
+        if (socket_types_1.RESERVED_EVENTS.has(ev)) {
+            throw new Error(`"${String(ev)}" is a reserved event name`);
+        }
+        const data = [ev, ...args];
+        const packet = {
+            type: socket_io_parser_1.PacketType.EVENT,
+            data: data,
+        };
+        // access last argument to see if it's an ACK callback
+        if (typeof data[data.length - 1] === "function") {
+            const id = this.nsp._ids++;
+            debug$2("emitting packet with ack id %d", id);
+            this.registerAckCallback(id, data.pop());
+            packet.id = id;
+        }
+        const flags = Object.assign({}, this.flags);
+        this.flags = {};
+        // @ts-ignore
+        if (this.nsp.server.opts.connectionStateRecovery) {
+            // this ensures the packet is stored and can be transmitted upon reconnection
+            this.adapter.broadcast(packet, {
+                rooms: new Set([this.id]),
+                except: new Set(),
+                flags,
+            });
+        }
+        else {
+            this.notifyOutgoingListeners(packet);
+            this.packet(packet, flags);
+        }
+        return true;
+    }
+    /**
+     * Emits an event and waits for an acknowledgement
+     *
+     * @example
+     * io.on("connection", async (socket) => {
+     *   // without timeout
+     *   const response = await socket.emitWithAck("hello", "world");
+     *
+     *   // with a specific timeout
+     *   try {
+     *     const response = await socket.timeout(1000).emitWithAck("hello", "world");
+     *   } catch (err) {
+     *     // the client did not acknowledge the event in the given delay
+     *   }
+     * });
+     *
+     * @return a Promise that will be fulfilled when the client acknowledges the event
+     */
+    emitWithAck(ev, ...args) {
+        // the timeout flag is optional
+        const withErr = this.flags.timeout !== undefined;
+        return new Promise((resolve, reject) => {
+            args.push((arg1, arg2) => {
+                if (withErr) {
+                    return arg1 ? reject(arg1) : resolve(arg2);
+                }
+                else {
+                    return resolve(arg1);
+                }
+            });
+            this.emit(ev, ...args);
+        });
+    }
+    /**
+     * @private
+     */
+    registerAckCallback(id, ack) {
+        const timeout = this.flags.timeout;
+        if (timeout === undefined) {
+            this.acks.set(id, ack);
+            return;
+        }
+        const timer = setTimeout(() => {
+            debug$2("event with ack id %d has timed out after %d ms", id, timeout);
+            this.acks.delete(id);
+            ack.call(this, new Error("operation has timed out"));
+        }, timeout);
+        this.acks.set(id, (...args) => {
+            clearTimeout(timer);
+            ack.apply(this, [null, ...args]);
+        });
+    }
+    /**
+     * Targets a room when broadcasting.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // the “foo” event will be broadcast to all connected clients in the “room-101” room, except this socket
+     *   socket.to("room-101").emit("foo", "bar");
+     *
+     *   // the code above is equivalent to:
+     *   io.to("room-101").except(socket.id).emit("foo", "bar");
+     *
+     *   // with an array of rooms (a client will be notified at most once)
+     *   socket.to(["room-101", "room-102"]).emit("foo", "bar");
+     *
+     *   // with multiple chained calls
+     *   socket.to("room-101").to("room-102").emit("foo", "bar");
+     * });
+     *
+     * @param room - a room, or an array of rooms
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    to(room) {
+        return this.newBroadcastOperator().to(room);
+    }
+    /**
+     * Targets a room when broadcasting. Similar to `to()`, but might feel clearer in some cases:
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // disconnect all clients in the "room-101" room, except this socket
+     *   socket.in("room-101").disconnectSockets();
+     * });
+     *
+     * @param room - a room, or an array of rooms
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    in(room) {
+        return this.newBroadcastOperator().in(room);
+    }
+    /**
+     * Excludes a room when broadcasting.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // the "foo" event will be broadcast to all connected clients, except the ones that are in the "room-101" room
+     *   // and this socket
+     *   socket.except("room-101").emit("foo", "bar");
+     *
+     *   // with an array of rooms
+     *   socket.except(["room-101", "room-102"]).emit("foo", "bar");
+     *
+     *   // with multiple chained calls
+     *   socket.except("room-101").except("room-102").emit("foo", "bar");
+     * });
+     *
+     * @param room - a room, or an array of rooms
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    except(room) {
+        return this.newBroadcastOperator().except(room);
+    }
+    /**
+     * Sends a `message` event.
+     *
+     * This method mimics the WebSocket.send() method.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/send
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.send("hello");
+     *
+     *   // this is equivalent to
+     *   socket.emit("message", "hello");
+     * });
+     *
+     * @return self
+     */
+    send(...args) {
+        this.emit("message", ...args);
+        return this;
+    }
+    /**
+     * Sends a `message` event. Alias of {@link send}.
+     *
+     * @return self
+     */
+    write(...args) {
+        this.emit("message", ...args);
+        return this;
+    }
+    /**
+     * Writes a packet.
+     *
+     * @param {Object} packet - packet object
+     * @param {Object} opts - options
+     * @private
+     */
+    packet(packet, opts = {}) {
+        packet.nsp = this.nsp.name;
+        opts.compress = false !== opts.compress;
+        this.client._packet(packet, opts);
+    }
+    /**
+     * Joins a room.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // join a single room
+     *   socket.join("room1");
+     *
+     *   // join multiple rooms
+     *   socket.join(["room1", "room2"]);
+     * });
+     *
+     * @param {String|Array} rooms - room or array of rooms
+     * @return a Promise or nothing, depending on the adapter
+     */
+    join(rooms) {
+        debug$2("join room %s", rooms);
+        return this.adapter.addAll(this.id, new Set(Array.isArray(rooms) ? rooms : [rooms]));
+    }
+    /**
+     * Leaves a room.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // leave a single room
+     *   socket.leave("room1");
+     *
+     *   // leave multiple rooms
+     *   socket.leave("room1").leave("room2");
+     * });
+     *
+     * @param {String} room
+     * @return a Promise or nothing, depending on the adapter
+     */
+    leave(room) {
+        debug$2("leave room %s", room);
+        return this.adapter.del(this.id, room);
+    }
+    /**
+     * Leave all rooms.
+     *
+     * @private
+     */
+    leaveAll() {
+        this.adapter.delAll(this.id);
+    }
+    /**
+     * Called by `Namespace` upon successful
+     * middleware execution (ie: authorization).
+     * Socket is added to namespace array before
+     * call to join, so adapters can access it.
+     *
+     * @private
+     */
+    _onconnect() {
+        debug$2("socket connected - writing packet");
+        this.connected = true;
+        this.join(this.id);
+        if (this.conn.protocol === 3) {
+            this.packet({ type: socket_io_parser_1.PacketType.CONNECT });
+        }
+        else {
+            this.packet({
+                type: socket_io_parser_1.PacketType.CONNECT,
+                data: { sid: this.id, pid: this.pid },
+            });
+        }
+    }
+    /**
+     * Called with each packet. Called by `Client`.
+     *
+     * @param {Object} packet
+     * @private
+     */
+    _onpacket(packet) {
+        debug$2("got packet %j", packet);
+        switch (packet.type) {
+            case socket_io_parser_1.PacketType.EVENT:
+                this.onevent(packet);
+                break;
+            case socket_io_parser_1.PacketType.BINARY_EVENT:
+                this.onevent(packet);
+                break;
+            case socket_io_parser_1.PacketType.ACK:
+                this.onack(packet);
+                break;
+            case socket_io_parser_1.PacketType.BINARY_ACK:
+                this.onack(packet);
+                break;
+            case socket_io_parser_1.PacketType.DISCONNECT:
+                this.ondisconnect();
+                break;
+        }
+    }
+    /**
+     * Called upon event packet.
+     *
+     * @param {Packet} packet - packet object
+     * @private
+     */
+    onevent(packet) {
+        const args = packet.data || [];
+        debug$2("emitting event %j", args);
+        if (null != packet.id) {
+            debug$2("attaching ack callback to event");
+            args.push(this.ack(packet.id));
+        }
+        if (this._anyListeners && this._anyListeners.length) {
+            const listeners = this._anyListeners.slice();
+            for (const listener of listeners) {
+                listener.apply(this, args);
+            }
+        }
+        this.dispatch(args);
+    }
+    /**
+     * Produces an ack callback to emit with an event.
+     *
+     * @param {Number} id - packet id
+     * @private
+     */
+    ack(id) {
+        const self = this;
+        let sent = false;
+        return function () {
+            // prevent double callbacks
+            if (sent)
+                return;
+            const args = Array.prototype.slice.call(arguments);
+            debug$2("sending ack %j", args);
+            self.packet({
+                id: id,
+                type: socket_io_parser_1.PacketType.ACK,
+                data: args,
+            });
+            sent = true;
+        };
+    }
+    /**
+     * Called upon ack packet.
+     *
+     * @private
+     */
+    onack(packet) {
+        const ack = this.acks.get(packet.id);
+        if ("function" == typeof ack) {
+            debug$2("calling ack %s with %j", packet.id, packet.data);
+            ack.apply(this, packet.data);
+            this.acks.delete(packet.id);
+        }
+        else {
+            debug$2("bad ack %s", packet.id);
+        }
+    }
+    /**
+     * Called upon client disconnect packet.
+     *
+     * @private
+     */
+    ondisconnect() {
+        debug$2("got disconnect packet");
+        this._onclose("client namespace disconnect");
+    }
+    /**
+     * Handles a client error.
+     *
+     * @private
+     */
+    _onerror(err) {
+        // FIXME the meaning of the "error" event is overloaded:
+        //  - it can be sent by the client (`socket.emit("error")`)
+        //  - it can be emitted when the connection encounters an error (an invalid packet for example)
+        //  - it can be emitted when a packet is rejected in a middleware (`socket.use()`)
+        this.emitReserved("error", err);
+    }
+    /**
+     * Called upon closing. Called by `Client`.
+     *
+     * @param {String} reason
+     * @param description
+     * @throw {Error} optional error object
+     *
+     * @private
+     */
+    _onclose(reason, description) {
+        if (!this.connected)
+            return this;
+        debug$2("closing socket - reason %s", reason);
+        this.emitReserved("disconnecting", reason, description);
+        if (this.server._opts.connectionStateRecovery &&
+            RECOVERABLE_DISCONNECT_REASONS.has(reason)) {
+            debug$2("connection state recovery is enabled for sid %s", this.id);
+            this.adapter.persistSession({
+                sid: this.id,
+                pid: this.pid,
+                rooms: [...this.rooms],
+                data: this.data,
+            });
+        }
+        this._cleanup();
+        this.client._remove(this);
+        this.connected = false;
+        this.emitReserved("disconnect", reason, description);
+        return;
+    }
+    /**
+     * Makes the socket leave all the rooms it was part of and prevents it from joining any other room
+     *
+     * @private
+     */
+    _cleanup() {
+        this.leaveAll();
+        this.nsp._remove(this);
+        this.join = noop;
+    }
+    /**
+     * Produces an `error` packet.
+     *
+     * @param {Object} err - error object
+     *
+     * @private
+     */
+    _error(err) {
+        this.packet({ type: socket_io_parser_1.PacketType.CONNECT_ERROR, data: err });
+    }
+    /**
+     * Disconnects this client.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // disconnect this socket (the connection might be kept alive for other namespaces)
+     *   socket.disconnect();
+     *
+     *   // disconnect this socket and close the underlying connection
+     *   socket.disconnect(true);
+     * })
+     *
+     * @param {Boolean} close - if `true`, closes the underlying connection
+     * @return self
+     */
+    disconnect(close = false) {
+        if (!this.connected)
+            return this;
+        if (close) {
+            this.client._disconnect();
+        }
+        else {
+            this.packet({ type: socket_io_parser_1.PacketType.DISCONNECT });
+            this._onclose("server namespace disconnect");
+        }
+        return this;
+    }
+    /**
+     * Sets the compress flag.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.compress(false).emit("hello");
+     * });
+     *
+     * @param {Boolean} compress - if `true`, compresses the sending data
+     * @return {Socket} self
+     */
+    compress(compress) {
+        this.flags.compress = compress;
+        return this;
+    }
+    /**
+     * Sets a modifier for a subsequent event emission that the event data may be lost if the client is not ready to
+     * receive messages (because of network slowness or other issues, or because they’re connected through long polling
+     * and is in the middle of a request-response cycle).
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.volatile.emit("hello"); // the client may or may not receive it
+     * });
+     *
+     * @return {Socket} self
+     */
+    get volatile() {
+        this.flags.volatile = true;
+        return this;
+    }
+    /**
+     * Sets a modifier for a subsequent event emission that the event data will only be broadcast to every sockets but the
+     * sender.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // the “foo” event will be broadcast to all connected clients, except this socket
+     *   socket.broadcast.emit("foo", "bar");
+     * });
+     *
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    get broadcast() {
+        return this.newBroadcastOperator();
+    }
+    /**
+     * Sets a modifier for a subsequent event emission that the event data will only be broadcast to the current node.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   // the “foo” event will be broadcast to all connected clients on this node, except this socket
+     *   socket.local.emit("foo", "bar");
+     * });
+     *
+     * @return a new {@link BroadcastOperator} instance for chaining
+     */
+    get local() {
+        return this.newBroadcastOperator().local;
+    }
+    /**
+     * Sets a modifier for a subsequent event emission that the callback will be called with an error when the
+     * given number of milliseconds have elapsed without an acknowledgement from the client:
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.timeout(5000).emit("my-event", (err) => {
+     *     if (err) {
+     *       // the client did not acknowledge the event in the given delay
+     *     }
+     *   });
+     * });
+     *
+     * @returns self
+     */
+    timeout(timeout) {
+        this.flags.timeout = timeout;
+        return this;
+    }
+    /**
+     * Dispatch incoming event to socket listeners.
+     *
+     * @param {Array} event - event that will get emitted
+     * @private
+     */
+    dispatch(event) {
+        debug$2("dispatching an event %j", event);
+        this.run(event, (err) => {
+            process.nextTick(() => {
+                if (err) {
+                    return this._onerror(err);
+                }
+                if (this.connected) {
+                    super.emitUntyped.apply(this, event);
+                }
+                else {
+                    debug$2("ignore packet received after disconnection");
+                }
+            });
+        });
+    }
+    /**
+     * Sets up socket middleware.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.use(([event, ...args], next) => {
+     *     if (isUnauthorized(event)) {
+     *       return next(new Error("unauthorized event"));
+     *     }
+     *     // do not forget to call next
+     *     next();
+     *   });
+     *
+     *   socket.on("error", (err) => {
+     *     if (err && err.message === "unauthorized event") {
+     *       socket.disconnect();
+     *     }
+     *   });
+     * });
+     *
+     * @param {Function} fn - middleware function (event, next)
+     * @return {Socket} self
+     */
+    use(fn) {
+        this.fns.push(fn);
+        return this;
+    }
+    /**
+     * Executes the middleware for an incoming event.
+     *
+     * @param {Array} event - event that will get emitted
+     * @param {Function} fn - last fn call in the middleware
+     * @private
+     */
+    run(event, fn) {
+        if (!this.fns.length)
+            return fn();
+        const fns = this.fns.slice(0);
+        function run(i) {
+            fns[i](event, (err) => {
+                // upon error, short-circuit
+                if (err)
+                    return fn(err);
+                // if no middleware left, summon callback
+                if (!fns[i + 1])
+                    return fn();
+                // go on to next
+                run(i + 1);
+            });
+        }
+        run(0);
+    }
+    /**
+     * Whether the socket is currently disconnected
+     */
+    get disconnected() {
+        return !this.connected;
+    }
+    /**
+     * A reference to the request that originated the underlying Engine.IO Socket.
+     */
+    get request() {
+        return this.client.request;
+    }
+    /**
+     * A reference to the underlying Client transport connection (Engine.IO Socket object).
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   console.log(socket.conn.transport.name); // prints "polling" or "websocket"
+     *
+     *   socket.conn.once("upgrade", () => {
+     *     console.log(socket.conn.transport.name); // prints "websocket"
+     *   });
+     * });
+     */
+    get conn() {
+        return this.client.conn;
+    }
+    /**
+     * Returns the rooms the socket is currently in.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   console.log(socket.rooms); // Set { <socket.id> }
+     *
+     *   socket.join("room1");
+     *
+     *   console.log(socket.rooms); // Set { <socket.id>, "room1" }
+     * });
+     */
+    get rooms() {
+        return this.adapter.socketRooms(this.id) || new Set();
+    }
+    /**
+     * Adds a listener that will be fired when any event is received. The event name is passed as the first argument to
+     * the callback.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.onAny((event, ...args) => {
+     *     console.log(`got event ${event}`);
+     *   });
+     * });
+     *
+     * @param listener
+     */
+    onAny(listener) {
+        this._anyListeners = this._anyListeners || [];
+        this._anyListeners.push(listener);
+        return this;
+    }
+    /**
+     * Adds a listener that will be fired when any event is received. The event name is passed as the first argument to
+     * the callback. The listener is added to the beginning of the listeners array.
+     *
+     * @param listener
+     */
+    prependAny(listener) {
+        this._anyListeners = this._anyListeners || [];
+        this._anyListeners.unshift(listener);
+        return this;
+    }
+    /**
+     * Removes the listener that will be fired when any event is received.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   const catchAllListener = (event, ...args) => {
+     *     console.log(`got event ${event}`);
+     *   }
+     *
+     *   socket.onAny(catchAllListener);
+     *
+     *   // remove a specific listener
+     *   socket.offAny(catchAllListener);
+     *
+     *   // or remove all listeners
+     *   socket.offAny();
+     * });
+     *
+     * @param listener
+     */
+    offAny(listener) {
+        if (!this._anyListeners) {
+            return this;
+        }
+        if (listener) {
+            const listeners = this._anyListeners;
+            for (let i = 0; i < listeners.length; i++) {
+                if (listener === listeners[i]) {
+                    listeners.splice(i, 1);
+                    return this;
+                }
+            }
+        }
+        else {
+            this._anyListeners = [];
+        }
+        return this;
+    }
+    /**
+     * Returns an array of listeners that are listening for any event that is specified. This array can be manipulated,
+     * e.g. to remove listeners.
+     */
+    listenersAny() {
+        return this._anyListeners || [];
+    }
+    /**
+     * Adds a listener that will be fired when any event is sent. The event name is passed as the first argument to
+     * the callback.
+     *
+     * Note: acknowledgements sent to the client are not included.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.onAnyOutgoing((event, ...args) => {
+     *     console.log(`sent event ${event}`);
+     *   });
+     * });
+     *
+     * @param listener
+     */
+    onAnyOutgoing(listener) {
+        this._anyOutgoingListeners = this._anyOutgoingListeners || [];
+        this._anyOutgoingListeners.push(listener);
+        return this;
+    }
+    /**
+     * Adds a listener that will be fired when any event is emitted. The event name is passed as the first argument to the
+     * callback. The listener is added to the beginning of the listeners array.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   socket.prependAnyOutgoing((event, ...args) => {
+     *     console.log(`sent event ${event}`);
+     *   });
+     * });
+     *
+     * @param listener
+     */
+    prependAnyOutgoing(listener) {
+        this._anyOutgoingListeners = this._anyOutgoingListeners || [];
+        this._anyOutgoingListeners.unshift(listener);
+        return this;
+    }
+    /**
+     * Removes the listener that will be fired when any event is sent.
+     *
+     * @example
+     * io.on("connection", (socket) => {
+     *   const catchAllListener = (event, ...args) => {
+     *     console.log(`sent event ${event}`);
+     *   }
+     *
+     *   socket.onAnyOutgoing(catchAllListener);
+     *
+     *   // remove a specific listener
+     *   socket.offAnyOutgoing(catchAllListener);
+     *
+     *   // or remove all listeners
+     *   socket.offAnyOutgoing();
+     * });
+     *
+     * @param listener - the catch-all listener
+     */
+    offAnyOutgoing(listener) {
+        if (!this._anyOutgoingListeners) {
+            return this;
+        }
+        if (listener) {
+            const listeners = this._anyOutgoingListeners;
+            for (let i = 0; i < listeners.length; i++) {
+                if (listener === listeners[i]) {
+                    listeners.splice(i, 1);
+                    return this;
+                }
+            }
+        }
+        else {
+            this._anyOutgoingListeners = [];
+        }
+        return this;
+    }
+    /**
+     * Returns an array of listeners that are listening for any event that is specified. This array can be manipulated,
+     * e.g. to remove listeners.
+     */
+    listenersAnyOutgoing() {
+        return this._anyOutgoingListeners || [];
+    }
+    /**
+     * Notify the listeners for each packet sent (emit or broadcast)
+     *
+     * @param packet
+     *
+     * @private
+     */
+    notifyOutgoingListeners(packet) {
+        if (this._anyOutgoingListeners && this._anyOutgoingListeners.length) {
+            const listeners = this._anyOutgoingListeners.slice();
+            for (const listener of listeners) {
+                listener.apply(this, packet.data);
+            }
+        }
+    }
+    newBroadcastOperator() {
+        const flags = Object.assign({}, this.flags);
+        this.flags = {};
+        return new broadcast_operator_1.BroadcastOperator(this.adapter, new Set(), new Set([this.id]), flags);
+    }
+};
+socket.Socket = Socket$1;
 
 (function (exports) {
 	var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
@@ -23542,10 +26917,10 @@ function requireSocket () {
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.Namespace = exports.RESERVED_EVENTS = void 0;
-	const socket_1 = requireSocket();
+	const socket_1 = socket;
 	const typed_events_1 = typedEvents;
-	const debug_1 = __importDefault(srcExports);
-	const broadcast_operator_1 = requireBroadcastOperator();
+	const debug_1 = __importDefault(srcExports$1);
+	const broadcast_operator_1 = broadcastOperator;
 	const debug = (0, debug_1.default)("socket.io:namespace");
 	exports.RESERVED_EVENTS = new Set(["connect", "connection", "new_namespace"]);
 	/**
@@ -23610,8 +26985,14 @@ function requireSocket () {
 	     */
 	    constructor(server, name) {
 	        super();
+	        /**
+	         * A map of currently connected sockets.
+	         */
 	        this.sockets = new Map();
-	        /** @private */
+	        /**
+	         * A map of currently connecting sockets.
+	         */
+	        this._preConnectSockets = new Map();
 	        this._fns = [];
 	        /** @private */
 	        this._ids = 0;
@@ -23655,17 +27036,17 @@ function requireSocket () {
 	     * @private
 	     */
 	    run(socket, fn) {
+	        if (!this._fns.length)
+	            return fn();
 	        const fns = this._fns.slice(0);
-	        if (!fns.length)
-	            return fn(null);
 	        function run(i) {
-	            fns[i](socket, function (err) {
+	            fns[i](socket, (err) => {
 	                // upon error, short-circuit
 	                if (err)
 	                    return fn(err);
 	                // if no middleware left, summon callback
 	                if (!fns[i + 1])
-	                    return fn(null);
+	                    return fn();
 	                // go on to next
 	                run(i + 1);
 	            });
@@ -23739,6 +27120,7 @@ function requireSocket () {
 	        var _a;
 	        debug("adding socket to nsp %s", this.name);
 	        const socket = await this._createSocket(client, auth);
+	        this._preConnectSockets.set(socket.id, socket);
 	        if (
 	        // @ts-ignore
 	        ((_a = this.server.opts.connectionStateRecovery) === null || _a === void 0 ? void 0 : _a.skipMiddlewares) &&
@@ -23793,7 +27175,7 @@ function requireSocket () {
 	        return new socket_1.Socket(this, client, auth);
 	    }
 	    _doConnect(socket, fn) {
-	        // track socket
+	        this._preConnectSockets.delete(socket.id);
 	        this.sockets.set(socket.id, socket);
 	        // it's paramount that the internal `onconnect` logic
 	        // fires before user-set events to prevent state order
@@ -23812,12 +27194,7 @@ function requireSocket () {
 	     * @private
 	     */
 	    _remove(socket) {
-	        if (this.sockets.has(socket.id)) {
-	            this.sockets.delete(socket.id);
-	        }
-	        else {
-	            debug("ignoring remove for %s", socket.id);
-	        }
+	        this.sockets.delete(socket.id) || this._preConnectSockets.delete(socket.id);
 	    }
 	    /**
 	     * Emits to all connected clients.
@@ -23845,24 +27222,6 @@ function requireSocket () {
 	        return new broadcast_operator_1.BroadcastOperator(this.adapter).emit(ev, ...args);
 	    }
 	    /**
-	     * Emits an event and waits for an acknowledgement from all clients.
-	     *
-	     * @example
-	     * const myNamespace = io.of("/my-namespace");
-	     *
-	     * try {
-	     *   const responses = await myNamespace.timeout(1000).emitWithAck("some-event");
-	     *   console.log(responses); // one response per client
-	     * } catch (e) {
-	     *   // some clients did not acknowledge the event in the given delay
-	     * }
-	     *
-	     * @return a Promise that will be fulfilled when all clients have acknowledged the event
-	     */
-	    emitWithAck(ev, ...args) {
-	        return new broadcast_operator_1.BroadcastOperator(this.adapter).emitWithAck(ev, ...args);
-	    }
-	    /**
 	     * Sends a `message` event to all clients.
 	     *
 	     * This method mimics the WebSocket.send() method.
@@ -23880,6 +27239,8 @@ function requireSocket () {
 	     * @return self
 	     */
 	    send(...args) {
+	        // This type-cast is needed because EmitEvents likely doesn't have `message` as a key.
+	        // if you specify the EmitEvents, the type of args will be never.
 	        this.emit("message", ...args);
 	        return this;
 	    }
@@ -23889,6 +27250,8 @@ function requireSocket () {
 	     * @return self
 	     */
 	    write(...args) {
+	        // This type-cast is needed because EmitEvents likely doesn't have `message` as a key.
+	        // if you specify the EmitEvents, the type of args will be never.
 	        this.emit("message", ...args);
 	        return this;
 	    }
@@ -24133,89 +27496,9 @@ function requireSocket () {
 
 var parentNamespace = {};
 
-var __importDefault$1 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(parentNamespace, "__esModule", { value: true });
-parentNamespace.ParentNamespace = void 0;
-const namespace_1 = namespace;
-const debug_1$1 = __importDefault$1(srcExports);
-const debug$1 = (0, debug_1$1.default)("socket.io:parent-namespace");
-/**
- * A parent namespace is a special {@link Namespace} that holds a list of child namespaces which were created either
- * with a regular expression or with a function.
- *
- * @example
- * const parentNamespace = io.of(/\/dynamic-\d+/);
- *
- * parentNamespace.on("connection", (socket) => {
- *   const childNamespace = socket.nsp;
- * }
- *
- * // will reach all the clients that are in one of the child namespaces, like "/dynamic-101"
- * parentNamespace.emit("hello", "world");
- *
- */
-class ParentNamespace extends namespace_1.Namespace {
-    constructor(server) {
-        super(server, "/_" + ParentNamespace.count++);
-        this.children = new Set();
-    }
-    /**
-     * @private
-     */
-    _initAdapter() {
-        const broadcast = (packet, opts) => {
-            this.children.forEach((nsp) => {
-                nsp.adapter.broadcast(packet, opts);
-            });
-        };
-        // @ts-ignore FIXME is there a way to declare an inner class in TypeScript?
-        this.adapter = { broadcast };
-    }
-    emit(ev, ...args) {
-        this.children.forEach((nsp) => {
-            nsp.emit(ev, ...args);
-        });
-        return true;
-    }
-    createChild(name) {
-        debug$1("creating child namespace %s", name);
-        const namespace = new namespace_1.Namespace(this.server, name);
-        namespace._fns = this._fns.slice(0);
-        this.listeners("connect").forEach((listener) => namespace.on("connect", listener));
-        this.listeners("connection").forEach((listener) => namespace.on("connection", listener));
-        this.children.add(namespace);
-        if (this.server._opts.cleanupEmptyChildNamespaces) {
-            const remove = namespace._remove;
-            namespace._remove = (socket) => {
-                remove.call(namespace, socket);
-                if (namespace.sockets.size === 0) {
-                    debug$1("closing child namespace %s", name);
-                    namespace.adapter.close();
-                    this.server._nsps.delete(namespace.name);
-                    this.children.delete(namespace);
-                }
-            };
-        }
-        this.server._nsps.set(name, namespace);
-        // @ts-ignore
-        this.server.sockets.emitReserved("new_namespace", namespace);
-        return namespace;
-    }
-    fetchSockets() {
-        // note: we could make the fetchSockets() method work for dynamic namespaces created with a regex (by sending the
-        // regex to the other Socket.IO servers, and returning the sockets of each matching namespace for example), but
-        // the behavior for namespaces created with a function is less clear
-        // note²: we cannot loop over each children namespace, because with multiple Socket.IO servers, a given namespace
-        // may exist on one node but not exist on another (since it is created upon client connection)
-        throw new Error("fetchSockets() is not supported on parent namespaces");
-    }
-}
-parentNamespace.ParentNamespace = ParentNamespace;
-ParentNamespace.count = 0;
-
 var dist = {};
+
+var inMemoryAdapter = {};
 
 var yeast$1 = {};
 
@@ -24274,9 +27557,9 @@ for (; i$1 < length; i$1++)
     map[alphabet[i$1]] = i$1;
 
 var _a;
-Object.defineProperty(dist, "__esModule", { value: true });
-dist.SessionAwareAdapter = dist.Adapter = void 0;
-const events_1 = require$$0$2;
+Object.defineProperty(inMemoryAdapter, "__esModule", { value: true });
+inMemoryAdapter.SessionAwareAdapter = inMemoryAdapter.Adapter = void 0;
+const events_1 = require$$0$3;
 const yeast_1 = yeast$1;
 const WebSocket = ws;
 const canPreComputeFrame = typeof ((_a = WebSocket === null || WebSocket === void 0 ? void 0 : WebSocket.Sender) === null || _a === void 0 ? void 0 : _a.frame) === "function";
@@ -24580,7 +27863,7 @@ class Adapter extends events_1.EventEmitter {
         return null;
     }
 }
-dist.Adapter = Adapter;
+inMemoryAdapter.Adapter = Adapter;
 class SessionAwareAdapter extends Adapter {
     constructor(nsp) {
         super(nsp);
@@ -24660,11 +27943,1644 @@ class SessionAwareAdapter extends Adapter {
         super.broadcast(packet, opts);
     }
 }
-dist.SessionAwareAdapter = SessionAwareAdapter;
+inMemoryAdapter.SessionAwareAdapter = SessionAwareAdapter;
 function shouldIncludePacket(sessionRooms, opts) {
     const included = opts.rooms.size === 0 || sessionRooms.some((room) => opts.rooms.has(room));
     const notExcluded = sessionRooms.every((room) => !opts.except.has(room));
     return included && notExcluded;
+}
+
+var clusterAdapter = {};
+
+var src = {exports: {}};
+
+var browser = {exports: {}};
+
+var common;
+var hasRequiredCommon;
+
+function requireCommon () {
+	if (hasRequiredCommon) return common;
+	hasRequiredCommon = 1;
+	/**
+	 * This is the common logic for both the Node.js and web browser
+	 * implementations of `debug()`.
+	 */
+
+	function setup(env) {
+		createDebug.debug = createDebug;
+		createDebug.default = createDebug;
+		createDebug.coerce = coerce;
+		createDebug.disable = disable;
+		createDebug.enable = enable;
+		createDebug.enabled = enabled;
+		createDebug.humanize = requireMs();
+		createDebug.destroy = destroy;
+
+		Object.keys(env).forEach(key => {
+			createDebug[key] = env[key];
+		});
+
+		/**
+		* The currently active debug mode names, and names to skip.
+		*/
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		/**
+		* Map of special "%n" handling functions, for the debug "format" argument.
+		*
+		* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+		*/
+		createDebug.formatters = {};
+
+		/**
+		* Selects a color for a debug namespace
+		* @param {String} namespace The namespace string for the debug instance to be colored
+		* @return {Number|String} An ANSI color code for the given namespace
+		* @api private
+		*/
+		function selectColor(namespace) {
+			let hash = 0;
+
+			for (let i = 0; i < namespace.length; i++) {
+				hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+				hash |= 0; // Convert to 32bit integer
+			}
+
+			return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+		}
+		createDebug.selectColor = selectColor;
+
+		/**
+		* Create a debugger with the given `namespace`.
+		*
+		* @param {String} namespace
+		* @return {Function}
+		* @api public
+		*/
+		function createDebug(namespace) {
+			let prevTime;
+			let enableOverride = null;
+			let namespacesCache;
+			let enabledCache;
+
+			function debug(...args) {
+				// Disabled?
+				if (!debug.enabled) {
+					return;
+				}
+
+				const self = debug;
+
+				// Set `diff` timestamp
+				const curr = Number(new Date());
+				const ms = curr - (prevTime || curr);
+				self.diff = ms;
+				self.prev = prevTime;
+				self.curr = curr;
+				prevTime = curr;
+
+				args[0] = createDebug.coerce(args[0]);
+
+				if (typeof args[0] !== 'string') {
+					// Anything else let's inspect with %O
+					args.unshift('%O');
+				}
+
+				// Apply any `formatters` transformations
+				let index = 0;
+				args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+					// If we encounter an escaped % then don't increase the array index
+					if (match === '%%') {
+						return '%';
+					}
+					index++;
+					const formatter = createDebug.formatters[format];
+					if (typeof formatter === 'function') {
+						const val = args[index];
+						match = formatter.call(self, val);
+
+						// Now we need to remove `args[index]` since it's inlined in the `format`
+						args.splice(index, 1);
+						index--;
+					}
+					return match;
+				});
+
+				// Apply env-specific formatting (colors, etc.)
+				createDebug.formatArgs.call(self, args);
+
+				const logFn = self.log || createDebug.log;
+				logFn.apply(self, args);
+			}
+
+			debug.namespace = namespace;
+			debug.useColors = createDebug.useColors();
+			debug.color = createDebug.selectColor(namespace);
+			debug.extend = extend;
+			debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+			Object.defineProperty(debug, 'enabled', {
+				enumerable: true,
+				configurable: false,
+				get: () => {
+					if (enableOverride !== null) {
+						return enableOverride;
+					}
+					if (namespacesCache !== createDebug.namespaces) {
+						namespacesCache = createDebug.namespaces;
+						enabledCache = createDebug.enabled(namespace);
+					}
+
+					return enabledCache;
+				},
+				set: v => {
+					enableOverride = v;
+				}
+			});
+
+			// Env-specific initialization logic for debug instances
+			if (typeof createDebug.init === 'function') {
+				createDebug.init(debug);
+			}
+
+			return debug;
+		}
+
+		function extend(namespace, delimiter) {
+			const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+			newDebug.log = this.log;
+			return newDebug;
+		}
+
+		/**
+		* Enables a debug mode by namespaces. This can include modes
+		* separated by a colon and wildcards.
+		*
+		* @param {String} namespaces
+		* @api public
+		*/
+		function enable(namespaces) {
+			createDebug.save(namespaces);
+			createDebug.namespaces = namespaces;
+
+			createDebug.names = [];
+			createDebug.skips = [];
+
+			let i;
+			const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+			const len = split.length;
+
+			for (i = 0; i < len; i++) {
+				if (!split[i]) {
+					// ignore empty strings
+					continue;
+				}
+
+				namespaces = split[i].replace(/\*/g, '.*?');
+
+				if (namespaces[0] === '-') {
+					createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+				} else {
+					createDebug.names.push(new RegExp('^' + namespaces + '$'));
+				}
+			}
+		}
+
+		/**
+		* Disable debug output.
+		*
+		* @return {String} namespaces
+		* @api public
+		*/
+		function disable() {
+			const namespaces = [
+				...createDebug.names.map(toNamespace),
+				...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+			].join(',');
+			createDebug.enable('');
+			return namespaces;
+		}
+
+		/**
+		* Returns true if the given mode name is enabled, false otherwise.
+		*
+		* @param {String} name
+		* @return {Boolean}
+		* @api public
+		*/
+		function enabled(name) {
+			if (name[name.length - 1] === '*') {
+				return true;
+			}
+
+			let i;
+			let len;
+
+			for (i = 0, len = createDebug.skips.length; i < len; i++) {
+				if (createDebug.skips[i].test(name)) {
+					return false;
+				}
+			}
+
+			for (i = 0, len = createDebug.names.length; i < len; i++) {
+				if (createDebug.names[i].test(name)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		* Convert regexp to namespace
+		*
+		* @param {RegExp} regxep
+		* @return {String} namespace
+		* @api private
+		*/
+		function toNamespace(regexp) {
+			return regexp.toString()
+				.substring(2, regexp.toString().length - 2)
+				.replace(/\.\*\?$/, '*');
+		}
+
+		/**
+		* Coerce `val`.
+		*
+		* @param {Mixed} val
+		* @return {Mixed}
+		* @api private
+		*/
+		function coerce(val) {
+			if (val instanceof Error) {
+				return val.stack || val.message;
+			}
+			return val;
+		}
+
+		/**
+		* XXX DO NOT USE. This is a temporary stub function.
+		* XXX It WILL be removed in the next major release.
+		*/
+		function destroy() {
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+
+		createDebug.enable(createDebug.load());
+
+		return createDebug;
+	}
+
+	common = setup;
+	return common;
+}
+
+/* eslint-env browser */
+
+var hasRequiredBrowser;
+
+function requireBrowser () {
+	if (hasRequiredBrowser) return browser.exports;
+	hasRequiredBrowser = 1;
+	(function (module, exports) {
+		/**
+		 * This is the web browser implementation of `debug()`.
+		 */
+
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.storage = localstorage();
+		exports.destroy = (() => {
+			let warned = false;
+
+			return () => {
+				if (!warned) {
+					warned = true;
+					console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+				}
+			};
+		})();
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [
+			'#0000CC',
+			'#0000FF',
+			'#0033CC',
+			'#0033FF',
+			'#0066CC',
+			'#0066FF',
+			'#0099CC',
+			'#0099FF',
+			'#00CC00',
+			'#00CC33',
+			'#00CC66',
+			'#00CC99',
+			'#00CCCC',
+			'#00CCFF',
+			'#3300CC',
+			'#3300FF',
+			'#3333CC',
+			'#3333FF',
+			'#3366CC',
+			'#3366FF',
+			'#3399CC',
+			'#3399FF',
+			'#33CC00',
+			'#33CC33',
+			'#33CC66',
+			'#33CC99',
+			'#33CCCC',
+			'#33CCFF',
+			'#6600CC',
+			'#6600FF',
+			'#6633CC',
+			'#6633FF',
+			'#66CC00',
+			'#66CC33',
+			'#9900CC',
+			'#9900FF',
+			'#9933CC',
+			'#9933FF',
+			'#99CC00',
+			'#99CC33',
+			'#CC0000',
+			'#CC0033',
+			'#CC0066',
+			'#CC0099',
+			'#CC00CC',
+			'#CC00FF',
+			'#CC3300',
+			'#CC3333',
+			'#CC3366',
+			'#CC3399',
+			'#CC33CC',
+			'#CC33FF',
+			'#CC6600',
+			'#CC6633',
+			'#CC9900',
+			'#CC9933',
+			'#CCCC00',
+			'#CCCC33',
+			'#FF0000',
+			'#FF0033',
+			'#FF0066',
+			'#FF0099',
+			'#FF00CC',
+			'#FF00FF',
+			'#FF3300',
+			'#FF3333',
+			'#FF3366',
+			'#FF3399',
+			'#FF33CC',
+			'#FF33FF',
+			'#FF6600',
+			'#FF6633',
+			'#FF9900',
+			'#FF9933',
+			'#FFCC00',
+			'#FFCC33'
+		];
+
+		/**
+		 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+		 * and the Firebug extension (any Firefox version) are known
+		 * to support "%c" CSS customizations.
+		 *
+		 * TODO: add a `localStorage` variable to explicitly enable/disable colors
+		 */
+
+		// eslint-disable-next-line complexity
+		function useColors() {
+			// NB: In an Electron preload script, document will be defined but not fully
+			// initialized. Since we know we're in Chrome, we'll just detect this case
+			// explicitly
+			if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+				return true;
+			}
+
+			// Internet Explorer and Edge do not support colors.
+			if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+				return false;
+			}
+
+			let m;
+
+			// Is webkit? http://stackoverflow.com/a/16459606/376773
+			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+				// Is firebug? http://stackoverflow.com/a/398120/376773
+				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+				// Is firefox >= v31?
+				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
+				// Double check webkit in userAgent just in case we are in a worker
+				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+		}
+
+		/**
+		 * Colorize log arguments if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			args[0] = (this.useColors ? '%c' : '') +
+				this.namespace +
+				(this.useColors ? ' %c' : ' ') +
+				args[0] +
+				(this.useColors ? '%c ' : ' ') +
+				'+' + module.exports.humanize(this.diff);
+
+			if (!this.useColors) {
+				return;
+			}
+
+			const c = 'color: ' + this.color;
+			args.splice(1, 0, c, 'color: inherit');
+
+			// The final "%c" is somewhat tricky, because there could be other
+			// arguments passed either before or after the %c, so we need to
+			// figure out the correct index to insert the CSS into
+			let index = 0;
+			let lastC = 0;
+			args[0].replace(/%[a-zA-Z%]/g, match => {
+				if (match === '%%') {
+					return;
+				}
+				index++;
+				if (match === '%c') {
+					// We only are interested in the *last* %c
+					// (the user may have provided their own)
+					lastC = index;
+				}
+			});
+
+			args.splice(lastC, 0, c);
+		}
+
+		/**
+		 * Invokes `console.debug()` when available.
+		 * No-op when `console.debug` is not a "function".
+		 * If `console.debug` is not available, falls back
+		 * to `console.log`.
+		 *
+		 * @api public
+		 */
+		exports.log = console.debug || console.log || (() => {});
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			try {
+				if (namespaces) {
+					exports.storage.setItem('debug', namespaces);
+				} else {
+					exports.storage.removeItem('debug');
+				}
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+		function load() {
+			let r;
+			try {
+				r = exports.storage.getItem('debug');
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+
+			// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+			if (!r && typeof process !== 'undefined' && 'env' in process) {
+				r = process.env.DEBUG;
+			}
+
+			return r;
+		}
+
+		/**
+		 * Localstorage attempts to return the localstorage.
+		 *
+		 * This is necessary because safari throws
+		 * when a user disables cookies/localstorage
+		 * and you attempt to access it.
+		 *
+		 * @return {LocalStorage}
+		 * @api private
+		 */
+
+		function localstorage() {
+			try {
+				// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+				// The Browser also has localStorage in the global context.
+				return localStorage;
+			} catch (error) {
+				// Swallow
+				// XXX (@Qix-) should we be logging these?
+			}
+		}
+
+		module.exports = requireCommon()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+		 */
+
+		formatters.j = function (v) {
+			try {
+				return JSON.stringify(v);
+			} catch (error) {
+				return '[UnexpectedJSONParseError]: ' + error.message;
+			}
+		}; 
+	} (browser, browser.exports));
+	return browser.exports;
+}
+
+var node = {exports: {}};
+
+/**
+ * Module dependencies.
+ */
+
+var hasRequiredNode;
+
+function requireNode () {
+	if (hasRequiredNode) return node.exports;
+	hasRequiredNode = 1;
+	(function (module, exports) {
+		const tty = require$$0$2;
+		const util = require$$1$1;
+
+		/**
+		 * This is the Node.js implementation of `debug()`.
+		 */
+
+		exports.init = init;
+		exports.log = log;
+		exports.formatArgs = formatArgs;
+		exports.save = save;
+		exports.load = load;
+		exports.useColors = useColors;
+		exports.destroy = util.deprecate(
+			() => {},
+			'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+		);
+
+		/**
+		 * Colors.
+		 */
+
+		exports.colors = [6, 2, 3, 4, 5, 1];
+
+		try {
+			// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+			// eslint-disable-next-line import/no-extraneous-dependencies
+			const supportsColor = requireSupportsColor();
+
+			if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+				exports.colors = [
+					20,
+					21,
+					26,
+					27,
+					32,
+					33,
+					38,
+					39,
+					40,
+					41,
+					42,
+					43,
+					44,
+					45,
+					56,
+					57,
+					62,
+					63,
+					68,
+					69,
+					74,
+					75,
+					76,
+					77,
+					78,
+					79,
+					80,
+					81,
+					92,
+					93,
+					98,
+					99,
+					112,
+					113,
+					128,
+					129,
+					134,
+					135,
+					148,
+					149,
+					160,
+					161,
+					162,
+					163,
+					164,
+					165,
+					166,
+					167,
+					168,
+					169,
+					170,
+					171,
+					172,
+					173,
+					178,
+					179,
+					184,
+					185,
+					196,
+					197,
+					198,
+					199,
+					200,
+					201,
+					202,
+					203,
+					204,
+					205,
+					206,
+					207,
+					208,
+					209,
+					214,
+					215,
+					220,
+					221
+				];
+			}
+		} catch (error) {
+			// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+		}
+
+		/**
+		 * Build up the default `inspectOpts` object from the environment variables.
+		 *
+		 *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+		 */
+
+		exports.inspectOpts = Object.keys(process.env).filter(key => {
+			return /^debug_/i.test(key);
+		}).reduce((obj, key) => {
+			// Camel-case
+			const prop = key
+				.substring(6)
+				.toLowerCase()
+				.replace(/_([a-z])/g, (_, k) => {
+					return k.toUpperCase();
+				});
+
+			// Coerce string value into JS value
+			let val = process.env[key];
+			if (/^(yes|on|true|enabled)$/i.test(val)) {
+				val = true;
+			} else if (/^(no|off|false|disabled)$/i.test(val)) {
+				val = false;
+			} else if (val === 'null') {
+				val = null;
+			} else {
+				val = Number(val);
+			}
+
+			obj[prop] = val;
+			return obj;
+		}, {});
+
+		/**
+		 * Is stdout a TTY? Colored output is enabled when `true`.
+		 */
+
+		function useColors() {
+			return 'colors' in exports.inspectOpts ?
+				Boolean(exports.inspectOpts.colors) :
+				tty.isatty(process.stderr.fd);
+		}
+
+		/**
+		 * Adds ANSI color escape codes if enabled.
+		 *
+		 * @api public
+		 */
+
+		function formatArgs(args) {
+			const {namespace: name, useColors} = this;
+
+			if (useColors) {
+				const c = this.color;
+				const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+				const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+				args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+				args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+			} else {
+				args[0] = getDate() + name + ' ' + args[0];
+			}
+		}
+
+		function getDate() {
+			if (exports.inspectOpts.hideDate) {
+				return '';
+			}
+			return new Date().toISOString() + ' ';
+		}
+
+		/**
+		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
+		 */
+
+		function log(...args) {
+			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
+		}
+
+		/**
+		 * Save `namespaces`.
+		 *
+		 * @param {String} namespaces
+		 * @api private
+		 */
+		function save(namespaces) {
+			if (namespaces) {
+				process.env.DEBUG = namespaces;
+			} else {
+				// If you set a process.env field to null or undefined, it gets cast to the
+				// string 'null' or 'undefined'. Just delete instead.
+				delete process.env.DEBUG;
+			}
+		}
+
+		/**
+		 * Load `namespaces`.
+		 *
+		 * @return {String} returns the previously persisted debug modes
+		 * @api private
+		 */
+
+		function load() {
+			return process.env.DEBUG;
+		}
+
+		/**
+		 * Init logic for `debug` instances.
+		 *
+		 * Create a new `inspectOpts` object in case `useColors` is set
+		 * differently for a particular `debug` instance.
+		 */
+
+		function init(debug) {
+			debug.inspectOpts = {};
+
+			const keys = Object.keys(exports.inspectOpts);
+			for (let i = 0; i < keys.length; i++) {
+				debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+			}
+		}
+
+		module.exports = requireCommon()(exports);
+
+		const {formatters} = module.exports;
+
+		/**
+		 * Map %o to `util.inspect()`, all on a single line.
+		 */
+
+		formatters.o = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts)
+				.split('\n')
+				.map(str => str.trim())
+				.join(' ');
+		};
+
+		/**
+		 * Map %O to `util.inspect()`, allowing multiple lines if needed.
+		 */
+
+		formatters.O = function (v) {
+			this.inspectOpts.colors = this.useColors;
+			return util.inspect(v, this.inspectOpts);
+		}; 
+	} (node, node.exports));
+	return node.exports;
+}
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	src.exports = requireBrowser();
+} else {
+	src.exports = requireNode();
+}
+
+var srcExports = src.exports;
+
+(function (exports) {
+	var __rest = (commonjsGlobal && commonjsGlobal.__rest) || function (s, e) {
+	    var t = {};
+	    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+	        t[p] = s[p];
+	    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+	        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+	            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+	                t[p[i]] = s[p[i]];
+	        }
+	    return t;
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.ClusterAdapterWithHeartbeat = exports.ClusterAdapter = exports.MessageType = void 0;
+	const in_memory_adapter_1 = inMemoryAdapter;
+	const debug_1 = srcExports;
+	const crypto_1 = require$$2;
+	const debug = (0, debug_1.debug)("socket.io-adapter");
+	const EMITTER_UID = "emitter";
+	const DEFAULT_TIMEOUT = 5000;
+	function randomId() {
+	    return (0, crypto_1.randomBytes)(8).toString("hex");
+	}
+	var MessageType;
+	(function (MessageType) {
+	    MessageType[MessageType["INITIAL_HEARTBEAT"] = 1] = "INITIAL_HEARTBEAT";
+	    MessageType[MessageType["HEARTBEAT"] = 2] = "HEARTBEAT";
+	    MessageType[MessageType["BROADCAST"] = 3] = "BROADCAST";
+	    MessageType[MessageType["SOCKETS_JOIN"] = 4] = "SOCKETS_JOIN";
+	    MessageType[MessageType["SOCKETS_LEAVE"] = 5] = "SOCKETS_LEAVE";
+	    MessageType[MessageType["DISCONNECT_SOCKETS"] = 6] = "DISCONNECT_SOCKETS";
+	    MessageType[MessageType["FETCH_SOCKETS"] = 7] = "FETCH_SOCKETS";
+	    MessageType[MessageType["FETCH_SOCKETS_RESPONSE"] = 8] = "FETCH_SOCKETS_RESPONSE";
+	    MessageType[MessageType["SERVER_SIDE_EMIT"] = 9] = "SERVER_SIDE_EMIT";
+	    MessageType[MessageType["SERVER_SIDE_EMIT_RESPONSE"] = 10] = "SERVER_SIDE_EMIT_RESPONSE";
+	    MessageType[MessageType["BROADCAST_CLIENT_COUNT"] = 11] = "BROADCAST_CLIENT_COUNT";
+	    MessageType[MessageType["BROADCAST_ACK"] = 12] = "BROADCAST_ACK";
+	    MessageType[MessageType["ADAPTER_CLOSE"] = 13] = "ADAPTER_CLOSE";
+	})(MessageType = exports.MessageType || (exports.MessageType = {}));
+	function encodeOptions(opts) {
+	    return {
+	        rooms: [...opts.rooms],
+	        except: [...opts.except],
+	        flags: opts.flags,
+	    };
+	}
+	function decodeOptions(opts) {
+	    return {
+	        rooms: new Set(opts.rooms),
+	        except: new Set(opts.except),
+	        flags: opts.flags,
+	    };
+	}
+	/**
+	 * A cluster-ready adapter. Any extending class must:
+	 *
+	 * - implement {@link ClusterAdapter#doPublish} and {@link ClusterAdapter#doPublishResponse}
+	 * - call {@link ClusterAdapter#onMessage} and {@link ClusterAdapter#onResponse}
+	 */
+	class ClusterAdapter extends in_memory_adapter_1.Adapter {
+	    constructor(nsp) {
+	        super(nsp);
+	        this.requests = new Map();
+	        this.ackRequests = new Map();
+	        this.uid = randomId();
+	    }
+	    /**
+	     * Called when receiving a message from another member of the cluster.
+	     *
+	     * @param message
+	     * @param offset
+	     * @protected
+	     */
+	    onMessage(message, offset) {
+	        if (message.uid === this.uid) {
+	            return debug("[%s] ignore message from self", this.uid);
+	        }
+	        debug("[%s] new event of type %d from %s", this.uid, message.type, message.uid);
+	        switch (message.type) {
+	            case MessageType.BROADCAST: {
+	                const withAck = message.data.requestId !== undefined;
+	                if (withAck) {
+	                    super.broadcastWithAck(message.data.packet, decodeOptions(message.data.opts), (clientCount) => {
+	                        debug("[%s] waiting for %d client acknowledgements", this.uid, clientCount);
+	                        this.publishResponse(message.uid, {
+	                            type: MessageType.BROADCAST_CLIENT_COUNT,
+	                            data: {
+	                                requestId: message.data.requestId,
+	                                clientCount,
+	                            },
+	                        });
+	                    }, (arg) => {
+	                        debug("[%s] received acknowledgement with value %j", this.uid, arg);
+	                        this.publishResponse(message.uid, {
+	                            type: MessageType.BROADCAST_ACK,
+	                            data: {
+	                                requestId: message.data.requestId,
+	                                packet: arg,
+	                            },
+	                        });
+	                    });
+	                }
+	                else {
+	                    const packet = message.data.packet;
+	                    const opts = decodeOptions(message.data.opts);
+	                    this.addOffsetIfNecessary(packet, opts, offset);
+	                    super.broadcast(packet, opts);
+	                }
+	                break;
+	            }
+	            case MessageType.SOCKETS_JOIN:
+	                super.addSockets(decodeOptions(message.data.opts), message.data.rooms);
+	                break;
+	            case MessageType.SOCKETS_LEAVE:
+	                super.delSockets(decodeOptions(message.data.opts), message.data.rooms);
+	                break;
+	            case MessageType.DISCONNECT_SOCKETS:
+	                super.disconnectSockets(decodeOptions(message.data.opts), message.data.close);
+	                break;
+	            case MessageType.FETCH_SOCKETS: {
+	                debug("[%s] calling fetchSockets with opts %j", this.uid, message.data.opts);
+	                super
+	                    .fetchSockets(decodeOptions(message.data.opts))
+	                    .then((localSockets) => {
+	                    this.publishResponse(message.uid, {
+	                        type: MessageType.FETCH_SOCKETS_RESPONSE,
+	                        data: {
+	                            requestId: message.data.requestId,
+	                            sockets: localSockets.map((socket) => {
+	                                // remove sessionStore from handshake, as it may contain circular references
+	                                const _a = socket.handshake, handshake = __rest(_a, ["sessionStore"]);
+	                                return {
+	                                    id: socket.id,
+	                                    handshake,
+	                                    rooms: [...socket.rooms],
+	                                    data: socket.data,
+	                                };
+	                            }),
+	                        },
+	                    });
+	                });
+	                break;
+	            }
+	            case MessageType.SERVER_SIDE_EMIT: {
+	                const packet = message.data.packet;
+	                const withAck = message.data.requestId !== undefined;
+	                if (!withAck) {
+	                    this.nsp._onServerSideEmit(packet);
+	                    return;
+	                }
+	                let called = false;
+	                const callback = (arg) => {
+	                    // only one argument is expected
+	                    if (called) {
+	                        return;
+	                    }
+	                    called = true;
+	                    debug("[%s] calling acknowledgement with %j", this.uid, arg);
+	                    this.publishResponse(message.uid, {
+	                        type: MessageType.SERVER_SIDE_EMIT_RESPONSE,
+	                        data: {
+	                            requestId: message.data.requestId,
+	                            packet: arg,
+	                        },
+	                    });
+	                };
+	                this.nsp._onServerSideEmit([...packet, callback]);
+	                break;
+	            }
+	            // @ts-ignore
+	            case MessageType.BROADCAST_CLIENT_COUNT:
+	            // @ts-ignore
+	            case MessageType.BROADCAST_ACK:
+	            // @ts-ignore
+	            case MessageType.FETCH_SOCKETS_RESPONSE:
+	            // @ts-ignore
+	            case MessageType.SERVER_SIDE_EMIT_RESPONSE:
+	                // extending classes may not make a distinction between a ClusterMessage and a ClusterResponse payload and may
+	                // always call the onMessage() method
+	                this.onResponse(message);
+	                break;
+	            default:
+	                debug("[%s] unknown message type: %s", this.uid, message.type);
+	        }
+	    }
+	    /**
+	     * Called when receiving a response from another member of the cluster.
+	     *
+	     * @param response
+	     * @protected
+	     */
+	    onResponse(response) {
+	        var _a, _b;
+	        const requestId = response.data.requestId;
+	        debug("[%s] received response %s to request %s", this.uid, response.type, requestId);
+	        switch (response.type) {
+	            case MessageType.BROADCAST_CLIENT_COUNT: {
+	                (_a = this.ackRequests
+	                    .get(requestId)) === null || _a === void 0 ? void 0 : _a.clientCountCallback(response.data.clientCount);
+	                break;
+	            }
+	            case MessageType.BROADCAST_ACK: {
+	                (_b = this.ackRequests.get(requestId)) === null || _b === void 0 ? void 0 : _b.ack(response.data.packet);
+	                break;
+	            }
+	            case MessageType.FETCH_SOCKETS_RESPONSE: {
+	                const request = this.requests.get(requestId);
+	                if (!request) {
+	                    return;
+	                }
+	                request.current++;
+	                response.data.sockets.forEach((socket) => request.responses.push(socket));
+	                if (request.current === request.expected) {
+	                    clearTimeout(request.timeout);
+	                    request.resolve(request.responses);
+	                    this.requests.delete(requestId);
+	                }
+	                break;
+	            }
+	            case MessageType.SERVER_SIDE_EMIT_RESPONSE: {
+	                const request = this.requests.get(requestId);
+	                if (!request) {
+	                    return;
+	                }
+	                request.current++;
+	                request.responses.push(response.data.packet);
+	                if (request.current === request.expected) {
+	                    clearTimeout(request.timeout);
+	                    request.resolve(null, request.responses);
+	                    this.requests.delete(requestId);
+	                }
+	                break;
+	            }
+	            default:
+	                // @ts-ignore
+	                debug("[%s] unknown response type: %s", this.uid, response.type);
+	        }
+	    }
+	    async broadcast(packet, opts) {
+	        var _a;
+	        const onlyLocal = (_a = opts.flags) === null || _a === void 0 ? void 0 : _a.local;
+	        if (!onlyLocal) {
+	            try {
+	                const offset = await this.publishAndReturnOffset({
+	                    type: MessageType.BROADCAST,
+	                    data: {
+	                        packet,
+	                        opts: encodeOptions(opts),
+	                    },
+	                });
+	                this.addOffsetIfNecessary(packet, opts, offset);
+	            }
+	            catch (e) {
+	                return debug("[%s] error while broadcasting message: %s", this.uid, e.message);
+	            }
+	        }
+	        super.broadcast(packet, opts);
+	    }
+	    /**
+	     * Adds an offset at the end of the data array in order to allow the client to receive any missed packets when it
+	     * reconnects after a temporary disconnection.
+	     *
+	     * @param packet
+	     * @param opts
+	     * @param offset
+	     * @private
+	     */
+	    addOffsetIfNecessary(packet, opts, offset) {
+	        var _a;
+	        if (!this.nsp.server.opts.connectionStateRecovery) {
+	            return;
+	        }
+	        const isEventPacket = packet.type === 2;
+	        // packets with acknowledgement are not stored because the acknowledgement function cannot be serialized and
+	        // restored on another server upon reconnection
+	        const withoutAcknowledgement = packet.id === undefined;
+	        const notVolatile = ((_a = opts.flags) === null || _a === void 0 ? void 0 : _a.volatile) === undefined;
+	        if (isEventPacket && withoutAcknowledgement && notVolatile) {
+	            packet.data.push(offset);
+	        }
+	    }
+	    broadcastWithAck(packet, opts, clientCountCallback, ack) {
+	        var _a;
+	        const onlyLocal = (_a = opts === null || opts === void 0 ? void 0 : opts.flags) === null || _a === void 0 ? void 0 : _a.local;
+	        if (!onlyLocal) {
+	            const requestId = randomId();
+	            this.ackRequests.set(requestId, {
+	                clientCountCallback,
+	                ack,
+	            });
+	            this.publish({
+	                type: MessageType.BROADCAST,
+	                data: {
+	                    packet,
+	                    requestId,
+	                    opts: encodeOptions(opts),
+	                },
+	            });
+	            // we have no way to know at this level whether the server has received an acknowledgement from each client, so we
+	            // will simply clean up the ackRequests map after the given delay
+	            setTimeout(() => {
+	                this.ackRequests.delete(requestId);
+	            }, opts.flags.timeout);
+	        }
+	        super.broadcastWithAck(packet, opts, clientCountCallback, ack);
+	    }
+	    async addSockets(opts, rooms) {
+	        var _a;
+	        const onlyLocal = (_a = opts.flags) === null || _a === void 0 ? void 0 : _a.local;
+	        if (!onlyLocal) {
+	            try {
+	                await this.publishAndReturnOffset({
+	                    type: MessageType.SOCKETS_JOIN,
+	                    data: {
+	                        opts: encodeOptions(opts),
+	                        rooms,
+	                    },
+	                });
+	            }
+	            catch (e) {
+	                debug("[%s] error while publishing message: %s", this.uid, e.message);
+	            }
+	        }
+	        super.addSockets(opts, rooms);
+	    }
+	    async delSockets(opts, rooms) {
+	        var _a;
+	        const onlyLocal = (_a = opts.flags) === null || _a === void 0 ? void 0 : _a.local;
+	        if (!onlyLocal) {
+	            try {
+	                await this.publishAndReturnOffset({
+	                    type: MessageType.SOCKETS_LEAVE,
+	                    data: {
+	                        opts: encodeOptions(opts),
+	                        rooms,
+	                    },
+	                });
+	            }
+	            catch (e) {
+	                debug("[%s] error while publishing message: %s", this.uid, e.message);
+	            }
+	        }
+	        super.delSockets(opts, rooms);
+	    }
+	    async disconnectSockets(opts, close) {
+	        var _a;
+	        const onlyLocal = (_a = opts.flags) === null || _a === void 0 ? void 0 : _a.local;
+	        if (!onlyLocal) {
+	            try {
+	                await this.publishAndReturnOffset({
+	                    type: MessageType.DISCONNECT_SOCKETS,
+	                    data: {
+	                        opts: encodeOptions(opts),
+	                        close,
+	                    },
+	                });
+	            }
+	            catch (e) {
+	                debug("[%s] error while publishing message: %s", this.uid, e.message);
+	            }
+	        }
+	        super.disconnectSockets(opts, close);
+	    }
+	    async fetchSockets(opts) {
+	        var _a;
+	        const [localSockets, serverCount] = await Promise.all([
+	            super.fetchSockets(opts),
+	            this.serverCount(),
+	        ]);
+	        const expectedResponseCount = serverCount - 1;
+	        if (((_a = opts.flags) === null || _a === void 0 ? void 0 : _a.local) || expectedResponseCount <= 0) {
+	            return localSockets;
+	        }
+	        const requestId = randomId();
+	        return new Promise((resolve, reject) => {
+	            const timeout = setTimeout(() => {
+	                const storedRequest = this.requests.get(requestId);
+	                if (storedRequest) {
+	                    reject(new Error(`timeout reached: only ${storedRequest.current} responses received out of ${storedRequest.expected}`));
+	                    this.requests.delete(requestId);
+	                }
+	            }, opts.flags.timeout || DEFAULT_TIMEOUT);
+	            const storedRequest = {
+	                type: MessageType.FETCH_SOCKETS,
+	                resolve,
+	                timeout,
+	                current: 0,
+	                expected: expectedResponseCount,
+	                responses: localSockets,
+	            };
+	            this.requests.set(requestId, storedRequest);
+	            this.publish({
+	                type: MessageType.FETCH_SOCKETS,
+	                data: {
+	                    opts: encodeOptions(opts),
+	                    requestId,
+	                },
+	            });
+	        });
+	    }
+	    async serverSideEmit(packet) {
+	        const withAck = typeof packet[packet.length - 1] === "function";
+	        if (!withAck) {
+	            return this.publish({
+	                type: MessageType.SERVER_SIDE_EMIT,
+	                data: {
+	                    packet,
+	                },
+	            });
+	        }
+	        const ack = packet.pop();
+	        const expectedResponseCount = (await this.serverCount()) - 1;
+	        debug('[%s] waiting for %d responses to "serverSideEmit" request', this.uid, expectedResponseCount);
+	        if (expectedResponseCount <= 0) {
+	            return ack(null, []);
+	        }
+	        const requestId = randomId();
+	        const timeout = setTimeout(() => {
+	            const storedRequest = this.requests.get(requestId);
+	            if (storedRequest) {
+	                ack(new Error(`timeout reached: only ${storedRequest.current} responses received out of ${storedRequest.expected}`), storedRequest.responses);
+	                this.requests.delete(requestId);
+	            }
+	        }, DEFAULT_TIMEOUT);
+	        const storedRequest = {
+	            type: MessageType.SERVER_SIDE_EMIT,
+	            resolve: ack,
+	            timeout,
+	            current: 0,
+	            expected: expectedResponseCount,
+	            responses: [],
+	        };
+	        this.requests.set(requestId, storedRequest);
+	        this.publish({
+	            type: MessageType.SERVER_SIDE_EMIT,
+	            data: {
+	                requestId,
+	                packet,
+	            },
+	        });
+	    }
+	    publish(message) {
+	        this.publishAndReturnOffset(message).catch((err) => {
+	            debug("[%s] error while publishing message: %s", this.uid, err);
+	        });
+	    }
+	    publishAndReturnOffset(message) {
+	        message.uid = this.uid;
+	        message.nsp = this.nsp.name;
+	        return this.doPublish(message);
+	    }
+	    publishResponse(requesterUid, response) {
+	        response.uid = this.uid;
+	        response.nsp = this.nsp.name;
+	        this.doPublishResponse(requesterUid, response).catch((err) => {
+	            debug("[%s] error while publishing response: %s", this.uid, err);
+	        });
+	    }
+	}
+	exports.ClusterAdapter = ClusterAdapter;
+	class ClusterAdapterWithHeartbeat extends ClusterAdapter {
+	    constructor(nsp, opts) {
+	        super(nsp);
+	        this.nodesMap = new Map(); // uid => timestamp of last message
+	        this.customRequests = new Map();
+	        this._opts = Object.assign({
+	            heartbeatInterval: 5000,
+	            heartbeatTimeout: 10000,
+	        }, opts);
+	        this.cleanupTimer = setInterval(() => {
+	            const now = Date.now();
+	            this.nodesMap.forEach((lastSeen, uid) => {
+	                const nodeSeemsDown = now - lastSeen > this._opts.heartbeatTimeout;
+	                if (nodeSeemsDown) {
+	                    debug("[%s] node %s seems down", this.uid, uid);
+	                    this.removeNode(uid);
+	                }
+	            });
+	        }, 1000);
+	    }
+	    init() {
+	        this.publish({
+	            type: MessageType.INITIAL_HEARTBEAT,
+	        });
+	    }
+	    scheduleHeartbeat() {
+	        if (this.heartbeatTimer) {
+	            this.heartbeatTimer.refresh();
+	        }
+	        else {
+	            this.heartbeatTimer = setTimeout(() => {
+	                this.publish({
+	                    type: MessageType.HEARTBEAT,
+	                });
+	            }, this._opts.heartbeatInterval);
+	        }
+	    }
+	    close() {
+	        this.publish({
+	            type: MessageType.ADAPTER_CLOSE,
+	        });
+	        clearTimeout(this.heartbeatTimer);
+	        if (this.cleanupTimer) {
+	            clearInterval(this.cleanupTimer);
+	        }
+	    }
+	    onMessage(message, offset) {
+	        if (message.uid === this.uid) {
+	            return debug("[%s] ignore message from self", this.uid);
+	        }
+	        if (message.uid && message.uid !== EMITTER_UID) {
+	            // we track the UID of each sender, in order to know how many servers there are in the cluster
+	            this.nodesMap.set(message.uid, Date.now());
+	        }
+	        debug("[%s] new event of type %d from %s", this.uid, message.type, message.uid);
+	        switch (message.type) {
+	            case MessageType.INITIAL_HEARTBEAT:
+	                this.publish({
+	                    type: MessageType.HEARTBEAT,
+	                });
+	                break;
+	            case MessageType.HEARTBEAT:
+	                // nothing to do
+	                break;
+	            case MessageType.ADAPTER_CLOSE:
+	                this.removeNode(message.uid);
+	                break;
+	            default:
+	                super.onMessage(message, offset);
+	        }
+	    }
+	    serverCount() {
+	        return Promise.resolve(1 + this.nodesMap.size);
+	    }
+	    publish(message) {
+	        this.scheduleHeartbeat();
+	        return super.publish(message);
+	    }
+	    async serverSideEmit(packet) {
+	        const withAck = typeof packet[packet.length - 1] === "function";
+	        if (!withAck) {
+	            return this.publish({
+	                type: MessageType.SERVER_SIDE_EMIT,
+	                data: {
+	                    packet,
+	                },
+	            });
+	        }
+	        const ack = packet.pop();
+	        const expectedResponseCount = this.nodesMap.size;
+	        debug('[%s] waiting for %d responses to "serverSideEmit" request', this.uid, expectedResponseCount);
+	        if (expectedResponseCount <= 0) {
+	            return ack(null, []);
+	        }
+	        const requestId = randomId();
+	        const timeout = setTimeout(() => {
+	            const storedRequest = this.customRequests.get(requestId);
+	            if (storedRequest) {
+	                ack(new Error(`timeout reached: missing ${storedRequest.missingUids.size} responses`), storedRequest.responses);
+	                this.customRequests.delete(requestId);
+	            }
+	        }, DEFAULT_TIMEOUT);
+	        const storedRequest = {
+	            type: MessageType.SERVER_SIDE_EMIT,
+	            resolve: ack,
+	            timeout,
+	            missingUids: new Set([...this.nodesMap.keys()]),
+	            responses: [],
+	        };
+	        this.customRequests.set(requestId, storedRequest);
+	        this.publish({
+	            type: MessageType.SERVER_SIDE_EMIT,
+	            data: {
+	                requestId,
+	                packet,
+	            },
+	        });
+	    }
+	    async fetchSockets(opts) {
+	        var _a;
+	        const [localSockets, serverCount] = await Promise.all([
+	            super.fetchSockets({
+	                rooms: opts.rooms,
+	                except: opts.except,
+	                flags: {
+	                    local: true,
+	                },
+	            }),
+	            this.serverCount(),
+	        ]);
+	        const expectedResponseCount = serverCount - 1;
+	        if (((_a = opts.flags) === null || _a === void 0 ? void 0 : _a.local) || expectedResponseCount <= 0) {
+	            return localSockets;
+	        }
+	        const requestId = randomId();
+	        return new Promise((resolve, reject) => {
+	            const timeout = setTimeout(() => {
+	                const storedRequest = this.customRequests.get(requestId);
+	                if (storedRequest) {
+	                    reject(new Error(`timeout reached: missing ${storedRequest.missingUids.size} responses`));
+	                    this.customRequests.delete(requestId);
+	                }
+	            }, opts.flags.timeout || DEFAULT_TIMEOUT);
+	            const storedRequest = {
+	                type: MessageType.FETCH_SOCKETS,
+	                resolve,
+	                timeout,
+	                missingUids: new Set([...this.nodesMap.keys()]),
+	                responses: localSockets,
+	            };
+	            this.customRequests.set(requestId, storedRequest);
+	            this.publish({
+	                type: MessageType.FETCH_SOCKETS,
+	                data: {
+	                    opts: encodeOptions(opts),
+	                    requestId,
+	                },
+	            });
+	        });
+	    }
+	    onResponse(response) {
+	        const requestId = response.data.requestId;
+	        debug("[%s] received response %s to request %s", this.uid, response.type, requestId);
+	        switch (response.type) {
+	            case MessageType.FETCH_SOCKETS_RESPONSE: {
+	                const request = this.customRequests.get(requestId);
+	                if (!request) {
+	                    return;
+	                }
+	                response.data.sockets.forEach((socket) => request.responses.push(socket));
+	                request.missingUids.delete(response.uid);
+	                if (request.missingUids.size === 0) {
+	                    clearTimeout(request.timeout);
+	                    request.resolve(request.responses);
+	                    this.customRequests.delete(requestId);
+	                }
+	                break;
+	            }
+	            case MessageType.SERVER_SIDE_EMIT_RESPONSE: {
+	                const request = this.customRequests.get(requestId);
+	                if (!request) {
+	                    return;
+	                }
+	                request.responses.push(response.data.packet);
+	                request.missingUids.delete(response.uid);
+	                if (request.missingUids.size === 0) {
+	                    clearTimeout(request.timeout);
+	                    request.resolve(null, request.responses);
+	                    this.customRequests.delete(requestId);
+	                }
+	                break;
+	            }
+	            default:
+	                super.onResponse(response);
+	        }
+	    }
+	    removeNode(uid) {
+	        this.customRequests.forEach((request, requestId) => {
+	            request.missingUids.delete(uid);
+	            if (request.missingUids.size === 0) {
+	                clearTimeout(request.timeout);
+	                if (request.type === MessageType.FETCH_SOCKETS) {
+	                    request.resolve(request.responses);
+	                }
+	                else if (request.type === MessageType.SERVER_SIDE_EMIT) {
+	                    request.resolve(null, request.responses);
+	                }
+	                this.customRequests.delete(requestId);
+	            }
+	        });
+	        this.nodesMap.delete(uid);
+	    }
+	}
+	exports.ClusterAdapterWithHeartbeat = ClusterAdapterWithHeartbeat; 
+} (clusterAdapter));
+
+(function (exports) {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.MessageType = exports.ClusterAdapterWithHeartbeat = exports.ClusterAdapter = exports.SessionAwareAdapter = exports.Adapter = void 0;
+	var in_memory_adapter_1 = inMemoryAdapter;
+	Object.defineProperty(exports, "Adapter", { enumerable: true, get: function () { return in_memory_adapter_1.Adapter; } });
+	Object.defineProperty(exports, "SessionAwareAdapter", { enumerable: true, get: function () { return in_memory_adapter_1.SessionAwareAdapter; } });
+	var cluster_adapter_1 = clusterAdapter;
+	Object.defineProperty(exports, "ClusterAdapter", { enumerable: true, get: function () { return cluster_adapter_1.ClusterAdapter; } });
+	Object.defineProperty(exports, "ClusterAdapterWithHeartbeat", { enumerable: true, get: function () { return cluster_adapter_1.ClusterAdapterWithHeartbeat; } });
+	Object.defineProperty(exports, "MessageType", { enumerable: true, get: function () { return cluster_adapter_1.MessageType; } }); 
+} (dist));
+
+var __importDefault$1 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(parentNamespace, "__esModule", { value: true });
+parentNamespace.ParentNamespace = void 0;
+const namespace_1 = namespace;
+const socket_io_adapter_1$1 = dist;
+const debug_1$1 = __importDefault$1(srcExports$1);
+const debug$1 = (0, debug_1$1.default)("socket.io:parent-namespace");
+/**
+ * A parent namespace is a special {@link Namespace} that holds a list of child namespaces which were created either
+ * with a regular expression or with a function.
+ *
+ * @example
+ * const parentNamespace = io.of(/\/dynamic-\d+/);
+ *
+ * parentNamespace.on("connection", (socket) => {
+ *   const childNamespace = socket.nsp;
+ * }
+ *
+ * // will reach all the clients that are in one of the child namespaces, like "/dynamic-101"
+ * parentNamespace.emit("hello", "world");
+ *
+ */
+class ParentNamespace extends namespace_1.Namespace {
+    constructor(server) {
+        super(server, "/_" + ParentNamespace.count++);
+        this.children = new Set();
+    }
+    /**
+     * @private
+     */
+    _initAdapter() {
+        this.adapter = new ParentBroadcastAdapter(this);
+    }
+    emit(ev, ...args) {
+        this.children.forEach((nsp) => {
+            nsp.emit(ev, ...args);
+        });
+        return true;
+    }
+    createChild(name) {
+        debug$1("creating child namespace %s", name);
+        const namespace = new namespace_1.Namespace(this.server, name);
+        this["_fns"].forEach((fn) => namespace.use(fn));
+        this.listeners("connect").forEach((listener) => namespace.on("connect", listener));
+        this.listeners("connection").forEach((listener) => namespace.on("connection", listener));
+        this.children.add(namespace);
+        if (this.server._opts.cleanupEmptyChildNamespaces) {
+            const remove = namespace._remove;
+            namespace._remove = (socket) => {
+                remove.call(namespace, socket);
+                if (namespace.sockets.size === 0) {
+                    debug$1("closing child namespace %s", name);
+                    namespace.adapter.close();
+                    this.server._nsps.delete(namespace.name);
+                    this.children.delete(namespace);
+                }
+            };
+        }
+        this.server._nsps.set(name, namespace);
+        // @ts-ignore
+        this.server.sockets.emitReserved("new_namespace", namespace);
+        return namespace;
+    }
+    fetchSockets() {
+        // note: we could make the fetchSockets() method work for dynamic namespaces created with a regex (by sending the
+        // regex to the other Socket.IO servers, and returning the sockets of each matching namespace for example), but
+        // the behavior for namespaces created with a function is less clear
+        // note²: we cannot loop over each children namespace, because with multiple Socket.IO servers, a given namespace
+        // may exist on one node but not exist on another (since it is created upon client connection)
+        throw new Error("fetchSockets() is not supported on parent namespaces");
+    }
+}
+parentNamespace.ParentNamespace = ParentNamespace;
+ParentNamespace.count = 0;
+/**
+ * A dummy adapter that only supports broadcasting to child (concrete) namespaces.
+ * @private file
+ */
+class ParentBroadcastAdapter extends socket_io_adapter_1$1.Adapter {
+    broadcast(packet, opts) {
+        this.nsp.children.forEach((nsp) => {
+            nsp.adapter.broadcast(packet, opts);
+        });
+    }
 }
 
 var uws = {};
@@ -24673,10 +29589,12 @@ var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || func
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(uws, "__esModule", { value: true });
-uws.serveFile = uws.restoreAdapter = uws.patchAdapter = void 0;
+uws.patchAdapter = patchAdapter;
+uws.restoreAdapter = restoreAdapter;
+uws.serveFile = serveFile;
 const socket_io_adapter_1 = dist;
-const fs_1 = require$$1$4;
-const debug_1 = __importDefault(srcExports);
+const fs_1 = require$$1$5;
+const debug_1 = __importDefault(srcExports$1);
 const debug = (0, debug_1.default)("socket.io:adapter-uws");
 const SEPARATOR = "\x1f"; // see https://en.wikipedia.org/wiki/Delimiter#ASCII_delimited_text
 const { addAll, del, broadcast } = socket_io_adapter_1.Adapter.prototype;
@@ -24684,7 +29602,7 @@ function patchAdapter(app /* : TemplatedApp */) {
     socket_io_adapter_1.Adapter.prototype.addAll = function (id, rooms) {
         const isNew = !this.sids.has(id);
         addAll.call(this, id, rooms);
-        const socket = this.nsp.sockets.get(id);
+        const socket = this.nsp.sockets.get(id) || this.nsp._preConnectSockets.get(id);
         if (!socket) {
             return;
         }
@@ -24703,7 +29621,7 @@ function patchAdapter(app /* : TemplatedApp */) {
     };
     socket_io_adapter_1.Adapter.prototype.del = function (id, room) {
         del.call(this, id, room);
-        const socket = this.nsp.sockets.get(id);
+        const socket = this.nsp.sockets.get(id) || this.nsp._preConnectSockets.get(id);
         if (socket && socket.conn.transport.name === "websocket") {
             // @ts-ignore
             const sessionId = socket.conn.id;
@@ -24746,7 +29664,6 @@ function patchAdapter(app /* : TemplatedApp */) {
         });
     };
 }
-uws.patchAdapter = patchAdapter;
 function subscribe(namespaceName, socket, isNew, rooms) {
     // @ts-ignore
     const sessionId = socket.conn.id;
@@ -24767,7 +29684,6 @@ function restoreAdapter() {
     socket_io_adapter_1.Adapter.prototype.del = del;
     socket_io_adapter_1.Adapter.prototype.broadcast = broadcast;
 }
-uws.restoreAdapter = restoreAdapter;
 const toArrayBuffer = (buffer) => {
     const { buffer: arrayBuffer, byteOffset, byteLength } = buffer;
     return arrayBuffer.slice(byteOffset, byteOffset + byteLength);
@@ -24783,18 +29699,20 @@ function serveFile(res /* : HttpResponse */, filepath) {
     };
     const onDataChunk = (chunk) => {
         const arrayBufferChunk = toArrayBuffer(chunk);
-        const lastOffset = res.getWriteOffset();
-        const [ok, done] = res.tryEnd(arrayBufferChunk, size);
-        if (!done && !ok) {
-            readStream.pause();
-            res.onWritable((offset) => {
-                const [ok, done] = res.tryEnd(arrayBufferChunk.slice(offset - lastOffset), size);
-                if (!done && ok) {
-                    readStream.resume();
-                }
-                return ok;
-            });
-        }
+        res.cork(() => {
+            const lastOffset = res.getWriteOffset();
+            const [ok, done] = res.tryEnd(arrayBufferChunk, size);
+            if (!done && !ok) {
+                readStream.pause();
+                res.onWritable((offset) => {
+                    const [ok, done] = res.tryEnd(arrayBufferChunk.slice(offset - lastOffset), size);
+                    if (!done && ok) {
+                        readStream.resume();
+                    }
+                    return ok;
+                });
+            }
+        });
     };
     res.onAborted(destroyReadStream);
     readStream
@@ -24802,10 +29720,9 @@ function serveFile(res /* : HttpResponse */, filepath) {
         .on("error", onError)
         .on("end", destroyReadStream);
 }
-uws.serveFile = serveFile;
 
 var name$1 = "socket.io";
-var version$1 = "4.7.2";
+var version$1 = "4.8.1";
 var description$1 = "node.js realtime framework server";
 var keywords$1 = [
 	"realtime",
@@ -24837,9 +29754,13 @@ var exports = {
 };
 var types = "./dist/index.d.ts";
 var license$1 = "MIT";
+var homepage$1 = "https://github.com/socketio/socket.io/tree/main/packages/socket.io#readme";
 var repository$1 = {
 	type: "git",
-	url: "git://github.com/socketio/socket.io"
+	url: "git+https://github.com/socketio/socket.io.git"
+};
+var bugs$1 = {
+	url: "https://github.com/socketio/socket.io/issues"
 };
 var scripts$1 = {
 	compile: "rimraf ./dist && tsc",
@@ -24855,25 +29776,9 @@ var dependencies$1 = {
 	base64id: "~2.0.0",
 	cors: "~2.8.5",
 	debug: "~4.3.2",
-	"engine.io": "~6.5.2",
+	"engine.io": "~6.6.0",
 	"socket.io-adapter": "~2.5.2",
 	"socket.io-parser": "~4.2.4"
-};
-var devDependencies$1 = {
-	"@types/mocha": "^9.0.0",
-	"expect.js": "0.3.1",
-	mocha: "^10.0.0",
-	nyc: "^15.1.0",
-	prettier: "^2.3.2",
-	rimraf: "^3.0.2",
-	"socket.io-client": "4.7.2",
-	"socket.io-client-v2": "npm:socket.io-client@^2.4.0",
-	superagent: "^8.0.0",
-	supertest: "^6.1.6",
-	"ts-node": "^10.2.1",
-	tsd: "^0.21.0",
-	typescript: "^4.4.2",
-	"uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.30.0"
 };
 var contributors = [
 	{
@@ -24911,10 +29816,11 @@ var require$$18 = {
 	exports: exports,
 	types: types,
 	license: license$1,
+	homepage: homepage$1,
 	repository: repository$1,
+	bugs: bugs$1,
 	scripts: scripts$1,
 	dependencies: dependencies$1,
-	devDependencies: devDependencies$1,
 	contributors: contributors,
 	engines: engines,
 	tsd: tsd
@@ -24949,22 +29855,22 @@ var require$$18 = {
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.Namespace = exports.Socket = exports.Server = void 0;
-	const http = require$$0$4;
-	const fs_1 = require$$1$4;
-	const zlib_1 = require$$1$1;
+	const http = require$$0$6;
+	const fs_1 = require$$1$5;
+	const zlib_1 = require$$1$2;
 	const accepts = accepts$2;
-	const stream_1 = require$$0$3;
+	const stream_1 = require$$0$5;
 	const path = require$$1;
 	const engine_io_1 = engine_io;
 	const client_1 = client;
-	const events_1 = require$$0$2;
+	const events_1 = require$$0$3;
 	const namespace_1 = namespace;
 	Object.defineProperty(exports, "Namespace", { enumerable: true, get: function () { return namespace_1.Namespace; } });
 	const parent_namespace_1 = parentNamespace;
 	const socket_io_adapter_1 = dist;
 	const parser = __importStar(cjs);
-	const debug_1 = __importDefault(srcExports);
-	const socket_1 = requireSocket();
+	const debug_1 = __importDefault(srcExports$1);
+	const socket_1 = socket;
 	Object.defineProperty(exports, "Socket", { enumerable: true, get: function () { return socket_1.Socket; } });
 	const typed_events_1 = typedEvents;
 	const uws_1 = uws;
@@ -25296,7 +30202,6 @@ var require$$18 = {
 	        switch (encoding) {
 	            case "br":
 	                res.writeHead(200, { "content-encoding": "br" });
-	                readStream.pipe((0, zlib_1.createBrotliCompress)()).pipe(res);
 	                (0, stream_1.pipeline)(readStream, (0, zlib_1.createBrotliCompress)(), res, onError);
 	                break;
 	            case "gzip":
@@ -25319,6 +30224,8 @@ var require$$18 = {
 	     * @return self
 	     */
 	    bind(engine) {
+	        // TODO apply strict types to the engine: "connection" event, `close()` and a method to serve static content
+	        //  this would allow to provide any custom engine, like one based on Deno or Bun built-in HTTP server
 	        this.engine = engine;
 	        this.engine.on("connection", this.onconnection.bind(this));
 	        return this;
@@ -25401,12 +30308,15 @@ var require$$18 = {
 	     *
 	     * @param [fn] optional, called as `fn([err])` on error OR all conns closed
 	     */
-	    close(fn) {
-	        for (const socket of this.sockets.sockets.values()) {
-	            socket._onclose("server shutting down");
-	        }
+	    async close(fn) {
+	        await Promise.allSettled([...this._nsps.values()].map(async (nsp) => {
+	            nsp.sockets.forEach((socket) => {
+	                socket._onclose("server shutting down");
+	            });
+	            await nsp.adapter.close();
+	        }));
 	        this.engine.close();
-	        // restore the Adapter prototype
+	        // restore the Adapter prototype, when the Socket.IO server was attached to a uWebSockets.js server
 	        (0, uws_1.restoreAdapter)();
 	        if (this.httpServer) {
 	            this.httpServer.close(fn);
@@ -25482,22 +30392,6 @@ var require$$18 = {
 	        return this.sockets.except(room);
 	    }
 	    /**
-	     * Emits an event and waits for an acknowledgement from all clients.
-	     *
-	     * @example
-	     * try {
-	     *   const responses = await io.timeout(1000).emitWithAck("some-event");
-	     *   console.log(responses); // one response per client
-	     * } catch (e) {
-	     *   // some clients did not acknowledge the event in the given delay
-	     * }
-	     *
-	     * @return a Promise that will be fulfilled when all clients have acknowledged the event
-	     */
-	    emitWithAck(ev, ...args) {
-	        return this.sockets.emitWithAck(ev, ...args);
-	    }
-	    /**
 	     * Sends a `message` event to all clients.
 	     *
 	     * This method mimics the WebSocket.send() method.
@@ -25513,6 +30407,8 @@ var require$$18 = {
 	     * @return self
 	     */
 	    send(...args) {
+	        // This type-cast is needed because EmitEvents likely doesn't have `message` as a key.
+	        // if you specify the EmitEvents, the type of args will be never.
 	        this.sockets.emit("message", ...args);
 	        return this;
 	    }
@@ -25522,6 +30418,8 @@ var require$$18 = {
 	     * @return self
 	     */
 	    write(...args) {
+	        // This type-cast is needed because EmitEvents likely doesn't have `message` as a key.
+	        // if you specify the EmitEvents, the type of args will be never.
 	        this.sockets.emit("message", ...args);
 	        return this;
 	    }
@@ -25731,8 +30629,7 @@ var require$$18 = {
 	module.exports = (srv, opts) => new Server(srv, opts);
 	module.exports.Server = Server;
 	module.exports.Namespace = namespace_1.Namespace;
-	module.exports.Socket = socket_1.Socket;
-	requireSocket(); 
+	module.exports.Socket = socket_1.Socket; 
 } (dist$1, dist$1.exports));
 
 var distExports = dist$1.exports;
@@ -54185,6 +59082,28 @@ readConfig().then((CONFIG) => {
           .to(options.client)
           .emit("news", { ...options, replyId: socket.id });
         log(i18n.__("%s send news to %s", socket.id, options.client));
+      } else {
+        socket.emit("error", {
+          msg: "Client must be specified.",
+          templateId: options.templateId,
+        });
+      }
+    });
+
+    // Make a printByFragments to electron-hiprint client
+    socket.on("printByFragments", (options) => {
+      if (options.client) {
+        if (!CLIENT.get(sToken)[options.client]) {
+          socket.emit("error", {
+            msg: "Client is not exist.",
+            templateId: options.templateId,
+          });
+          return;
+        }
+        socket
+          .to(options.client)
+          .emit("printByFragments", { ...options, replyId: socket.id });
+        log(i18n.__("%s send printByFragments to %s", socket.id, options.client));
       } else {
         socket.emit("error", {
           msg: "Client must be specified.",

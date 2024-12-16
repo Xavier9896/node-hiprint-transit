@@ -1,637 +1,9 @@
-import process$1 from 'node:process';
-import os from 'node:os';
-import tty from 'node:tty';
-import require$$1$1 from 'fs';
+import require$$1$2 from 'fs';
 import require$$3 from 'url';
-import require$$1$2 from 'path';
+import require$$1$3 from 'path';
 import require$$0 from 'tty';
-import require$$0$2 from 'util';
+import require$$1$1 from 'util';
 import require$$0$1 from 'os';
-
-const ANSI_BACKGROUND_OFFSET = 10;
-
-const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
-
-const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
-
-const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
-
-const styles$1 = {
-	modifier: {
-		reset: [0, 0],
-		// 21 isn't widely supported and 22 does the same thing
-		bold: [1, 22],
-		dim: [2, 22],
-		italic: [3, 23],
-		underline: [4, 24],
-		overline: [53, 55],
-		inverse: [7, 27],
-		hidden: [8, 28],
-		strikethrough: [9, 29],
-	},
-	color: {
-		black: [30, 39],
-		red: [31, 39],
-		green: [32, 39],
-		yellow: [33, 39],
-		blue: [34, 39],
-		magenta: [35, 39],
-		cyan: [36, 39],
-		white: [37, 39],
-
-		// Bright color
-		blackBright: [90, 39],
-		gray: [90, 39], // Alias of `blackBright`
-		grey: [90, 39], // Alias of `blackBright`
-		redBright: [91, 39],
-		greenBright: [92, 39],
-		yellowBright: [93, 39],
-		blueBright: [94, 39],
-		magentaBright: [95, 39],
-		cyanBright: [96, 39],
-		whiteBright: [97, 39],
-	},
-	bgColor: {
-		bgBlack: [40, 49],
-		bgRed: [41, 49],
-		bgGreen: [42, 49],
-		bgYellow: [43, 49],
-		bgBlue: [44, 49],
-		bgMagenta: [45, 49],
-		bgCyan: [46, 49],
-		bgWhite: [47, 49],
-
-		// Bright color
-		bgBlackBright: [100, 49],
-		bgGray: [100, 49], // Alias of `bgBlackBright`
-		bgGrey: [100, 49], // Alias of `bgBlackBright`
-		bgRedBright: [101, 49],
-		bgGreenBright: [102, 49],
-		bgYellowBright: [103, 49],
-		bgBlueBright: [104, 49],
-		bgMagentaBright: [105, 49],
-		bgCyanBright: [106, 49],
-		bgWhiteBright: [107, 49],
-	},
-};
-
-Object.keys(styles$1.modifier);
-const foregroundColorNames = Object.keys(styles$1.color);
-const backgroundColorNames = Object.keys(styles$1.bgColor);
-[...foregroundColorNames, ...backgroundColorNames];
-
-function assembleStyles() {
-	const codes = new Map();
-
-	for (const [groupName, group] of Object.entries(styles$1)) {
-		for (const [styleName, style] of Object.entries(group)) {
-			styles$1[styleName] = {
-				open: `\u001B[${style[0]}m`,
-				close: `\u001B[${style[1]}m`,
-			};
-
-			group[styleName] = styles$1[styleName];
-
-			codes.set(style[0], style[1]);
-		}
-
-		Object.defineProperty(styles$1, groupName, {
-			value: group,
-			enumerable: false,
-		});
-	}
-
-	Object.defineProperty(styles$1, 'codes', {
-		value: codes,
-		enumerable: false,
-	});
-
-	styles$1.color.close = '\u001B[39m';
-	styles$1.bgColor.close = '\u001B[49m';
-
-	styles$1.color.ansi = wrapAnsi16();
-	styles$1.color.ansi256 = wrapAnsi256();
-	styles$1.color.ansi16m = wrapAnsi16m();
-	styles$1.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
-	styles$1.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
-	styles$1.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
-
-	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
-	Object.defineProperties(styles$1, {
-		rgbToAnsi256: {
-			value(red, green, blue) {
-				// We use the extended greyscale palette here, with the exception of
-				// black and white. normal palette only has 4 greyscale shades.
-				if (red === green && green === blue) {
-					if (red < 8) {
-						return 16;
-					}
-
-					if (red > 248) {
-						return 231;
-					}
-
-					return Math.round(((red - 8) / 247) * 24) + 232;
-				}
-
-				return 16
-					+ (36 * Math.round(red / 255 * 5))
-					+ (6 * Math.round(green / 255 * 5))
-					+ Math.round(blue / 255 * 5);
-			},
-			enumerable: false,
-		},
-		hexToRgb: {
-			value(hex) {
-				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
-				if (!matches) {
-					return [0, 0, 0];
-				}
-
-				let [colorString] = matches;
-
-				if (colorString.length === 3) {
-					colorString = [...colorString].map(character => character + character).join('');
-				}
-
-				const integer = Number.parseInt(colorString, 16);
-
-				return [
-					/* eslint-disable no-bitwise */
-					(integer >> 16) & 0xFF,
-					(integer >> 8) & 0xFF,
-					integer & 0xFF,
-					/* eslint-enable no-bitwise */
-				];
-			},
-			enumerable: false,
-		},
-		hexToAnsi256: {
-			value: hex => styles$1.rgbToAnsi256(...styles$1.hexToRgb(hex)),
-			enumerable: false,
-		},
-		ansi256ToAnsi: {
-			value(code) {
-				if (code < 8) {
-					return 30 + code;
-				}
-
-				if (code < 16) {
-					return 90 + (code - 8);
-				}
-
-				let red;
-				let green;
-				let blue;
-
-				if (code >= 232) {
-					red = (((code - 232) * 10) + 8) / 255;
-					green = red;
-					blue = red;
-				} else {
-					code -= 16;
-
-					const remainder = code % 36;
-
-					red = Math.floor(code / 36) / 5;
-					green = Math.floor(remainder / 6) / 5;
-					blue = (remainder % 6) / 5;
-				}
-
-				const value = Math.max(red, green, blue) * 2;
-
-				if (value === 0) {
-					return 30;
-				}
-
-				// eslint-disable-next-line no-bitwise
-				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
-
-				if (value === 2) {
-					result += 60;
-				}
-
-				return result;
-			},
-			enumerable: false,
-		},
-		rgbToAnsi: {
-			value: (red, green, blue) => styles$1.ansi256ToAnsi(styles$1.rgbToAnsi256(red, green, blue)),
-			enumerable: false,
-		},
-		hexToAnsi: {
-			value: hex => styles$1.ansi256ToAnsi(styles$1.hexToAnsi256(hex)),
-			enumerable: false,
-		},
-	});
-
-	return styles$1;
-}
-
-const ansiStyles = assembleStyles();
-
-// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
-/// function hasFlag(flag, argv = globalThis.Deno?.args ?? process.argv) {
-function hasFlag$1(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$1.argv) {
-	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-	const position = argv.indexOf(prefix + flag);
-	const terminatorPosition = argv.indexOf('--');
-	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-}
-
-const {env} = process$1;
-
-let flagForceColor;
-if (
-	hasFlag$1('no-color')
-	|| hasFlag$1('no-colors')
-	|| hasFlag$1('color=false')
-	|| hasFlag$1('color=never')
-) {
-	flagForceColor = 0;
-} else if (
-	hasFlag$1('color')
-	|| hasFlag$1('colors')
-	|| hasFlag$1('color=true')
-	|| hasFlag$1('color=always')
-) {
-	flagForceColor = 1;
-}
-
-function envForceColor() {
-	if ('FORCE_COLOR' in env) {
-		if (env.FORCE_COLOR === 'true') {
-			return 1;
-		}
-
-		if (env.FORCE_COLOR === 'false') {
-			return 0;
-		}
-
-		return env.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env.FORCE_COLOR, 10), 3);
-	}
-}
-
-function translateLevel(level) {
-	if (level === 0) {
-		return false;
-	}
-
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3,
-	};
-}
-
-function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
-	const noFlagForceColor = envForceColor();
-	if (noFlagForceColor !== undefined) {
-		flagForceColor = noFlagForceColor;
-	}
-
-	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
-
-	if (forceColor === 0) {
-		return 0;
-	}
-
-	if (sniffFlags) {
-		if (hasFlag$1('color=16m')
-			|| hasFlag$1('color=full')
-			|| hasFlag$1('color=truecolor')) {
-			return 3;
-		}
-
-		if (hasFlag$1('color=256')) {
-			return 2;
-		}
-	}
-
-	// Check for Azure DevOps pipelines.
-	// Has to be above the `!streamIsTTY` check.
-	if ('TF_BUILD' in env && 'AGENT_NAME' in env) {
-		return 1;
-	}
-
-	if (haveStream && !streamIsTTY && forceColor === undefined) {
-		return 0;
-	}
-
-	const min = forceColor || 0;
-
-	if (env.TERM === 'dumb') {
-		return min;
-	}
-
-	if (process$1.platform === 'win32') {
-		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
-		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
-		const osRelease = os.release().split('.');
-		if (
-			Number(osRelease[0]) >= 10
-			&& Number(osRelease[2]) >= 10_586
-		) {
-			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
-		}
-
-		return 1;
-	}
-
-	if ('CI' in env) {
-		if ('GITHUB_ACTIONS' in env || 'GITEA_ACTIONS' in env) {
-			return 3;
-		}
-
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
-			return 1;
-		}
-
-		return min;
-	}
-
-	if ('TEAMCITY_VERSION' in env) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
-	}
-
-	if (env.COLORTERM === 'truecolor') {
-		return 3;
-	}
-
-	if (env.TERM === 'xterm-kitty') {
-		return 3;
-	}
-
-	if ('TERM_PROGRAM' in env) {
-		const version = Number.parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-		switch (env.TERM_PROGRAM) {
-			case 'iTerm.app': {
-				return version >= 3 ? 3 : 2;
-			}
-
-			case 'Apple_Terminal': {
-				return 2;
-			}
-			// No default
-		}
-	}
-
-	if (/-256(color)?$/i.test(env.TERM)) {
-		return 2;
-	}
-
-	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-		return 1;
-	}
-
-	if ('COLORTERM' in env) {
-		return 1;
-	}
-
-	return min;
-}
-
-function createSupportsColor(stream, options = {}) {
-	const level = _supportsColor(stream, {
-		streamIsTTY: stream && stream.isTTY,
-		...options,
-	});
-
-	return translateLevel(level);
-}
-
-const supportsColor = {
-	stdout: createSupportsColor({isTTY: tty.isatty(1)}),
-	stderr: createSupportsColor({isTTY: tty.isatty(2)}),
-};
-
-// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
-function stringReplaceAll(string, substring, replacer) {
-	let index = string.indexOf(substring);
-	if (index === -1) {
-		return string;
-	}
-
-	const substringLength = substring.length;
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		returnValue += string.slice(endIndex, index) + substring + replacer;
-		endIndex = index + substringLength;
-		index = string.indexOf(substring, endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-function stringEncaseCRLFWithFirstIndex(string, prefix, postfix, index) {
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		const gotCR = string[index - 1] === '\r';
-		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
-		endIndex = index + 1;
-		index = string.indexOf('\n', endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-const {stdout: stdoutColor, stderr: stderrColor} = supportsColor;
-
-const GENERATOR = Symbol('GENERATOR');
-const STYLER = Symbol('STYLER');
-const IS_EMPTY = Symbol('IS_EMPTY');
-
-// `supportsColor.level` → `ansiStyles.color[name]` mapping
-const levelMapping = [
-	'ansi',
-	'ansi',
-	'ansi256',
-	'ansi16m',
-];
-
-const styles = Object.create(null);
-
-const applyOptions = (object, options = {}) => {
-	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
-		throw new Error('The `level` option should be an integer from 0 to 3');
-	}
-
-	// Detect level if not set manually
-	const colorLevel = stdoutColor ? stdoutColor.level : 0;
-	object.level = options.level === undefined ? colorLevel : options.level;
-};
-
-const chalkFactory = options => {
-	const chalk = (...strings) => strings.join(' ');
-	applyOptions(chalk, options);
-
-	Object.setPrototypeOf(chalk, createChalk.prototype);
-
-	return chalk;
-};
-
-function createChalk(options) {
-	return chalkFactory(options);
-}
-
-Object.setPrototypeOf(createChalk.prototype, Function.prototype);
-
-for (const [styleName, style] of Object.entries(ansiStyles)) {
-	styles[styleName] = {
-		get() {
-			const builder = createBuilder(this, createStyler(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
-			Object.defineProperty(this, styleName, {value: builder});
-			return builder;
-		},
-	};
-}
-
-styles.visible = {
-	get() {
-		const builder = createBuilder(this, this[STYLER], true);
-		Object.defineProperty(this, 'visible', {value: builder});
-		return builder;
-	},
-};
-
-const getModelAnsi = (model, level, type, ...arguments_) => {
-	if (model === 'rgb') {
-		if (level === 'ansi16m') {
-			return ansiStyles[type].ansi16m(...arguments_);
-		}
-
-		if (level === 'ansi256') {
-			return ansiStyles[type].ansi256(ansiStyles.rgbToAnsi256(...arguments_));
-		}
-
-		return ansiStyles[type].ansi(ansiStyles.rgbToAnsi(...arguments_));
-	}
-
-	if (model === 'hex') {
-		return getModelAnsi('rgb', level, type, ...ansiStyles.hexToRgb(...arguments_));
-	}
-
-	return ansiStyles[type][model](...arguments_);
-};
-
-const usedModels = ['rgb', 'hex', 'ansi256'];
-
-for (const model of usedModels) {
-	styles[model] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'color', ...arguments_), ansiStyles.color.close, this[STYLER]);
-				return createBuilder(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-
-	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
-	styles[bgModel] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'bgColor', ...arguments_), ansiStyles.bgColor.close, this[STYLER]);
-				return createBuilder(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-}
-
-const proto = Object.defineProperties(() => {}, {
-	...styles,
-	level: {
-		enumerable: true,
-		get() {
-			return this[GENERATOR].level;
-		},
-		set(level) {
-			this[GENERATOR].level = level;
-		},
-	},
-});
-
-const createStyler = (open, close, parent) => {
-	let openAll;
-	let closeAll;
-	if (parent === undefined) {
-		openAll = open;
-		closeAll = close;
-	} else {
-		openAll = parent.openAll + open;
-		closeAll = close + parent.closeAll;
-	}
-
-	return {
-		open,
-		close,
-		openAll,
-		closeAll,
-		parent,
-	};
-};
-
-const createBuilder = (self, _styler, _isEmpty) => {
-	// Single argument is hot path, implicit coercion is faster than anything
-	// eslint-disable-next-line no-implicit-coercion
-	const builder = (...arguments_) => applyStyle(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
-
-	// We alter the prototype because we must return a function, but there is
-	// no way to create a function with a different prototype
-	Object.setPrototypeOf(builder, proto);
-
-	builder[GENERATOR] = self;
-	builder[STYLER] = _styler;
-	builder[IS_EMPTY] = _isEmpty;
-
-	return builder;
-};
-
-const applyStyle = (self, string) => {
-	if (self.level <= 0 || !string) {
-		return self[IS_EMPTY] ? '' : string;
-	}
-
-	let styler = self[STYLER];
-
-	if (styler === undefined) {
-		return string;
-	}
-
-	const {openAll, closeAll} = styler;
-	if (string.includes('\u001B')) {
-		while (styler !== undefined) {
-			// Replace any instances already present with a re-opening code
-			// otherwise only the part of the string until said closing code
-			// will be colored, and the rest will simply be 'plain'.
-			string = stringReplaceAll(string, styler.close, styler.open);
-
-			styler = styler.parent;
-		}
-	}
-
-	// We can move both next actions out of loop, because remaining actions in loop won't have
-	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
-	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
-	const lfIndex = string.indexOf('\n');
-	if (lfIndex !== -1) {
-		string = stringEncaseCRLFWithFirstIndex(string, closeAll, openAll, lfIndex);
-	}
-
-	return openAll + string + closeAll;
-};
-
-Object.defineProperties(createChalk.prototype, styles);
-
-const chalk = createChalk();
-createChalk({level: stderrColor ? stderrColor.level : 0});
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -670,12 +42,16 @@ var printf$1 = {};
 
 var createPrintf$1 = {};
 
-var lib$1 = {};
-
 var boolean$1 = {};
 
 Object.defineProperty(boolean$1, "__esModule", { value: true });
 boolean$1.boolean = void 0;
+/**
+ * Copy function from deprecated `boolean` npm package v3.2.0 to avoid breaking changes.
+ *
+ * @see https://www.npmjs.com/package/boolean?activeTab=code
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- any from source `boolean` package v3.2.0
 const boolean = function (value) {
     switch (Object.prototype.toString.call(value)) {
         case '[object String]':
@@ -689,36 +65,6 @@ const boolean = function (value) {
     }
 };
 boolean$1.boolean = boolean;
-
-var isBooleanable$1 = {};
-
-Object.defineProperty(isBooleanable$1, "__esModule", { value: true });
-isBooleanable$1.isBooleanable = void 0;
-const isBooleanable = function (value) {
-    switch (Object.prototype.toString.call(value)) {
-        case '[object String]':
-            return [
-                'true', 't', 'yes', 'y', 'on', '1',
-                'false', 'f', 'no', 'n', 'off', '0'
-            ].includes(value.trim().toLowerCase());
-        case '[object Number]':
-            return [0, 1].includes(value.valueOf());
-        case '[object Boolean]':
-            return true;
-        default:
-            return false;
-    }
-};
-isBooleanable$1.isBooleanable = isBooleanable;
-
-(function (exports) {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.isBooleanable = exports.boolean = void 0;
-	const boolean_1 = boolean$1;
-	Object.defineProperty(exports, "boolean", { enumerable: true, get: function () { return boolean_1.boolean; } });
-	const isBooleanable_1 = isBooleanable$1;
-	Object.defineProperty(exports, "isBooleanable", { enumerable: true, get: function () { return isBooleanable_1.isBooleanable; } }); 
-} (lib$1));
 
 var tokenize$1 = {};
 
@@ -756,6 +102,7 @@ const tokenize = (subject) => {
         else if (matchResult.groups) {
             lastToken = {
                 conversion: matchResult.groups.conversion,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional per @gajus
                 flag: matchResult.groups.flag || null,
                 placeholder: match,
                 position: matchResult.groups.position ? Number.parseInt(matchResult.groups.position, 10) - 1 : argumentIndex++,
@@ -783,15 +130,14 @@ tokenize$1.tokenize = tokenize;
 
 Object.defineProperty(createPrintf$1, "__esModule", { value: true });
 createPrintf$1.createPrintf = void 0;
-const boolean_1 = lib$1;
+const boolean_1 = boolean$1;
 const tokenize_1 = tokenize$1;
-const formatDefaultUnboundExpression = (
-// @ts-expect-error unused parameter
-subject, token) => {
+const formatDefaultUnboundExpression = (_subject, token) => {
     return token.placeholder;
 };
 const createPrintf = (configuration) => {
     var _a;
+    // eslint-disable-next-line unicorn/consistent-function-scoping -- intentional per @gajus
     const padValue = (value, width, flag) => {
         if (flag === '-') {
             return value.padEnd(width, ' ');
@@ -815,7 +161,7 @@ const createPrintf = (configuration) => {
     return (subject, ...boundValues) => {
         let tokens = cache[subject];
         if (!tokens) {
-            tokens = cache[subject] = tokenize_1.tokenize(subject);
+            tokens = cache[subject] = (0, tokenize_1.tokenize)(subject);
         }
         let result = '';
         for (const token of tokens) {
@@ -828,10 +174,10 @@ const createPrintf = (configuration) => {
                     result += formatUnboundExpression(subject, token, boundValues);
                 }
                 else if (token.conversion === 'b') {
-                    result += boolean_1.boolean(boundValue) ? 'true' : 'false';
+                    result += (0, boolean_1.boolean)(boundValue) ? 'true' : 'false';
                 }
                 else if (token.conversion === 'B') {
-                    result += boolean_1.boolean(boundValue) ? 'TRUE' : 'FALSE';
+                    result += (0, boolean_1.boolean)(boundValue) ? 'TRUE' : 'FALSE';
                 }
                 else if (token.conversion === 'c') {
                     result += boundValue;
@@ -904,7 +250,7 @@ createPrintf$1.createPrintf = createPrintf;
 	exports.printf = exports.createPrintf = void 0;
 	const createPrintf_1 = createPrintf$1;
 	Object.defineProperty(exports, "createPrintf", { enumerable: true, get: function () { return createPrintf_1.createPrintf; } });
-	exports.printf = createPrintf_1.createPrintf(); 
+	exports.printf = (0, createPrintf_1.createPrintf)(); 
 } (printf$1));
 
 var name = "i18n";
@@ -1035,7 +381,7 @@ function requireMs () {
 	 * @api public
 	 */
 
-	ms = function(val, options) {
+	ms = function (val, options) {
 	  options = options || {};
 	  var type = typeof val;
 	  if (type === 'string' && val.length > 0) {
@@ -1348,24 +694,62 @@ function requireCommon () {
 			createDebug.names = [];
 			createDebug.skips = [];
 
-			let i;
-			const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-			const len = split.length;
+			const split = (typeof namespaces === 'string' ? namespaces : '')
+				.trim()
+				.replace(' ', ',')
+				.split(',')
+				.filter(Boolean);
 
-			for (i = 0; i < len; i++) {
-				if (!split[i]) {
-					// ignore empty strings
-					continue;
-				}
-
-				namespaces = split[i].replace(/\*/g, '.*?');
-
-				if (namespaces[0] === '-') {
-					createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+			for (const ns of split) {
+				if (ns[0] === '-') {
+					createDebug.skips.push(ns.slice(1));
 				} else {
-					createDebug.names.push(new RegExp('^' + namespaces + '$'));
+					createDebug.names.push(ns);
 				}
 			}
+		}
+
+		/**
+		 * Checks if the given string matches a namespace template, honoring
+		 * asterisks as wildcards.
+		 *
+		 * @param {String} search
+		 * @param {String} template
+		 * @return {Boolean}
+		 */
+		function matchesTemplate(search, template) {
+			let searchIndex = 0;
+			let templateIndex = 0;
+			let starIndex = -1;
+			let matchIndex = 0;
+
+			while (searchIndex < search.length) {
+				if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === '*')) {
+					// Match character or proceed with wildcard
+					if (template[templateIndex] === '*') {
+						starIndex = templateIndex;
+						matchIndex = searchIndex;
+						templateIndex++; // Skip the '*'
+					} else {
+						searchIndex++;
+						templateIndex++;
+					}
+				} else if (starIndex !== -1) { // eslint-disable-line no-negated-condition
+					// Backtrack to the last '*' and try to match more characters
+					templateIndex = starIndex + 1;
+					matchIndex++;
+					searchIndex = matchIndex;
+				} else {
+					return false; // No match
+				}
+			}
+
+			// Handle trailing '*' in template
+			while (templateIndex < template.length && template[templateIndex] === '*') {
+				templateIndex++;
+			}
+
+			return templateIndex === template.length;
 		}
 
 		/**
@@ -1376,8 +760,8 @@ function requireCommon () {
 		*/
 		function disable() {
 			const namespaces = [
-				...createDebug.names.map(toNamespace),
-				...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+				...createDebug.names,
+				...createDebug.skips.map(namespace => '-' + namespace)
 			].join(',');
 			createDebug.enable('');
 			return namespaces;
@@ -1391,39 +775,19 @@ function requireCommon () {
 		* @api public
 		*/
 		function enabled(name) {
-			if (name[name.length - 1] === '*') {
-				return true;
-			}
-
-			let i;
-			let len;
-
-			for (i = 0, len = createDebug.skips.length; i < len; i++) {
-				if (createDebug.skips[i].test(name)) {
+			for (const skip of createDebug.skips) {
+				if (matchesTemplate(name, skip)) {
 					return false;
 				}
 			}
 
-			for (i = 0, len = createDebug.names.length; i < len; i++) {
-				if (createDebug.names[i].test(name)) {
+			for (const ns of createDebug.names) {
+				if (matchesTemplate(name, ns)) {
 					return true;
 				}
 			}
 
 			return false;
-		}
-
-		/**
-		* Convert regexp to namespace
-		*
-		* @param {RegExp} regxep
-		* @return {String} namespace
-		* @api private
-		*/
-		function toNamespace(regexp) {
-			return regexp.toString()
-				.substring(2, regexp.toString().length - 2)
-				.replace(/\.\*\?$/, '*');
 		}
 
 		/**
@@ -1590,14 +954,17 @@ function requireBrowser () {
 				return false;
 			}
 
+			let m;
+
 			// Is webkit? http://stackoverflow.com/a/16459606/376773
 			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+			// eslint-disable-next-line no-return-assign
 			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
 				// Is firebug? http://stackoverflow.com/a/398120/376773
 				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
 				// Is firefox >= v31?
 				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
 				// Double check webkit in userAgent just in case we are in a worker
 				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
 		}
@@ -1908,7 +1275,7 @@ function requireNode () {
 	hasRequiredNode = 1;
 	(function (module, exports) {
 		const tty = require$$0;
-		const util = require$$0$2;
+		const util = require$$1$1;
 
 		/**
 		 * This is the Node.js implementation of `debug()`.
@@ -2092,11 +1459,11 @@ function requireNode () {
 		}
 
 		/**
-		 * Invokes `util.format()` with the specified arguments and writes to stderr.
+		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
 		 */
 
 		function log(...args) {
-			return process.stderr.write(util.format(...args) + '\n');
+			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
 		}
 
 		/**
@@ -4469,8 +3836,9 @@ function monthStyle(token, onError) {
 }
 function dayStyle(token, onError) {
     const { char, desc, width } = token;
-    if (char === 'd')
+    if (char === 'd') {
         return numeric(width);
+    }
     else {
         onError(`${desc} is not supported`);
         return undefined;
@@ -4553,10 +3921,12 @@ function compileOptions(token, onError) {
     }
     return undefined;
 }
-function getDateFormatOptions(tokens, onError = error => {
+function getDateFormatOptions(tokens, timeZone, onError = error => {
     throw error;
 }) {
-    const options = {};
+    const options = {
+        timeZone
+    };
     const fields = [];
     for (const token of tokens) {
         const { error, field, str } = token;
@@ -4738,10 +4108,14 @@ function parseDateTokens(src) {
  * fmt(date) // '3:04:05 p.m. Newfoundland Daylight Time'
  * ```
  */
-function getDateFormatter(locales, tokens, onError) {
+function getDateFormatter(locales, tokens, timeZone, onError) {
     if (typeof tokens === 'string')
         tokens = parseDateTokens(tokens);
-    const opt = getDateFormatOptions(tokens, onError);
+    if (typeof timeZone === 'function') {
+        onError = timeZone;
+        timeZone = undefined;
+    }
+    const opt = getDateFormatOptions(tokens, timeZone, onError);
     const dtf = new Intl.DateTimeFormat(locales, opt);
     return (date) => dtf.format(date);
 }
@@ -4784,10 +4158,14 @@ function getDateFormatter(locales, tokens, onError) {
  * fmt(date) // '3:04:05 p.m. Newfoundland Daylight Time'
  * ```
  */
-function getDateFormatterSource(locales, tokens, onError) {
+function getDateFormatterSource(locales, tokens, timeZone, onError) {
     if (typeof tokens === 'string')
         tokens = parseDateTokens(tokens);
-    const opt = getDateFormatOptions(tokens, onError);
+    if (typeof timeZone === 'function') {
+        onError = timeZone;
+        timeZone = undefined;
+    }
+    const opt = getDateFormatOptions(tokens, timeZone, onError);
     const lines = [
         `(function() {`,
         `var opt = ${JSON.stringify(opt)};`,
@@ -5368,8 +4746,9 @@ function parseNumberAsSkeleton(tokens, onError) {
                 break;
             }
             case '@': {
-                if (res.precision)
+                if (res.precision) {
                     onError(new MaskedValueError('precision', res.precision));
+                }
                 res.precision = {
                     style: 'precision-fraction',
                     minSignificant: token.min,
@@ -5388,8 +4767,9 @@ function parseNumberAsSkeleton(tokens, onError) {
                 decimalPos = pos;
                 break;
             case 'E': {
-                if (hasExponent)
+                if (hasExponent) {
                     onError(new MaskedValueError('exponent', res.notation));
+                }
                 if (hasGroups) {
                     const msg = 'Exponential patterns may not contain grouping separators';
                     onError(new PatternError('E', msg));
@@ -5435,8 +4815,9 @@ function parseNumberAsSkeleton(tokens, onError) {
         else {
             const dc = intDigits.length + fracDigits.length;
             if (decimalPos === -1) {
-                if (dc > 0)
+                if (dc > 0) {
                     res.precision = { style: 'precision-fraction', maxSignificant: dc };
+                }
             }
             else {
                 res.precision = {
@@ -5759,8 +5140,9 @@ function parsePrecisionBlueprint(stem, options, onError) {
             if (sd.max != null)
                 res.maxSignificant = sd.max;
         }
-        else if (option)
+        else if (option) {
             onError(new BadOptionError(stem, option));
+        }
         return res;
     }
     const sd = parseBlueprintDigits(stem, 'significant');
@@ -5822,8 +5204,9 @@ class TokenParser {
                             expSign = opt;
                             break;
                         default:
-                            if (/^\+e+$/.test(opt))
+                            if (/^\+e+$/.test(opt)) {
                                 expDigits = opt.length - 1;
+                            }
                             else {
                                 this.badOption(stem, opt);
                             }
@@ -5853,16 +5236,18 @@ class TokenParser {
                     this.assertEmpty('unit');
                     res.unit = { style: stem, currency: option };
                 }
-                else
+                else {
                     this.badOption(stem, option);
+                }
                 break;
             case 'measure-unit': {
                 if (isUnit(option)) {
                     this.assertEmpty('unit');
                     res.unit = { style: stem, unit: option };
                 }
-                else
+                else {
                     this.badOption(stem, option);
+                }
                 break;
             }
             // unitPer
@@ -5871,8 +5256,9 @@ class TokenParser {
                     this.assertEmpty('unitPer');
                     res.unitPer = option;
                 }
-                else
+                else {
                     this.badOption(stem, option);
+                }
                 break;
             }
             // unitWidth
@@ -5906,8 +5292,9 @@ class TokenParser {
                     this.assertEmpty('precision');
                     res.precision = { style: stem, increment };
                 }
-                else
+                else {
                     this.badOption(stem, option);
+                }
                 break;
             }
             // roundingMode
@@ -5941,8 +5328,9 @@ class TokenParser {
                             max: m[0].length
                         };
                     }
-                    else
+                    else {
                         this.badOption(stem, option);
+                    }
                 }
                 break;
             }
@@ -5953,8 +5341,9 @@ class TokenParser {
                     this.assertEmpty('scale');
                     res.scale = scale;
                 }
-                else
+                else {
                     this.badOption(stem, option);
+                }
                 break;
             }
             // group
@@ -5976,8 +5365,9 @@ class TokenParser {
                     this.assertEmpty('numberingSystem');
                     res.numberingSystem = option;
                 }
-                else
+                else {
                     this.badOption(stem, option);
+                }
                 break;
             }
             // sign
@@ -6247,8 +5637,9 @@ let Compiler$1 = class Compiler {
             const { cardinals, ordinals } = this.plural;
             if (type === 'select' ||
                 (type === 'plural' && cardinals.includes('other')) ||
-                (type === 'selectordinal' && ordinals.includes('other')))
+                (type === 'selectordinal' && ordinals.includes('other'))) {
                 throw new Error(`No 'other' form found in ${JSON.stringify(token)}`);
+            }
         }
         return `{ ${r.join(', ')} }`;
     }
@@ -6267,8 +5658,9 @@ let Compiler$1 = class Compiler {
             this.arguments.push(token.arg);
             args = [safeIdentifier$1.property('d', token.arg)];
         }
-        else
+        else {
             args = [];
+        }
         switch (token.type) {
             case 'argument':
                 return this.options.biDiSupport
@@ -6293,8 +5685,12 @@ let Compiler$1 = class Compiler {
                 this.setLocale(id, false);
                 this.setRuntimeFn('plural');
                 break;
-            case 'function':
-                if (!this.options.customFormatters[token.key]) {
+            case 'function': {
+                const formatter = this.options.customFormatters[token.key];
+                const isModuleFn = formatter &&
+                    'module' in formatter &&
+                    typeof formatter.module === 'function';
+                if (!formatter) {
                     if (token.key === 'date') {
                         fn = this.setDateFormatter(token, args, pluralToken);
                         break;
@@ -6312,9 +5708,12 @@ let Compiler$1 = class Compiler {
                     if (arg)
                         args.push(arg);
                 }
-                fn = token.key;
-                this.setFormatter(fn);
+                fn = isModuleFn
+                    ? safeIdentifier$1.identifier(`${token.key}__${this.plural.locale}`)
+                    : token.key;
+                this.setFormatter(fn, token.key);
                 break;
+            }
             case 'octothorpe':
                 if (!pluralToken)
                     return '"#"';
@@ -6339,8 +5738,9 @@ let Compiler$1 = class Compiler {
         return `${fn}(${args.join(', ')})`;
     }
     runtimeIncludes(key, type) {
-        if (safeIdentifier$1.identifier(key) !== key)
+        if (safeIdentifier$1.identifier(key) !== key) {
             throw new SyntaxError(`Reserved word used as ${type} identifier: ${key}`);
+        }
         const prev = this.runtime[key];
         if (!prev || prev.type === type)
             return prev;
@@ -6389,25 +5789,31 @@ let Compiler$1 = class Compiler {
         if (argShape === 'options') {
             let value = '';
             for (const tok of param) {
-                if (tok.type === 'content')
+                if (tok.type === 'content') {
                     value += tok.value;
-                else
+                }
+                else {
                     throw new SyntaxError(`Expected literal options for ${key} formatter`);
+                }
             }
             const options = {};
             for (const pair of value.split(',')) {
                 const keyEnd = pair.indexOf(':');
-                if (keyEnd === -1)
+                if (keyEnd === -1) {
                     options[pair.trim()] = null;
+                }
                 else {
                     const k = pair.substring(0, keyEnd).trim();
                     const v = pair.substring(keyEnd + 1).trim();
-                    if (v === 'true')
+                    if (v === 'true') {
                         options[k] = true;
-                    else if (v === 'false')
+                    }
+                    else if (v === 'false') {
                         options[k] = false;
-                    else if (v === 'null')
+                    }
+                    else if (v === 'null') {
                         options[k] = null;
+                    }
                     else {
                         const n = Number(v);
                         options[k] = Number.isFinite(n) ? n : v;
@@ -6424,15 +5830,19 @@ let Compiler$1 = class Compiler {
             return s ? `(${s}).trim()` : '""';
         }
     }
-    setFormatter(key) {
+    setFormatter(key, parentKey) {
         if (this.runtimeIncludes(key, 'formatter'))
             return;
-        let cf = this.options.customFormatters[key];
+        const cf = this.options.customFormatters[parentKey || key];
         if (cf) {
-            if (typeof cf === 'function')
-                cf = { formatter: cf };
-            this.runtime[key] = Object.assign(cf.formatter, { type: 'formatter' }, 'module' in cf && cf.module && cf.id
-                ? { id: safeIdentifier$1.identifier(cf.id), module: cf.module }
+            const cfo = typeof cf === 'function' ? { formatter: cf } : cf;
+            this.runtime[key] = Object.assign(cfo.formatter.bind({}), Object.assign(Object.assign({}, cfo.formatter.prototype), { toString: () => String(cfo.formatter) }), { type: 'formatter' }, 'module' in cf && cf.module && cf.id
+                ? {
+                    id: safeIdentifier$1.identifier(cf.id),
+                    module: typeof cf.module === 'function'
+                        ? cf.module(this.plural.locale)
+                        : cf.module
+                }
                 : { id: null, module: null });
         }
         else if (isFormatterKey(key)) {
@@ -6451,11 +5861,11 @@ let Compiler$1 = class Compiler {
             const argSkeletonText = argStyle.value.trim().substr(2);
             const key = safeIdentifier$1.identifier(`date_${locale}_${argSkeletonText}`, true);
             if (!this.runtimeIncludes(key, 'formatter')) {
-                const fmt = getDateFormatter(locale, argSkeletonText);
+                const fmt = getDateFormatter(locale, argSkeletonText, this.options.timeZone);
                 this.runtime[key] = Object.assign(fmt, {
                     id: key,
                     module: null,
-                    toString: () => getDateFormatterSource(locale, argSkeletonText),
+                    toString: () => getDateFormatterSource(locale, argSkeletonText, this.options.timeZone),
                     type: 'formatter'
                 });
             }
@@ -6600,6 +6010,10 @@ var cardinals = {exports: {}};
 	bg: a,
 
 	bho: b,
+
+	blo: (n) => n == 0 ? 'zero'
+	    : n == 1 ? 'one'
+	    : 'other',
 
 	bm: e,
 
@@ -7251,6 +6665,7 @@ var pluralCategories = {exports: {}};
 	bez: a,
 	bg: a,
 	bho: a,
+	blo: {cardinal:[z,o,x],ordinal:[z,o,f,x]},
 	bm: c,
 	bn: {cardinal:[o,x],ordinal:[o,t,f,m,x]},
 	bo: c,
@@ -7558,6 +6973,17 @@ var plurals = {exports: {}};
 	bg: a,
 
 	bho: b,
+
+	blo: (n, ord) => {
+	  const s = String(n).split('.'), i = s[0];
+	  if (ord) return i == 0 ? 'zero'
+	    : i == 1 ? 'one'
+	    : (i == 2 || i == 3 || i == 4 || i == 5 || i == 6) ? 'few'
+	    : 'other';
+	  return n == 0 ? 'zero'
+	    : n == 1 ? 'one'
+	    : 'other';
+	},
 
 	bm: e,
 
@@ -8374,8 +7800,9 @@ var PluralCategories__namespace = /*#__PURE__*/_interopNamespaceDefault(PluralCa
 var Plurals__namespace = /*#__PURE__*/_interopNamespaceDefault(Plurals);
 
 function normalize(locale) {
-    if (typeof locale !== 'string' || locale.length < 2)
+    if (typeof locale !== 'string' || locale.length < 2) {
         throw new RangeError(`Invalid language tag: ${locale}`);
+    }
     if (locale.startsWith('pt-PT'))
         return 'pt-PT';
     const m = locale.match(/.+?(?=[-_])/);
@@ -8556,9 +7983,9 @@ lib.default = entry;
 // dependencies
 const printf = printf$1.printf;
 const pkgVersion = require$$1.version;
-const fs = require$$1$1;
+const fs = require$$1$2;
 const url = require$$3;
-const path = require$$1$2;
+const path = require$$1$3;
 const debug = srcExports('i18n:debug');
 const warn = srcExports('i18n:warn');
 const error = srcExports('i18n:error');
@@ -9960,4 +9387,4 @@ i18n$2.exports = i18n();
  */
 var I18n = i18n$2.exports.I18n = i18n;
 
-export { I18n as I, getDefaultExportFromCjs as a, chalk as b, commonjsGlobal as c, getAugmentedNamespace as g, requireSupportsColor as r, srcExports as s };
+export { I18n as I, requireSupportsColor as a, getDefaultExportFromCjs as b, commonjsGlobal as c, getAugmentedNamespace as g, requireMs as r };

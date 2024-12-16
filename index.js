@@ -321,6 +321,28 @@ readConfig().then((CONFIG) => {
       }
     });
 
+    // Make a printByFragments to electron-hiprint client
+    socket.on("printByFragments", (options) => {
+      if (options.client) {
+        if (!CLIENT.get(sToken)[options.client]) {
+          socket.emit("error", {
+            msg: "Client is not exist.",
+            templateId: options.templateId,
+          });
+          return;
+        }
+        socket
+          .to(options.client)
+          .emit("printByFragments", { ...options, replyId: socket.id });
+        log(i18n.__("%s send printByFragments to %s", socket.id, options.client));
+      } else {
+        socket.emit("error", {
+          msg: "Client must be specified.",
+          templateId: options.templateId,
+        });
+      }
+    });
+
     // Make a success callback to reply client
     socket.on("success", (options) => {
       if (options.replyId) {
