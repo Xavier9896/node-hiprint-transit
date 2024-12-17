@@ -17,6 +17,7 @@
   "%s send ippPrint to %s": "%s 发送 ippPrint 指令到 %s",
   "%s send ippRequest to %s": "%s 发送 ippRequest 指令到 %s",
   "%s send news to %s": "%s 发送 news 指令到 %s",
+  "%s send printByFragments to %s": "%s 发送 printByFragments 指令到 %s",
   "Retrieve the client print list": "获取客户端打印列表",
   "%s client: print success, templateId: %s": "%s 客户端：打印成功，模板ID：%s",
   "%s client: print error, templateId: %s": "%s 客户端：打印失败，模板ID：%s"
