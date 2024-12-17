@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  node-hiprint-transit:
+    build: .
+    ports:
+      - "17521:17521"
+    volumes:
+      - .:/node-hiprint-transit
+    environment:
+      NODE_ENV: production
