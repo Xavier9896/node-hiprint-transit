@@ -4,15 +4,15 @@
  * @LastEditTime: 2024-03-09 11:29:03
  * @FilePath: \node-hiprint-transit\src\log.js
  */
-import { access, appendFile, constants, mkdir, writeFile } from "node:fs";
-import dayjs from "dayjs";
+import { access, appendFile, constants, mkdir, writeFile } from 'node:fs';
+import dayjs from 'dayjs';
 
 /**
  * @description: This function checks if the log directory exists. If it does not exist, a new directory will be created.
  * @return {Promise} A Promise object that resolves if the directory exists, or rejects if creating the directory fails.
  */
 function checkDir() {
-  const dirPath = "./logs";
+  const dirPath = './logs';
   return new Promise((resolve, reject) => {
     access(dirPath, constants.F_OK, (err) => {
       if (err) {
@@ -35,13 +35,13 @@ function checkDir() {
  * @returns {Promise} A Promise object that resolves if the file exists, or rejects if creating the file fails.
  */
 function checkLogFile() {
-  const filePath = `./logs/${dayjs().format("YYYY-MM-DD")}.log`;
+  const filePath = `./logs/${dayjs().format('YYYY-MM-DD')}.log`;
   return new Promise((resolve, reject) => {
     checkDir()
       .then(() => {
         access(filePath, constants.F_OK, (err) => {
           if (err) {
-            writeFile(filePath, "", (err) => {
+            writeFile(filePath, '', (err) => {
               if (err) {
                 reject(err);
               } else {
@@ -65,12 +65,12 @@ function checkLogFile() {
  * @returns {Promise} - A Promise object that resolves when writing is successful, or rejects when writing fails.
  */
 function log(message) {
-  const filePath = `./logs/${dayjs().format("YYYY-MM-DD")}.log`;
+  const filePath = `./logs/${dayjs().format('YYYY-MM-DD')}.log`;
   return new Promise((resolve, reject) => {
     checkLogFile()
       .then(() => {
         const logMessage = `${dayjs().format(
-          "YYYY/MM/DD HH:mm:ss"
+          'YYYY/MM/DD HH:mm:ss',
         )}: ${message}\n`;
         appendFile(filePath, logMessage, (err) => {
           if (err) {
