@@ -125,3 +125,9 @@ out
 .pnp.*
 package-lock.json
 .DS_Store
+
+
+.history
+.idea
+.workflow
+.vscode
