@@ -23,6 +23,14 @@ import packageJson from './package.json' assert { type: 'json' };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const printEvents = [
+  'news',
+  'printByFragments',
+  'render-jpeg',
+  'render-pdf',
+  'render-print',
+];
+
 // Setup i18n
 const i18n = new I18n({
   locales: ['en', 'zh'],
@@ -299,50 +307,58 @@ readConfig().then((CONFIG) => {
       }
     });
 
-    // Make a news to electron-hiprint client
-    socket.on('news', (options) => {
-      if (options.client) {
-        if (!CLIENT.get(sToken)[options.client]) {
+    // news, printByFragments, render-jpeg, render-pdf, render-print event bind.
+    printEvents.forEach((event) => {
+      socket.on(event, (options) => {
+        if (options.client) {
+          if (!CLIENT.get(sToken)[options.client]) {
+            socket.emit('error', {
+              msg: 'Client is not exist.',
+              templateId: options.templateId,
+            });
+            return;
+          }
+          socket
+            .to(options.client)
+            .emit(event, { ...options, replyId: socket.id });
+          log(i18n.__(`%s send %s to %s`, socket.id, event, options.client));
+        } else {
           socket.emit('error', {
-            msg: 'Client is not exist.',
+            msg: 'Client must be specified.',
             templateId: options.templateId,
           });
-          return;
         }
-        socket
-          .to(options.client)
-          .emit('news', { ...options, replyId: socket.id });
-        log(i18n.__('%s send news to %s', socket.id, options.client));
-      } else {
-        socket.emit('error', {
-          msg: 'Client must be specified.',
-          templateId: options.templateId,
-        });
-      }
-    });
+      });
 
-    // Make a printByFragments to electron-hiprint client
-    socket.on('printByFragments', (options) => {
-      if (options.client) {
-        if (!CLIENT.get(sToken)[options.client]) {
-          socket.emit('error', {
-            msg: 'Client is not exist.',
-            templateId: options.templateId,
-          });
-          return;
+      // render event success callback
+      socket.on(`${event}-success`, (options) => {
+        if (options.replyId) {
+          socket.to(options.replyId).emit(`${event}-success`, options);
+          log(
+            i18n.__(
+              `%s client: %s success, templateId: %s`,
+              socket.id,
+              event,
+              options.templateId,
+            ),
+          );
         }
-        socket
-          .to(options.client)
-          .emit('printByFragments', { ...options, replyId: socket.id });
-        log(
-          i18n.__('%s send printByFragments to %s', socket.id, options.client),
-        );
-      } else {
-        socket.emit('error', {
-          msg: 'Client must be specified.',
-          templateId: options.templateId,
-        });
-      }
+      });
+
+      // render event error callback
+      socket.on(`${event}-error`, (options) => {
+        if (options.replyId) {
+          socket.to(options.replyId).emit(`${event}-error`, options);
+          log(
+            i18n.__(
+              `%s client: %s error, templateId: %s`,
+              socket.id,
+              event,
+              options.templateId,
+            ),
+          );
+        }
+      });
     });
 
     // Make a success callback to reply client
@@ -351,8 +367,9 @@ readConfig().then((CONFIG) => {
         socket.to(options.replyId).emit('success', options);
         log(
           i18n.__(
-            '%s client: print success, templateId: %s',
+            '%s client: %s success, templateId: %s',
             socket.id,
+            'print',
             options.templateId,
           ),
         );
@@ -365,8 +382,9 @@ readConfig().then((CONFIG) => {
         socket.to(options.replyId).emit('error', options);
         log(
           i18n.__(
-            '%s client: print error, templateId: %s',
+            '%s client: %s error, templateId: %s',
             socket.id,
+            'print',
             options.templateId,
           ),
         );
