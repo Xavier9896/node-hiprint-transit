@@ -22,7 +22,14 @@ import packageJson from './package.json' assert { type: 'json' };
 // ES Module need use fileURLToPath to get __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const _conformity = ['news','printByFragments','render-jpeg','render-pdf','render-print'];
+
+const printEvents = [
+  'news',
+  'printByFragments',
+  'render-jpeg',
+  'render-pdf',
+  'render-print',
+];
 
 // Setup i18n
 const i18n = new I18n({
@@ -300,14 +307,69 @@ readConfig().then((CONFIG) => {
       }
     });
 
+    // news, printByFragments, render-jpeg, render-pdf, render-print event bind.
+    printEvents.forEach((event) => {
+      socket.on(event, (options) => {
+        if (options.client) {
+          if (!CLIENT.get(sToken)[options.client]) {
+            socket.emit('error', {
+              msg: 'Client is not exist.',
+              templateId: options.templateId,
+            });
+            return;
+          }
+          socket
+            .to(options.client)
+            .emit(event, { ...options, replyId: socket.id });
+          log(i18n.__(`%s send %s to %s`, socket.id, event, options.client));
+        } else {
+          socket.emit('error', {
+            msg: 'Client must be specified.',
+            templateId: options.templateId,
+          });
+        }
+      });
+
+      // render event success callback
+      socket.on(`${event}-success`, (options) => {
+        if (options.replyId) {
+          socket.to(options.replyId).emit(`${event}-success`, options);
+          log(
+            i18n.__(
+              `%s client: %s success, templateId: %s`,
+              socket.id,
+              event,
+              options.templateId,
+            ),
+          );
+        }
+      });
+
+      // render event error callback
+      socket.on(`${event}-error`, (options) => {
+        if (options.replyId) {
+          socket.to(options.replyId).emit(`${event}-error`, options);
+          log(
+            i18n.__(
+              `%s client: %s error, templateId: %s`,
+              socket.id,
+              event,
+              options.templateId,
+            ),
+          );
+        }
+      });
+    });
+
     // Make a success callback to reply client
     socket.on('success', (options) => {
       if (options.replyId) {
         socket.to(options.replyId).emit('success', options);
         log(
           i18n.__(
-            '%s client: print success, templateId: %s',
+            '%s client: %s success, templateId: %s',
             socket.id,
+            'print',
             options.templateId,
           ),
         );
@@ -320,8 +382,9 @@ readConfig().then((CONFIG) => {
         socket.to(options.replyId).emit('error', options);
         log(
           i18n.__(
-            '%s client: print error, templateId: %s',
+            '%s client: %s error, templateId: %s',
             socket.id,
+            'print',
             options.templateId,
           ),
         );
@@ -340,59 +403,6 @@ readConfig().then((CONFIG) => {
         }
       }
     });
-
-    // 整合news，printByFragments，render-jpeg，render-pdf，render-print
-    _conformity.forEach(async (item,index) => {
-      await socket.on(item, (options) => {
-        if(item=='render-jpeg'||item=='render-pdf'||item=='render-print') {
-          if (options.client) {
-            if (!CLIENT.get(sToken)[options.client]) {
-              socket.emit(`${item}-error`, {
-                msg: 'Client is not exist.',
-                templateId: options.templateId,
-              });
-              return;
-            }
-            socket
-              .to(options.client)
-              .emit('printByFragments', { ...options, replyId: socket.id });
-            socket.emit(`${item}-success`, {
-              msg: 'isOK.',
-              templateId: options.templateId,
-            });
-            log(
-              i18n.__(`%s send ${item} to %s`, socket.id, options.client),
-            );
-          } else {
-            socket.emit(`${item}-error`, {
-              msg: 'Client must be specified.',
-              templateId: options.templateId,
-            });
-          }
-          return;
-        }
-        if (options.client) {
-          if (!CLIENT.get(sToken)[options.client]) {
-            socket.emit('error', {
-              msg: 'Client is not exist.',
-              templateId: options.templateId,
-            });
-            return;
-          }
-          socket
-            .to(options.client)
-            .emit('printByFragments', { ...options, replyId: socket.id });
-          log(
-            i18n.__(`%s send ${item} to %s`, socket.id, options.client),
-          );
-        } else {
-          socket.emit('error', {
-            msg: 'Client must be specified.',
-            templateId: options.templateId,
-          });
-        }
-      });
-    })
   });
 
   // Retrieve the client print list every 10 minutes.

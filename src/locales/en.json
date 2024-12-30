@@ -16,9 +16,8 @@
   "SSL certificate has expired": "SSL certificate has expired",
   "%s send ippPrint to %s": "%s send ippPrint to %s",
   "%s send ippRequest to %s": "%s send ippRequest to %s",
-  "%s send news to %s": "%s send news to %s",
-  "%s send printByFragments to %s": "%s send printByFragments to %s",
+  "%s send %s to %s": "%s send %s to %s",
   "Retrieve the client print list": "Retrieve the client print list",
-  "%s client: print success, templateId: %s": "%s client: print success, templateId: %s",
-  "%s client: print error, templateId: %s": "%s client: print error, templateId: %s"
+  "%s client: %s success, templateId: %s": "%s client: %s success, templateId: %s",
+  "%s client: %s error, templateId: %s": "%s client: %s error, templateId: %s"
 }
