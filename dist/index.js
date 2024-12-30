@@ -3,10 +3,8 @@ import http$2 from 'node:http';
 import https$1 from 'node:https';
 import { appendFile, access, constants as constants$1, writeFile, mkdir, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import os, { totalmem, freemem } from 'node:os';
-import process$1 from 'node:process';
-import tty from 'node:tty';
-import { r as requireMs, a as requireSupportsColor, g as getAugmentedNamespace, c as commonjsGlobal, b as getDefaultExportFromCjs, I as I18n } from './index_chunk.js';
+import { totalmem, freemem } from 'node:os';
+import { r as requireMs, a as requireSupportsColor, g as getAugmentedNamespace, c as commonjsGlobal, b as getDefaultExportFromCjs, I as I18n, d as chalk } from './index_chunk.js';
 import require$$0$6 from 'http';
 import require$$1$5 from 'fs';
 import require$$1$2 from 'zlib';
@@ -25,632 +23,9 @@ import require$$4 from 'tls';
 import require$$0$4 from 'buffer';
 import { toUnicode } from 'punycode';
 import { readConfig, getIPAddress } from './src/config.js';
+import 'node:process';
+import 'node:tty';
 import 'os';
-
-const ANSI_BACKGROUND_OFFSET = 10;
-
-const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
-
-const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
-
-const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
-
-const styles$1 = {
-	modifier: {
-		reset: [0, 0],
-		// 21 isn't widely supported and 22 does the same thing
-		bold: [1, 22],
-		dim: [2, 22],
-		italic: [3, 23],
-		underline: [4, 24],
-		overline: [53, 55],
-		inverse: [7, 27],
-		hidden: [8, 28],
-		strikethrough: [9, 29],
-	},
-	color: {
-		black: [30, 39],
-		red: [31, 39],
-		green: [32, 39],
-		yellow: [33, 39],
-		blue: [34, 39],
-		magenta: [35, 39],
-		cyan: [36, 39],
-		white: [37, 39],
-
-		// Bright color
-		blackBright: [90, 39],
-		gray: [90, 39], // Alias of `blackBright`
-		grey: [90, 39], // Alias of `blackBright`
-		redBright: [91, 39],
-		greenBright: [92, 39],
-		yellowBright: [93, 39],
-		blueBright: [94, 39],
-		magentaBright: [95, 39],
-		cyanBright: [96, 39],
-		whiteBright: [97, 39],
-	},
-	bgColor: {
-		bgBlack: [40, 49],
-		bgRed: [41, 49],
-		bgGreen: [42, 49],
-		bgYellow: [43, 49],
-		bgBlue: [44, 49],
-		bgMagenta: [45, 49],
-		bgCyan: [46, 49],
-		bgWhite: [47, 49],
-
-		// Bright color
-		bgBlackBright: [100, 49],
-		bgGray: [100, 49], // Alias of `bgBlackBright`
-		bgGrey: [100, 49], // Alias of `bgBlackBright`
-		bgRedBright: [101, 49],
-		bgGreenBright: [102, 49],
-		bgYellowBright: [103, 49],
-		bgBlueBright: [104, 49],
-		bgMagentaBright: [105, 49],
-		bgCyanBright: [106, 49],
-		bgWhiteBright: [107, 49],
-	},
-};
-
-Object.keys(styles$1.modifier);
-const foregroundColorNames = Object.keys(styles$1.color);
-const backgroundColorNames = Object.keys(styles$1.bgColor);
-[...foregroundColorNames, ...backgroundColorNames];
-
-function assembleStyles() {
-	const codes = new Map();
-
-	for (const [groupName, group] of Object.entries(styles$1)) {
-		for (const [styleName, style] of Object.entries(group)) {
-			styles$1[styleName] = {
-				open: `\u001B[${style[0]}m`,
-				close: `\u001B[${style[1]}m`,
-			};
-
-			group[styleName] = styles$1[styleName];
-
-			codes.set(style[0], style[1]);
-		}
-
-		Object.defineProperty(styles$1, groupName, {
-			value: group,
-			enumerable: false,
-		});
-	}
-
-	Object.defineProperty(styles$1, 'codes', {
-		value: codes,
-		enumerable: false,
-	});
-
-	styles$1.color.close = '\u001B[39m';
-	styles$1.bgColor.close = '\u001B[49m';
-
-	styles$1.color.ansi = wrapAnsi16();
-	styles$1.color.ansi256 = wrapAnsi256();
-	styles$1.color.ansi16m = wrapAnsi16m();
-	styles$1.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
-	styles$1.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
-	styles$1.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
-
-	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
-	Object.defineProperties(styles$1, {
-		rgbToAnsi256: {
-			value(red, green, blue) {
-				// We use the extended greyscale palette here, with the exception of
-				// black and white. normal palette only has 4 greyscale shades.
-				if (red === green && green === blue) {
-					if (red < 8) {
-						return 16;
-					}
-
-					if (red > 248) {
-						return 231;
-					}
-
-					return Math.round(((red - 8) / 247) * 24) + 232;
-				}
-
-				return 16
-					+ (36 * Math.round(red / 255 * 5))
-					+ (6 * Math.round(green / 255 * 5))
-					+ Math.round(blue / 255 * 5);
-			},
-			enumerable: false,
-		},
-		hexToRgb: {
-			value(hex) {
-				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
-				if (!matches) {
-					return [0, 0, 0];
-				}
-
-				let [colorString] = matches;
-
-				if (colorString.length === 3) {
-					colorString = [...colorString].map(character => character + character).join('');
-				}
-
-				const integer = Number.parseInt(colorString, 16);
-
-				return [
-					/* eslint-disable no-bitwise */
-					(integer >> 16) & 0xFF,
-					(integer >> 8) & 0xFF,
-					integer & 0xFF,
-					/* eslint-enable no-bitwise */
-				];
-			},
-			enumerable: false,
-		},
-		hexToAnsi256: {
-			value: hex => styles$1.rgbToAnsi256(...styles$1.hexToRgb(hex)),
-			enumerable: false,
-		},
-		ansi256ToAnsi: {
-			value(code) {
-				if (code < 8) {
-					return 30 + code;
-				}
-
-				if (code < 16) {
-					return 90 + (code - 8);
-				}
-
-				let red;
-				let green;
-				let blue;
-
-				if (code >= 232) {
-					red = (((code - 232) * 10) + 8) / 255;
-					green = red;
-					blue = red;
-				} else {
-					code -= 16;
-
-					const remainder = code % 36;
-
-					red = Math.floor(code / 36) / 5;
-					green = Math.floor(remainder / 6) / 5;
-					blue = (remainder % 6) / 5;
-				}
-
-				const value = Math.max(red, green, blue) * 2;
-
-				if (value === 0) {
-					return 30;
-				}
-
-				// eslint-disable-next-line no-bitwise
-				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
-
-				if (value === 2) {
-					result += 60;
-				}
-
-				return result;
-			},
-			enumerable: false,
-		},
-		rgbToAnsi: {
-			value: (red, green, blue) => styles$1.ansi256ToAnsi(styles$1.rgbToAnsi256(red, green, blue)),
-			enumerable: false,
-		},
-		hexToAnsi: {
-			value: hex => styles$1.ansi256ToAnsi(styles$1.hexToAnsi256(hex)),
-			enumerable: false,
-		},
-	});
-
-	return styles$1;
-}
-
-const ansiStyles = assembleStyles();
-
-// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
-/// function hasFlag(flag, argv = globalThis.Deno?.args ?? process.argv) {
-function hasFlag(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$1.argv) {
-	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-	const position = argv.indexOf(prefix + flag);
-	const terminatorPosition = argv.indexOf('--');
-	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-}
-
-const {env} = process$1;
-
-let flagForceColor;
-if (
-	hasFlag('no-color')
-	|| hasFlag('no-colors')
-	|| hasFlag('color=false')
-	|| hasFlag('color=never')
-) {
-	flagForceColor = 0;
-} else if (
-	hasFlag('color')
-	|| hasFlag('colors')
-	|| hasFlag('color=true')
-	|| hasFlag('color=always')
-) {
-	flagForceColor = 1;
-}
-
-function envForceColor() {
-	if ('FORCE_COLOR' in env) {
-		if (env.FORCE_COLOR === 'true') {
-			return 1;
-		}
-
-		if (env.FORCE_COLOR === 'false') {
-			return 0;
-		}
-
-		return env.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env.FORCE_COLOR, 10), 3);
-	}
-}
-
-function translateLevel(level) {
-	if (level === 0) {
-		return false;
-	}
-
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3,
-	};
-}
-
-function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
-	const noFlagForceColor = envForceColor();
-	if (noFlagForceColor !== undefined) {
-		flagForceColor = noFlagForceColor;
-	}
-
-	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
-
-	if (forceColor === 0) {
-		return 0;
-	}
-
-	if (sniffFlags) {
-		if (hasFlag('color=16m')
-			|| hasFlag('color=full')
-			|| hasFlag('color=truecolor')) {
-			return 3;
-		}
-
-		if (hasFlag('color=256')) {
-			return 2;
-		}
-	}
-
-	// Check for Azure DevOps pipelines.
-	// Has to be above the `!streamIsTTY` check.
-	if ('TF_BUILD' in env && 'AGENT_NAME' in env) {
-		return 1;
-	}
-
-	if (haveStream && !streamIsTTY && forceColor === undefined) {
-		return 0;
-	}
-
-	const min = forceColor || 0;
-
-	if (env.TERM === 'dumb') {
-		return min;
-	}
-
-	if (process$1.platform === 'win32') {
-		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
-		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
-		const osRelease = os.release().split('.');
-		if (
-			Number(osRelease[0]) >= 10
-			&& Number(osRelease[2]) >= 10_586
-		) {
-			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
-		}
-
-		return 1;
-	}
-
-	if ('CI' in env) {
-		if ('GITHUB_ACTIONS' in env || 'GITEA_ACTIONS' in env) {
-			return 3;
-		}
-
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
-			return 1;
-		}
-
-		return min;
-	}
-
-	if ('TEAMCITY_VERSION' in env) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
-	}
-
-	if (env.COLORTERM === 'truecolor') {
-		return 3;
-	}
-
-	if (env.TERM === 'xterm-kitty') {
-		return 3;
-	}
-
-	if ('TERM_PROGRAM' in env) {
-		const version = Number.parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-		switch (env.TERM_PROGRAM) {
-			case 'iTerm.app': {
-				return version >= 3 ? 3 : 2;
-			}
-
-			case 'Apple_Terminal': {
-				return 2;
-			}
-			// No default
-		}
-	}
-
-	if (/-256(color)?$/i.test(env.TERM)) {
-		return 2;
-	}
-
-	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-		return 1;
-	}
-
-	if ('COLORTERM' in env) {
-		return 1;
-	}
-
-	return min;
-}
-
-function createSupportsColor(stream, options = {}) {
-	const level = _supportsColor(stream, {
-		streamIsTTY: stream && stream.isTTY,
-		...options,
-	});
-
-	return translateLevel(level);
-}
-
-const supportsColor = {
-	stdout: createSupportsColor({isTTY: tty.isatty(1)}),
-	stderr: createSupportsColor({isTTY: tty.isatty(2)}),
-};
-
-// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
-function stringReplaceAll(string, substring, replacer) {
-	let index = string.indexOf(substring);
-	if (index === -1) {
-		return string;
-	}
-
-	const substringLength = substring.length;
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		returnValue += string.slice(endIndex, index) + substring + replacer;
-		endIndex = index + substringLength;
-		index = string.indexOf(substring, endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-function stringEncaseCRLFWithFirstIndex(string, prefix, postfix, index) {
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		const gotCR = string[index - 1] === '\r';
-		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
-		endIndex = index + 1;
-		index = string.indexOf('\n', endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-const {stdout: stdoutColor, stderr: stderrColor} = supportsColor;
-
-const GENERATOR = Symbol('GENERATOR');
-const STYLER = Symbol('STYLER');
-const IS_EMPTY = Symbol('IS_EMPTY');
-
-// `supportsColor.level` → `ansiStyles.color[name]` mapping
-const levelMapping = [
-	'ansi',
-	'ansi',
-	'ansi256',
-	'ansi16m',
-];
-
-const styles = Object.create(null);
-
-const applyOptions = (object, options = {}) => {
-	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
-		throw new Error('The `level` option should be an integer from 0 to 3');
-	}
-
-	// Detect level if not set manually
-	const colorLevel = stdoutColor ? stdoutColor.level : 0;
-	object.level = options.level === undefined ? colorLevel : options.level;
-};
-
-const chalkFactory = options => {
-	const chalk = (...strings) => strings.join(' ');
-	applyOptions(chalk, options);
-
-	Object.setPrototypeOf(chalk, createChalk.prototype);
-
-	return chalk;
-};
-
-function createChalk(options) {
-	return chalkFactory(options);
-}
-
-Object.setPrototypeOf(createChalk.prototype, Function.prototype);
-
-for (const [styleName, style] of Object.entries(ansiStyles)) {
-	styles[styleName] = {
-		get() {
-			const builder = createBuilder(this, createStyler(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
-			Object.defineProperty(this, styleName, {value: builder});
-			return builder;
-		},
-	};
-}
-
-styles.visible = {
-	get() {
-		const builder = createBuilder(this, this[STYLER], true);
-		Object.defineProperty(this, 'visible', {value: builder});
-		return builder;
-	},
-};
-
-const getModelAnsi = (model, level, type, ...arguments_) => {
-	if (model === 'rgb') {
-		if (level === 'ansi16m') {
-			return ansiStyles[type].ansi16m(...arguments_);
-		}
-
-		if (level === 'ansi256') {
-			return ansiStyles[type].ansi256(ansiStyles.rgbToAnsi256(...arguments_));
-		}
-
-		return ansiStyles[type].ansi(ansiStyles.rgbToAnsi(...arguments_));
-	}
-
-	if (model === 'hex') {
-		return getModelAnsi('rgb', level, type, ...ansiStyles.hexToRgb(...arguments_));
-	}
-
-	return ansiStyles[type][model](...arguments_);
-};
-
-const usedModels = ['rgb', 'hex', 'ansi256'];
-
-for (const model of usedModels) {
-	styles[model] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'color', ...arguments_), ansiStyles.color.close, this[STYLER]);
-				return createBuilder(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-
-	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
-	styles[bgModel] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'bgColor', ...arguments_), ansiStyles.bgColor.close, this[STYLER]);
-				return createBuilder(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-}
-
-const proto = Object.defineProperties(() => {}, {
-	...styles,
-	level: {
-		enumerable: true,
-		get() {
-			return this[GENERATOR].level;
-		},
-		set(level) {
-			this[GENERATOR].level = level;
-		},
-	},
-});
-
-const createStyler = (open, close, parent) => {
-	let openAll;
-	let closeAll;
-	if (parent === undefined) {
-		openAll = open;
-		closeAll = close;
-	} else {
-		openAll = parent.openAll + open;
-		closeAll = close + parent.closeAll;
-	}
-
-	return {
-		open,
-		close,
-		openAll,
-		closeAll,
-		parent,
-	};
-};
-
-const createBuilder = (self, _styler, _isEmpty) => {
-	// Single argument is hot path, implicit coercion is faster than anything
-	// eslint-disable-next-line no-implicit-coercion
-	const builder = (...arguments_) => applyStyle(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
-
-	// We alter the prototype because we must return a function, but there is
-	// no way to create a function with a different prototype
-	Object.setPrototypeOf(builder, proto);
-
-	builder[GENERATOR] = self;
-	builder[STYLER] = _styler;
-	builder[IS_EMPTY] = _isEmpty;
-
-	return builder;
-};
-
-const applyStyle = (self, string) => {
-	if (self.level <= 0 || !string) {
-		return self[IS_EMPTY] ? '' : string;
-	}
-
-	let styler = self[STYLER];
-
-	if (styler === undefined) {
-		return string;
-	}
-
-	const {openAll, closeAll} = styler;
-	if (string.includes('\u001B')) {
-		while (styler !== undefined) {
-			// Replace any instances already present with a re-opening code
-			// otherwise only the part of the string until said closing code
-			// will be colored, and the rest will simply be 'plain'.
-			string = stringReplaceAll(string, styler.close, styler.open);
-
-			styler = styler.parent;
-		}
-	}
-
-	// We can move both next actions out of loop, because remaining actions in loop won't have
-	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
-	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
-	const lfIndex = string.indexOf('\n');
-	if (lfIndex !== -1) {
-		string = stringEncaseCRLFWithFirstIndex(string, closeAll, openAll, lfIndex);
-	}
-
-	return openAll + string + closeAll;
-};
-
-Object.defineProperties(createChalk.prototype, styles);
-
-const chalk = createChalk();
-createChalk({level: stderrColor ? stderrColor.level : 0});
 
 var dist$1 = {exports: {}};
 
@@ -22942,8 +22317,8 @@ Emitter.prototype.hasListeners = function(event){
 };
 
 var esm = /*#__PURE__*/Object.freeze({
-	__proto__: null,
-	Emitter: Emitter
+  __proto__: null,
+  Emitter: Emitter
 });
 
 var require$$0 = /*@__PURE__*/getAugmentedNamespace(esm);
@@ -58648,7 +58023,7 @@ var dayjs = /*@__PURE__*/getDefaultExportFromCjs(dayjs_minExports);
  * @return {Promise} A Promise object that resolves if the directory exists, or rejects if creating the directory fails.
  */
 function checkDir() {
-  const dirPath = "./logs";
+  const dirPath = './logs';
   return new Promise((resolve, reject) => {
     access(dirPath, constants$1.F_OK, (err) => {
       if (err) {
@@ -58671,13 +58046,13 @@ function checkDir() {
  * @returns {Promise} A Promise object that resolves if the file exists, or rejects if creating the file fails.
  */
 function checkLogFile() {
-  const filePath = `./logs/${dayjs().format("YYYY-MM-DD")}.log`;
+  const filePath = `./logs/${dayjs().format('YYYY-MM-DD')}.log`;
   return new Promise((resolve, reject) => {
     checkDir()
       .then(() => {
         access(filePath, constants$1.F_OK, (err) => {
           if (err) {
-            writeFile(filePath, "", (err) => {
+            writeFile(filePath, '', (err) => {
               if (err) {
                 reject(err);
               } else {
@@ -58701,12 +58076,12 @@ function checkLogFile() {
  * @returns {Promise} - A Promise object that resolves when writing is successful, or rejects when writing fails.
  */
 function log(message) {
-  const filePath = `./logs/${dayjs().format("YYYY-MM-DD")}.log`;
+  const filePath = `./logs/${dayjs().format('YYYY-MM-DD')}.log`;
   return new Promise((resolve, reject) => {
     checkLogFile()
       .then(() => {
         const logMessage = `${dayjs().format(
-          "YYYY/MM/DD HH:mm:ss"
+          'YYYY/MM/DD HH:mm:ss',
         )}: ${message}\n`;
         appendFile(filePath, logMessage, (err) => {
           if (err) {
@@ -58723,14 +58098,15 @@ function log(message) {
 }
 
 var name = "node-hiprint-transit";
-var version = "0.0.4";
+var version = "0.0.5";
 var description = "A nodejs server for hiprint transit";
 var main = "index.js";
 var type = "module";
 var scripts = {
 	init: "npm install && node ./src/init.js",
 	serve: "node ./index.js",
-	build: "rollup -c"
+	build: "rollup -c",
+	"lint:prettier": "prettier --write \"**/*.{js,json}\""
 };
 var repository = {
 	type: "git",
@@ -58760,6 +58136,7 @@ var devDependencies = {
 	"@rollup/plugin-commonjs": "^25.0.8",
 	"@rollup/plugin-json": "^6.1.0",
 	"@rollup/plugin-node-resolve": "^15.2.3",
+	prettier: "^3.4.2",
 	rollup: "^4.18.0",
 	"rollup-plugin-copy": "^3.5.0",
 	"rollup-plugin-delete": "^2.0.0"
@@ -58792,11 +58169,19 @@ var packageJson = {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname$1 = path.dirname(__filename);
 
+const printEvents = [
+  'news',
+  'printByFragments',
+  'render-jpeg',
+  'render-pdf',
+  'render-print',
+];
+
 // Setup i18n
 const i18n = new I18n({
-  locales: ["en", "zh"],
-  directory: path.join(__dirname$1, "./src/locales"),
-  defaultLocale: "en",
+  locales: ['en', 'zh'],
+  directory: path.join(__dirname$1, './src/locales'),
+  defaultLocale: 'en',
 });
 
 const CLIENT = new Map();
@@ -58808,17 +58193,17 @@ readConfig().then((CONFIG) => {
   i18n.setLocale(lang);
   var server;
   if (useSSL) {
-    const key = readFileSync("./src/ssl.key", "utf-8");
-    const cert = readFileSync("./src/ssl.pem", "utf-8");
+    const key = readFileSync('./src/ssl.key', 'utf-8');
+    const cert = readFileSync('./src/ssl.pem', 'utf-8');
     // Check SSL certificate
     if (!key || !cert) {
-      console.error(chalk.red(i18n.__("SSL certificate is missing")));
+      console.error(chalk.red(i18n.__('SSL certificate is missing')));
       process.exit(1);
     }
     const certificate = forge.pki.certificateFromPem(cert);
     // Check SSL certificate is expired
     if (new Date(certificate.validity.notAfter) < new Date()) {
-      console.warn(chalk.red(i18n.__("SSL certificate has expired")));
+      console.warn(chalk.red(i18n.__('SSL certificate has expired')));
     }
     server = https$1.createServer({
       key,
@@ -58826,9 +58211,9 @@ readConfig().then((CONFIG) => {
     });
     // Get all domains from certificate
     const domains = certificate.extensions
-      .find(({ name }) => name === "subjectAltName")
+      .find(({ name }) => name === 'subjectAltName')
       .altNames.map(({ value }) => toUnicode(value));
-    ipAddress = domains.map((value) => `https://${value}:${port}`).join("\n");
+    ipAddress = domains.map((value) => `https://${value}:${port}`).join('\n');
   } else {
     server = http$2.createServer();
   }
@@ -58836,38 +58221,38 @@ readConfig().then((CONFIG) => {
   // Setup socket.io
   const io = new Server(server, {
     cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
+      origin: '*',
+      methods: ['GET', 'POST'],
     },
   });
 
   server.listen(port, () => {
-    log(i18n.__("Serve is start"));
+    log(i18n.__('Serve is start'));
     console.log(
-      chalk.green(`node-hiprint-transit version: ${packageJson.version}\n`)
+      chalk.green(`node-hiprint-transit version: ${packageJson.version}\n`),
     );
     console.log(
       i18n.__(
-        "Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s",
+        'Serve is running on\n%s\n\nPlease make sure that the ports have been opened in the security group or firewall.\ntoken: %s',
         chalk.green.underline(ipAddress),
-        chalk.green(token)
-      )
+        chalk.green(token),
+      ),
     );
   });
 
   // Authentication
   io.use((socket, next) => {
-    const tokenRegex = new RegExp(`^${token.replace(/\*/g, "\\S+")}$`);
+    const tokenRegex = new RegExp(`^${token.replace(/\*/g, '\\S+')}$`);
     if (token && tokenRegex.test(socket.handshake.auth.token)) {
       next();
     } else {
-      log(i18n.__("Authentication failed for %s", socket.id));
-      next(new Error("Authentication failed"));
+      log(i18n.__('Authentication failed for %s', socket.id));
+      next(new Error('Authentication failed'));
     }
   });
 
   // Socket.io Add event listener
-  io.on("connection", (socket) => {
+  io.on('connection', (socket) => {
     const sToken = socket.handshake.auth.token;
     if (!CLIENT.has(sToken)) {
       CLIENT.set(sToken, {});
@@ -58881,47 +58266,47 @@ readConfig().then((CONFIG) => {
       currentClients: Object.keys(CLIENT.get(sToken)).length,
       // Number of all Electron-hiprint clients
       allClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) => handshake.query?.client === "electron-hiprint"
+        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
       )?.length,
       // Number of web clients for the current socket's token
       webClients: Array.from(io.sockets.sockets.values()).filter(
         ({ handshake }) =>
           handshake.auth.token === sToken &&
-          handshake.query?.client !== "electron-hiprint"
+          handshake.query?.client !== 'electron-hiprint',
       )?.length,
       // Number of all web clients
       allWebClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) => handshake.query?.client === "electron-hiprint"
+        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
       )?.length,
       // Server total memory
       totalmem: totalmem(),
       // Server free memory
       freemem: freemem(),
     };
-    socket.emit("serverInfo", serverInfo);
+    socket.emit('serverInfo', serverInfo);
 
-    if (socket.handshake.query.test !== "true") {
-      if (socket.handshake.query.client === "electron-hiprint") {
+    if (socket.handshake.query.test !== 'true') {
+      if (socket.handshake.query.client === 'electron-hiprint') {
         log(
           i18n.__(
-            "Client connected: %s",
-            `${socket.id} | ${sToken} | (electron-hiprint)`
-          )
+            'Client connected: %s',
+            `${socket.id} | ${sToken} | (electron-hiprint)`,
+          ),
         );
         // Join electron-hiprint room
         socket.join(`${sToken}_electron-hiprint`);
       } else {
         log(
           i18n.__(
-            "Client connected: %s",
-            `${socket.id} | ${sToken} | (web-client)`
-          )
+            'Client connected: %s',
+            `${socket.id} | ${sToken} | (web-client)`,
+          ),
         );
         // Join web-client room
         socket.join(`${token}_web-client`);
 
         // Send client list to web client
-        socket.emit("clients", CLIENT.get(sToken));
+        socket.emit('clients', CLIENT.get(sToken));
 
         // Send all printer list to web client
         const allPrinterList = [];
@@ -58938,10 +58323,10 @@ readConfig().then((CONFIG) => {
             });
           });
         });
-        socket.emit("printerList", allPrinterList);
+        socket.emit('printerList', allPrinterList);
       }
     } else {
-      log(i18n.__("Client connected: %s", `${socket.id} | ${sToken} | (test)`));
+      log(i18n.__('Client connected: %s', `${socket.id} | ${sToken} | (test)`));
       // Wait for the serverInfo event to be emitted, then disconnect.
       setTimeout(() => {
         socket.disconnect(true);
@@ -58949,7 +58334,7 @@ readConfig().then((CONFIG) => {
     }
 
     // Get client info
-    socket.on("clientInfo", (data) => {
+    socket.on('clientInfo', (data) => {
       CLIENT.get(sToken)[socket.id] = Object.assign(
         {
           clientId: socket.id,
@@ -58957,26 +58342,26 @@ readConfig().then((CONFIG) => {
         CLIENT.get(sToken)[socket.id],
         data,
       );
-      io.to(`${sToken}_web-client`).emit("clients", CLIENT.get(sToken));
+      io.to(`${sToken}_web-client`).emit('clients', CLIENT.get(sToken));
     });
 
     // Get client printer list
-    socket.on("printerList", (printerList) => {
+    socket.on('printerList', (printerList) => {
       CLIENT.get(sToken)[socket.id] = Object.assign(
         {},
         CLIENT.get(sToken)[socket.id],
-        { printerList }
+        { printerList },
       );
     });
 
     // Get all client list
-    socket.on("getClients", () => {
-      socket.emit("clients", CLIENT.get(sToken));
+    socket.on('getClients', () => {
+      socket.emit('clients', CLIENT.get(sToken));
     });
 
     // Get all clients printer list
-    socket.on("refreshPrinterList", () => {
-      io.to(`${sToken}_electron-hiprint`).emit("refreshPrinterList");
+    socket.on('refreshPrinterList', () => {
+      io.to(`${sToken}_electron-hiprint`).emit('refreshPrinterList');
 
       // Just wait 2 seconds for the client to update the printer list
       // Of course, this is not a good way to do it. But it’s not like it can’t be used 🤪
@@ -58995,177 +58380,192 @@ readConfig().then((CONFIG) => {
             });
           });
         });
-        socket.emit("printerList", allPrinterList);
+        socket.emit('printerList', allPrinterList);
       }, 1000 * 2);
     });
 
     // Get client address info, is not supported
-    socket.on("address", () => {
+    socket.on('address', () => {
       socket.emit(
-        "address",
-        "Address is not supported in transit server, you should use getClients."
+        'address',
+        'Address is not supported in transit server, you should use getClients.',
       );
     });
 
     // Make a ipp print to electron-hiprint client
-    socket.on("ippPrint", (options) => {
+    socket.on('ippPrint', (options) => {
       if (options.client) {
         if (!CLIENT.get(sToken)[options.client]) {
-          socket.emit("error", {
-            msg: "Client is not exist.",
+          socket.emit('error', {
+            msg: 'Client is not exist.',
           });
           return;
         }
         socket
           .to(options.client)
-          .emit("ippPrint", { ...options, replyId: socket.id });
-        log(i18n.__("%s send ippPrint to %s", socket.id, options.client));
+          .emit('ippPrint', { ...options, replyId: socket.id });
+        log(i18n.__('%s send ippPrint to %s', socket.id, options.client));
       } else {
-        socket.emit("error", {
-          msg: "Client must be specified.",
+        socket.emit('error', {
+          msg: 'Client must be specified.',
         });
       }
     });
 
     // Make a ipp printer connected event to reply client
-    socket.on("ippPrinterConnected", (options) => {
+    socket.on('ippPrinterConnected', (options) => {
       if (options.replyId && options.printer) {
-        socket.to(options.replyId).emit("ippPrinterConnected", options.printer);
+        socket.to(options.replyId).emit('ippPrinterConnected', options.printer);
       }
     });
 
     // Make a ipp printer callback to reply client
-    socket.on("ippPrinterCallback", (options, res) => {
+    socket.on('ippPrinterCallback', (options, res) => {
       if (options.replyId) {
-        socket.to(options.replyId).emit("ippPrinterCallback", options, res);
+        socket.to(options.replyId).emit('ippPrinterCallback', options, res);
       }
     });
 
     // Make a ipp request to electron-hiprint client
-    socket.on("ippRequest", (options) => {
+    socket.on('ippRequest', (options) => {
       if (options.client) {
         if (!CLIENT.get(sToken)[options.client]) {
-          socket.emit("error", {
-            msg: "Client is not exist.",
+          socket.emit('error', {
+            msg: 'Client is not exist.',
           });
           return;
         }
         socket
           .to(options.client)
-          .emit("ippRequest", { ...options, replyId: socket.id });
-        log(i18n.__("%s send ippRequest to %s", socket.id, options.client));
+          .emit('ippRequest', { ...options, replyId: socket.id });
+        log(i18n.__('%s send ippRequest to %s', socket.id, options.client));
       } else {
-        socket.emit("error", {
-          msg: "Client must be specified.",
+        socket.emit('error', {
+          msg: 'Client must be specified.',
         });
       }
     });
 
     // Make a ipp request callback to reply client
-    socket.on("ippRequestCallback", (options, res) => {
+    socket.on('ippRequestCallback', (options, res) => {
       if (options.replyId) {
-        socket.to(options.replyId).emit("ippRequestCallback", options, res);
+        socket.to(options.replyId).emit('ippRequestCallback', options, res);
       }
     });
 
-    // Make a news to electron-hiprint client
-    socket.on("news", (options) => {
-      if (options.client) {
-        if (!CLIENT.get(sToken)[options.client]) {
-          socket.emit("error", {
-            msg: "Client is not exist.",
+    // news, printByFragments, render-jpeg, render-pdf, render-print event bind.
+    printEvents.forEach((event) => {
+      socket.on(event, (options) => {
+        if (options.client) {
+          if (!CLIENT.get(sToken)[options.client]) {
+            socket.emit('error', {
+              msg: 'Client is not exist.',
+              templateId: options.templateId,
+            });
+            return;
+          }
+          socket
+            .to(options.client)
+            .emit(event, { ...options, replyId: socket.id });
+          log(i18n.__(`%s send %s to %s`, socket.id, event, options.client));
+        } else {
+          socket.emit('error', {
+            msg: 'Client must be specified.',
             templateId: options.templateId,
           });
-          return;
         }
-        socket
-          .to(options.client)
-          .emit("news", { ...options, replyId: socket.id });
-        log(i18n.__("%s send news to %s", socket.id, options.client));
-      } else {
-        socket.emit("error", {
-          msg: "Client must be specified.",
-          templateId: options.templateId,
-        });
-      }
-    });
+      });
 
-    // Make a printByFragments to electron-hiprint client
-    socket.on("printByFragments", (options) => {
-      if (options.client) {
-        if (!CLIENT.get(sToken)[options.client]) {
-          socket.emit("error", {
-            msg: "Client is not exist.",
-            templateId: options.templateId,
-          });
-          return;
+      // render event success callback
+      socket.on(`${event}-success`, (options) => {
+        if (options.replyId) {
+          socket.to(options.replyId).emit(`${event}-success`, options);
+          log(
+            i18n.__(
+              `%s client: %s success, templateId: %s`,
+              socket.id,
+              event,
+              options.templateId,
+            ),
+          );
         }
-        socket
-          .to(options.client)
-          .emit("printByFragments", { ...options, replyId: socket.id });
-        log(i18n.__("%s send printByFragments to %s", socket.id, options.client));
-      } else {
-        socket.emit("error", {
-          msg: "Client must be specified.",
-          templateId: options.templateId,
-        });
-      }
+      });
+
+      // render event error callback
+      socket.on(`${event}-error`, (options) => {
+        if (options.replyId) {
+          socket.to(options.replyId).emit(`${event}-error`, options);
+          log(
+            i18n.__(
+              `%s client: %s error, templateId: %s`,
+              socket.id,
+              event,
+              options.templateId,
+            ),
+          );
+        }
+      });
     });
 
     // Make a success callback to reply client
-    socket.on("success", (options) => {
+    socket.on('success', (options) => {
       if (options.replyId) {
-        socket.to(options.replyId).emit("success", options);
+        socket.to(options.replyId).emit('success', options);
         log(
           i18n.__(
-            "%s client: print success, templateId: %s",
+            '%s client: %s success, templateId: %s',
             socket.id,
-            options.templateId
-          )
+            'print',
+            options.templateId,
+          ),
         );
       }
     });
 
     // Make a error callback to reply client
-    socket.on("error", (options) => {
+    socket.on('error', (options) => {
       if (options.replyId) {
-        socket.to(options.replyId).emit("error", options);
+        socket.to(options.replyId).emit('error', options);
         log(
           i18n.__(
-            "%s client: print error, templateId: %s",
+            '%s client: %s error, templateId: %s',
             socket.id,
-            options.templateId
-          )
+            'print',
+            options.templateId,
+          ),
         );
       }
     });
 
     // Client disconnect
-    socket.on("disconnect", () => {
-      if (socket.handshake.query.test !== "true") {
-        log(i18n.__("Client disconnected: %s", socket.id));
+    socket.on('disconnect', () => {
+      if (socket.handshake.query.test !== 'true') {
+        log(i18n.__('Client disconnected: %s', socket.id));
         // Remove electron-hiprint client from CLIENT
-        if (socket.handshake.query.client === "electron-hiprint") {
+        if (socket.handshake.query.client === 'electron-hiprint') {
           delete CLIENT.get(sToken)[socket.id];
           // Send client list to web client
-          io.to("web-client").emit("clients", CLIENT.get(sToken));
+          io.to('web-client').emit('clients', CLIENT.get(sToken));
         }
       }
     });
   });
 
   // Retrieve the client print list every 10 minutes.
-  setInterval(() => {
-    log(i18n.__("Retrieve the client print list"));
-    CLIENT.forEach((_, key) => {
-      io.to(`${key}_electron-hiprint`).emit("refreshPrinterList");
-    });
-  }, 1000 * 60 * 10);
+  setInterval(
+    () => {
+      log(i18n.__('Retrieve the client print list'));
+      CLIENT.forEach((_, key) => {
+        io.to(`${key}_electron-hiprint`).emit('refreshPrinterList');
+      });
+    },
+    1000 * 60 * 10,
+  );
 });
 
 // Close serve
-process.on("SIGINT", () => {
-  log(i18n.__("Serve is closed")).then(() => {
+process.on('SIGINT', () => {
+  log(i18n.__('Serve is closed')).then(() => {
     process.exit(0); // 退出进程
   });
 });

@@ -14,14 +14,14 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const configPath = path.join(__dirname, "../", "config.json");
+const configPath = path.join(__dirname, '../', 'config.json');
 
 // Default config
 const CONFIG = {
-  port: "17521",
-  token: "vue-plugin-hiprint",
+  port: '17521',
+  token: 'vue-plugin-hiprint',
   useSSL: false,
-  lang: "en",
+  lang: 'en',
 };
 
 /**
@@ -30,7 +30,7 @@ const CONFIG = {
  */
 function readConfig() {
   return new Promise((resolve, reject) => {
-    readFile(configPath, "utf-8", (err, data) => {
+    readFile(configPath, 'utf-8', (err, data) => {
       if (err) {
         reject(err);
       } else if (data) {
@@ -39,18 +39,18 @@ function readConfig() {
           // Check config
           // Check port need between 10000 and 65535
           if (_CONFIG.port < 10000 || _CONFIG.port > 65535)
-            _CONFIG.port = "17521";
+            _CONFIG.port = '17521';
           CONFIG.port = _CONFIG.port;
           // Check token need more than 6 characters, and can't be empty
           if (_CONFIG.token && _CONFIG.token.length < 6) {
-            _CONFIG.token = "vue-plugin-hiprint";
+            _CONFIG.token = 'vue-plugin-hiprint';
           }
           CONFIG.token = _CONFIG.token;
           CONFIG.useSSL = _CONFIG.useSSL || false;
           // Check lang need in ["zh", "en"]
-          CONFIG.lang = ["zh", "en"].includes(_CONFIG.lang)
+          CONFIG.lang = ['zh', 'en'].includes(_CONFIG.lang)
             ? _CONFIG.lang
-            : "en";
+            : 'en';
           resolve(CONFIG);
         } catch (error) {
           reject(error);
@@ -68,14 +68,14 @@ function readConfig() {
 function writeConfig(_CONFIG) {
   // Check config
   // Check port need between 10000 and 65535
-  if (_CONFIG.port < 10000 || _CONFIG.port > 65535) _CONFIG.port = "17521";
+  if (_CONFIG.port < 10000 || _CONFIG.port > 65535) _CONFIG.port = '17521';
   // Check token need more than 6 characters, and can't be empty
-  if ((_CONFIG.token || "").length < 6) {
-    _CONFIG.token = "vue-plugin-hiprint";
+  if ((_CONFIG.token || '').length < 6) {
+    _CONFIG.token = 'vue-plugin-hiprint';
   }
   _CONFIG.useSSL = Boolean(_CONFIG.useSSL) || false;
   // Check lang need in ["zh", "en"]
-  _CONFIG.lang = ["zh", "en"].includes(_CONFIG.lang) ? _CONFIG.lang : "en";
+  _CONFIG.lang = ['zh', 'en'].includes(_CONFIG.lang) ? _CONFIG.lang : 'en';
   return new Promise((resolve, reject) => {
     writeFile(configPath, JSON.stringify(_CONFIG, null, 2), (err) => {
       if (err) {
@@ -95,7 +95,7 @@ function getIPAddress() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
-      if (iface.family === "IPv4" && !iface.internal) {
+      if (iface.family === 'IPv4' && !iface.internal) {
         return iface.address;
       }
     }
