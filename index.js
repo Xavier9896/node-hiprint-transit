@@ -112,26 +112,33 @@ readConfig().then((CONFIG) => {
       CLIENT.set(sToken, {});
     }
 
+    const currentClients = Object.keys(CLIENT.get(sToken))?.length || 0;
+
+    const webClients =
+      (Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) => handshake.auth.token === sToken,
+      )?.length || 0) - currentClients;
+
+    const allClients =
+      Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
+      )?.length || 0;
+
+    const allWebClients =
+      (Array.from(io.sockets.sockets.values())?.length || 0) - allClients;
+
     // Send server info to client
     const serverInfo = {
       // Server version
       version: packageJson.version,
       // Number of Electron-hiprint clients for the current socket's token
-      currentClients: Object.keys(CLIENT.get(sToken)).length,
+      currentClients,
       // Number of all Electron-hiprint clients
-      allClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
-      )?.length,
+      allClients,
       // Number of web clients for the current socket's token
-      webClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) =>
-          handshake.auth.token === sToken &&
-          handshake.query?.client !== 'electron-hiprint',
-      )?.length,
+      webClients,
       // Number of all web clients
-      allWebClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
-      )?.length,
+      allWebClients,
       // Server total memory
       totalmem: totalmem(),
       // Server free memory
