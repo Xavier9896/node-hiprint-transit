@@ -44,7 +44,7 @@
 >
 > > **！本人纯前端，对于服务器、运维、攻防了解较少，请各位大佬高抬贵手，不要对免费开源服务下手**
 
-## 一键安装脚本
+## linux 一键安装脚本
 
 这个脚本将帮助你快速安装、初始化、运行 `node-hiprint-transit`。
 
@@ -55,6 +55,27 @@ chmod +x install.sh
 
 ./install.sh
 ```
+
+## 🐳 使用 Docker 启动项目
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/Xavier9896/node-hiprint-transit.git
+cd node-hiprint-transit
+```
+
+### 2. 启动服务
+```bash
+docker-compose up -d
+```
+
+## Window 系统启动项目
+### 1. 下载打包文件
+[点击下载](https://gitee.com/Xavier9896/node-hiprint-transit/blob/main/out/transit-setup-0.0.5.exe)
+
+### 2. 指定解压缩路径
+### 3. 运行 `start.bat` 脚本
 
 ## 初始化设置
 
