@@ -3,22 +3,23 @@ import http$2 from 'node:http';
 import https$1 from 'node:https';
 import { appendFile, access, constants as constants$1, writeFile, mkdir, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { totalmem, freemem } from 'node:os';
-import { r as requireMs, a as requireSupportsColor, g as getAugmentedNamespace, c as commonjsGlobal, b as getDefaultExportFromCjs, I as I18n, d as chalk } from './index_chunk.js';
+import { freemem, totalmem } from 'node:os';
+import { r as requireSupportsColor, g as getAugmentedNamespace, c as commonjsGlobal, a as getDefaultExportFromCjs, b as chalk } from './index_chunk.js';
+import { r as requireMs, I as I18n } from './index_chunk2.js';
 import require$$0$6 from 'http';
 import require$$1$5 from 'fs';
 import require$$1$2 from 'zlib';
 import require$$1 from 'path';
 import require$$0$5 from 'stream';
 import require$$1$3 from 'querystring';
-import require$$3$1 from 'url';
+import require$$3 from 'url';
 import require$$2 from 'crypto';
 import require$$0$3 from 'events';
 import require$$0$2 from 'tty';
 import require$$1$1 from 'util';
 import require$$2$1 from 'timers';
 import require$$1$4 from 'https';
-import require$$3 from 'net';
+import require$$3$1 from 'net';
 import require$$4 from 'tls';
 import require$$0$4 from 'buffer';
 import { toUnicode } from 'punycode';
@@ -16995,6 +16996,8 @@ let Receiver$1 = class Receiver extends Writable {
 var receiver = Receiver$1;
 
 /* eslint no-unused-vars: ["error", { "varsIgnorePattern": "^Duplex" }] */
+
+const { Duplex: Duplex$3 } = require$$0$5;
 const { randomFillSync } = require$$2;
 
 const PerMessageDeflate$2 = permessageDeflate;
@@ -17756,12 +17759,7 @@ const EventTarget = {
 };
 
 var eventTarget = {
-  CloseEvent,
-  ErrorEvent,
-  Event,
-  EventTarget,
-  MessageEvent
-};
+  EventTarget};
 
 /**
  * Call an event listener
@@ -17986,10 +17984,11 @@ var extension$1 = { format: format$1, parse: parse$3 };
 const EventEmitter$1 = require$$0$3;
 const https = require$$1$4;
 const http$1 = require$$0$6;
-const net = require$$3;
+const net = require$$3$1;
 const tls$2 = require$$4;
 const { randomBytes, createHash: createHash$1 } = require$$2;
-const { URL: URL$1 } = require$$3$1;
+const { Duplex: Duplex$2, Readable } = require$$0$5;
+const { URL: URL$1 } = require$$3;
 
 const PerMessageDeflate$1 = permessageDeflate;
 const Receiver = receiver;
@@ -19317,7 +19316,7 @@ function socketOnError$1() {
   }
 }
 
-const { Duplex } = require$$0$5;
+const { Duplex: Duplex$1 } = require$$0$5;
 
 /**
  * Emits the `'close'` event on a stream.
@@ -19366,7 +19365,7 @@ function duplexOnError(err) {
 function createWebSocketStream(ws, options) {
   let terminateOnDestroy = true;
 
-  const duplex = new Duplex({
+  const duplex = new Duplex$1({
     ...options,
     autoDestroy: false,
     emitClose: false,
@@ -19540,6 +19539,7 @@ var subprotocol$1 = { parse: parse$1 };
 
 const EventEmitter = require$$0$3;
 const http = require$$0$6;
+const { Duplex } = require$$0$5;
 const { createHash } = require$$2;
 
 const extension = extension$1;
@@ -20571,7 +20571,7 @@ var libExports = lib$1.exports;
 Object.defineProperty(server, "__esModule", { value: true });
 server.Server = server.BaseServer = void 0;
 const qs = require$$1$3;
-const url_1 = require$$3$1;
+const url_1 = require$$3;
 const base64id = base64idExports;
 const transports_1 = transports;
 const events_1$2 = require$$0$3;
@@ -24507,7 +24507,7 @@ Object.defineProperty(client, "__esModule", { value: true });
 client.Client = void 0;
 const socket_io_parser_1$2 = cjs;
 const debugModule = srcExports$1;
-const url = require$$3$1;
+const url = require$$3;
 const debug$3 = debugModule("socket.io:client");
 class Client {
     /**
@@ -28312,7 +28312,7 @@ var srcExports = src.exports;
 	                            requestId: message.data.requestId,
 	                            sockets: localSockets.map((socket) => {
 	                                // remove sessionStore from handshake, as it may contain circular references
-	                                const _a = socket.handshake, handshake = __rest(_a, ["sessionStore"]);
+	                                const _a = socket.handshake, { sessionStore } = _a, handshake = __rest(_a, ["sessionStore"]);
 	                                return {
 	                                    id: socket.id,
 	                                    handshake,
@@ -29096,110 +29096,9 @@ function serveFile(res /* : HttpResponse */, filepath) {
         .on("end", destroyReadStream);
 }
 
-var name$1 = "socket.io";
 var version$1 = "4.8.1";
-var description$1 = "node.js realtime framework server";
-var keywords$1 = [
-	"realtime",
-	"framework",
-	"websocket",
-	"tcp",
-	"events",
-	"socket",
-	"io"
-];
-var files = [
-	"dist/",
-	"client-dist/",
-	"wrapper.mjs",
-	"!**/*.tsbuildinfo"
-];
-var directories = {
-	doc: "docs/",
-	example: "example/",
-	lib: "lib/",
-	test: "test/"
-};
-var type$1 = "commonjs";
-var main$1 = "./dist/index.js";
-var exports = {
-	types: "./dist/index.d.ts",
-	"import": "./wrapper.mjs",
-	require: "./dist/index.js"
-};
-var types = "./dist/index.d.ts";
-var license$1 = "MIT";
-var homepage$1 = "https://github.com/socketio/socket.io/tree/main/packages/socket.io#readme";
-var repository$1 = {
-	type: "git",
-	url: "git+https://github.com/socketio/socket.io.git"
-};
-var bugs$1 = {
-	url: "https://github.com/socketio/socket.io/issues"
-};
-var scripts$1 = {
-	compile: "rimraf ./dist && tsc",
-	test: "npm run format:check && npm run compile && npm run test:types && npm run test:unit",
-	"test:types": "tsd",
-	"test:unit": "nyc mocha --require ts-node/register --reporter spec --slow 200 --bail --timeout 10000 test/index.ts",
-	"format:check": "prettier --check \"lib/**/*.ts\" \"test/**/*.ts\"",
-	"format:fix": "prettier --write \"lib/**/*.ts\" \"test/**/*.ts\"",
-	prepack: "npm run compile"
-};
-var dependencies$1 = {
-	accepts: "~1.3.4",
-	base64id: "~2.0.0",
-	cors: "~2.8.5",
-	debug: "~4.3.2",
-	"engine.io": "~6.6.0",
-	"socket.io-adapter": "~2.5.2",
-	"socket.io-parser": "~4.2.4"
-};
-var contributors = [
-	{
-		name: "Guillermo Rauch",
-		email: "rauchg@gmail.com"
-	},
-	{
-		name: "Arnout Kazemier",
-		email: "info@3rd-eden.com"
-	},
-	{
-		name: "Vladimir Dronnikov",
-		email: "dronnikov@gmail.com"
-	},
-	{
-		name: "Einar Otto Stangvik",
-		email: "einaros@gmail.com"
-	}
-];
-var engines = {
-	node: ">=10.2.0"
-};
-var tsd = {
-	directory: "test"
-};
 var require$$18 = {
-	name: name$1,
-	version: version$1,
-	description: description$1,
-	keywords: keywords$1,
-	files: files,
-	directories: directories,
-	type: type$1,
-	main: main$1,
-	exports: exports,
-	types: types,
-	license: license$1,
-	homepage: homepage$1,
-	repository: repository$1,
-	bugs: bugs$1,
-	scripts: scripts$1,
-	dependencies: dependencies$1,
-	contributors: contributors,
-	engines: engines,
-	tsd: tsd
-};
+	version: version$1};
 
 (function (module, exports) {
 	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
@@ -36467,16 +36366,16 @@ asn1$8.dateToGeneralizedTime = function(date) {
  */
 asn1$8.integerToDer = function(x) {
   var rval = forge$x.util.createBuffer();
-  if(x >= -0x80 && x < 0x80) {
+  if(x >= -128 && x < 0x80) {
     return rval.putSignedInt(x, 8);
   }
-  if(x >= -0x8000 && x < 0x8000) {
+  if(x >= -32768 && x < 0x8000) {
     return rval.putSignedInt(x, 16);
   }
-  if(x >= -0x800000 && x < 0x800000) {
+  if(x >= -8388608 && x < 0x800000) {
     return rval.putSignedInt(x, 24);
   }
-  if(x >= -0x80000000 && x < 0x80000000) {
+  if(x >= -2147483648 && x < 0x80000000) {
     return rval.putSignedInt(x, 32);
   }
   var error = new Error('Integer too large; max is 32-bits.');
@@ -37723,7 +37622,7 @@ function registerAlgorithm(name, mode) {
 /** DES implementation **/
 
 var spfunction1 = [0x1010400,0,0x10000,0x1010404,0x1010004,0x10404,0x4,0x10000,0x400,0x1010400,0x1010404,0x400,0x1000404,0x1010004,0x1000000,0x4,0x404,0x1000400,0x1000400,0x10400,0x10400,0x1010000,0x1010000,0x1000404,0x10004,0x1000004,0x1000004,0x10004,0,0x404,0x10404,0x1000000,0x10000,0x1010404,0x4,0x1010000,0x1010400,0x1000000,0x1000000,0x400,0x1010004,0x10000,0x10400,0x1000004,0x400,0x4,0x1000404,0x10404,0x1010404,0x10004,0x1010000,0x1000404,0x1000004,0x404,0x10404,0x1010400,0x404,0x1000400,0x1000400,0,0x10004,0x10400,0,0x1010004];
-var spfunction2 = [-0x7fef7fe0,-0x7fff8000,0x8000,0x108020,0x100000,0x20,-0x7fefffe0,-0x7fff7fe0,-0x7fffffe0,-0x7fef7fe0,-0x7fef8000,-0x80000000,-0x7fff8000,0x100000,0x20,-0x7fefffe0,0x108000,0x100020,-0x7fff7fe0,0,-0x80000000,0x8000,0x108020,-0x7ff00000,0x100020,-0x7fffffe0,0,0x108000,0x8020,-0x7fef8000,-0x7ff00000,0x8020,0,0x108020,-0x7fefffe0,0x100000,-0x7fff7fe0,-0x7ff00000,-0x7fef8000,0x8000,-0x7ff00000,-0x7fff8000,0x20,-0x7fef7fe0,0x108020,0x20,0x8000,-0x80000000,0x8020,-0x7fef8000,0x100000,-0x7fffffe0,0x100020,-0x7fff7fe0,-0x7fffffe0,0x100020,0x108000,0,-0x7fff8000,0x8020,-0x80000000,-0x7fefffe0,-0x7fef7fe0,0x108000];
+var spfunction2 = [-2146402272,-2147450880,0x8000,0x108020,0x100000,0x20,-2146435040,-2147450848,-2147483616,-2146402272,-2146402304,-2147483648,-2147450880,0x100000,0x20,-2146435040,0x108000,0x100020,-2147450848,0,-2147483648,0x8000,0x108020,-2146435072,0x100020,-2147483616,0,0x108000,0x8020,-2146402304,-2146435072,0x8020,0,0x108020,-2146435040,0x100000,-2147450848,-2146435072,-2146402304,0x8000,-2146435072,-2147450880,0x20,-2146402272,0x108020,0x20,0x8000,-2147483648,0x8020,-2146402304,0x100000,-2147483616,0x100020,-2147450848,-2147483616,0x100020,0x108000,0,-2147450880,0x8020,-2147483648,-2146435040,-2146402272,0x108000];
 var spfunction3 = [0x208,0x8020200,0,0x8020008,0x8000200,0,0x20208,0x8000200,0x20008,0x8000008,0x8000008,0x20000,0x8020208,0x20008,0x8020000,0x208,0x8000000,0x8,0x8020200,0x200,0x20200,0x8020000,0x8020008,0x20208,0x8000208,0x20200,0x20000,0x8000208,0x8,0x8020208,0x200,0x8000000,0x8020200,0x8000000,0x20008,0x208,0x20000,0x8020200,0x8000200,0,0x200,0x20008,0x8020208,0x8000200,0x8000008,0x200,0,0x8020008,0x8000208,0x20000,0x8000000,0x8020208,0x8,0x20208,0x20200,0x8000008,0x8020000,0x8000208,0x208,0x8020000,0x20208,0x8,0x8020008,0x20200];
 var spfunction4 = [0x802001,0x2081,0x2081,0x80,0x802080,0x800081,0x800001,0x2001,0,0x802000,0x802000,0x802081,0x81,0,0x800080,0x800001,0x1,0x2000,0x800000,0x802001,0x80,0x800000,0x2001,0x2080,0x800081,0x1,0x2080,0x800080,0x2000,0x802080,0x802081,0x81,0x800080,0x800001,0x802000,0x802081,0x81,0,0,0x802000,0x2080,0x800080,0x800081,0x1,0x802001,0x2081,0x2081,0x80,0x802081,0x81,0x1,0x2000,0x800001,0x2001,0x802080,0x800081,0x2001,0x2080,0x800000,0x802001,0x80,0x800000,0x2000,0x802080];
 var spfunction5 = [0x100,0x2080100,0x2080000,0x42000100,0x80000,0x100,0x40000000,0x2080000,0x40080100,0x80000,0x2000100,0x40080100,0x42000100,0x42080000,0x80100,0x40000000,0x2000000,0x40080000,0x40080000,0,0x40000100,0x42080100,0x42080100,0x2000100,0x42080000,0x40000100,0,0x42000000,0x2080100,0x2000000,0x42000000,0x80100,0x80000,0x42000100,0x100,0x2000000,0x40000000,0x2080000,0x42000100,0x40080100,0x2000100,0x40000000,0x42080000,0x2080100,0x40080100,0x100,0x2000000,0x42080000,0x42080100,0x80100,0x42000000,0x42080100,0x2080000,0,0x40080000,0x42000000,0x80100,0x2000100,0x40000100,0x80000,0,0x40080000,0x2080100,0x40000100];
@@ -37815,8 +37714,8 @@ function _createKeys(key) {
         left = (left << 1) | (left >>> 27);
         right = (right << 1) | (right >>> 27);
       }
-      left &= -0xf;
-      right &= -0xf;
+      left &= -15;
+      right &= -15;
 
       // now apply PC-2, in such a way that E is easier when encrypting or
       // decrypting this conversion will look like PC-2 except only the last 6
@@ -58005,7 +57904,7 @@ var forge = /*@__PURE__*/getDefaultExportFromCjs(lib);
 var dayjs_min = {exports: {}};
 
 (function (module, exports) {
-	!function(t,e){module.exports=e();}(commonjsGlobal,(function(){var t=1e3,e=6e4,n=36e5,r="millisecond",i="second",s="minute",u="hour",a="day",o="week",c="month",f="quarter",h="year",d="date",l="Invalid Date",$=/^(\d{4})[-/]?(\d{1,2})?[-/]?(\d{0,2})[Tt\s]*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?[.:]?(\d+)?$/,y=/\[([^\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS/g,M={name:"en",weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_"),ordinal:function(t){var e=["th","st","nd","rd"],n=t%100;return "["+t+(e[(n-20)%10]||e[n]||e[0])+"]"}},m=function(t,e,n){var r=String(t);return !r||r.length>=e?t:""+Array(e+1-r.length).join(n)+t},v={s:m,z:function(t){var e=-t.utcOffset(),n=Math.abs(e),r=Math.floor(n/60),i=n%60;return (e<=0?"+":"-")+m(r,2,"0")+":"+m(i,2,"0")},m:function t(e,n){if(e.date()<n.date())return -t(n,e);var r=12*(n.year()-e.year())+(n.month()-e.month()),i=e.clone().add(r,c),s=n-i<0,u=e.clone().add(r+(s?-1:1),c);return +(-(r+(n-i)/(s?i-u:u-i))||0)},a:function(t){return t<0?Math.ceil(t)||0:Math.floor(t)},p:function(t){return {M:c,y:h,w:o,d:a,D:d,h:u,m:s,s:i,ms:r,Q:f}[t]||String(t||"").toLowerCase().replace(/s$/,"")},u:function(t){return void 0===t}},g="en",D={};D[g]=M;var p="$isDayjsObject",S=function(t){return t instanceof _||!(!t||!t[p])},w=function t(e,n,r){var i;if(!e)return g;if("string"==typeof e){var s=e.toLowerCase();D[s]&&(i=s),n&&(D[s]=n,i=s);var u=e.split("-");if(!i&&u.length>1)return t(u[0])}else {var a=e.name;D[a]=e,i=a;}return !r&&i&&(g=i),i||!r&&g},O=function(t,e){if(S(t))return t.clone();var n="object"==typeof e?e:{};return n.date=t,n.args=arguments,new _(n)},b=v;b.l=w,b.i=S,b.w=function(t,e){return O(t,{locale:e.$L,utc:e.$u,x:e.$x,$offset:e.$offset})};var _=function(){function M(t){this.$L=w(t.locale,null,!0),this.parse(t),this.$x=this.$x||t.x||{},this[p]=!0;}var m=M.prototype;return m.parse=function(t){this.$d=function(t){var e=t.date,n=t.utc;if(null===e)return new Date(NaN);if(b.u(e))return new Date;if(e instanceof Date)return new Date(e);if("string"==typeof e&&!/Z$/i.test(e)){var r=e.match($);if(r){var i=r[2]-1||0,s=(r[7]||"0").substring(0,3);return n?new Date(Date.UTC(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)):new Date(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)}}return new Date(e)}(t),this.init();},m.init=function(){var t=this.$d;this.$y=t.getFullYear(),this.$M=t.getMonth(),this.$D=t.getDate(),this.$W=t.getDay(),this.$H=t.getHours(),this.$m=t.getMinutes(),this.$s=t.getSeconds(),this.$ms=t.getMilliseconds();},m.$utils=function(){return b},m.isValid=function(){return !(this.$d.toString()===l)},m.isSame=function(t,e){var n=O(t);return this.startOf(e)<=n&&n<=this.endOf(e)},m.isAfter=function(t,e){return O(t)<this.startOf(e)},m.isBefore=function(t,e){return this.endOf(e)<O(t)},m.$g=function(t,e,n){return b.u(t)?this[e]:this.set(n,t)},m.unix=function(){return Math.floor(this.valueOf()/1e3)},m.valueOf=function(){return this.$d.getTime()},m.startOf=function(t,e){var n=this,r=!!b.u(e)||e,f=b.p(t),l=function(t,e){var i=b.w(n.$u?Date.UTC(n.$y,e,t):new Date(n.$y,e,t),n);return r?i:i.endOf(a)},$=function(t,e){return b.w(n.toDate()[t].apply(n.toDate("s"),(r?[0,0,0,0]:[23,59,59,999]).slice(e)),n)},y=this.$W,M=this.$M,m=this.$D,v="set"+(this.$u?"UTC":"");switch(f){case h:return r?l(1,0):l(31,11);case c:return r?l(1,M):l(0,M+1);case o:var g=this.$locale().weekStart||0,D=(y<g?y+7:y)-g;return l(r?m-D:m+(6-D),M);case a:case d:return $(v+"Hours",0);case u:return $(v+"Minutes",1);case s:return $(v+"Seconds",2);case i:return $(v+"Milliseconds",3);default:return this.clone()}},m.endOf=function(t){return this.startOf(t,!1)},m.$set=function(t,e){var n,o=b.p(t),f="set"+(this.$u?"UTC":""),l=(n={},n[a]=f+"Date",n[d]=f+"Date",n[c]=f+"Month",n[h]=f+"FullYear",n[u]=f+"Hours",n[s]=f+"Minutes",n[i]=f+"Seconds",n[r]=f+"Milliseconds",n)[o],$=o===a?this.$D+(e-this.$W):e;if(o===c||o===h){var y=this.clone().set(d,1);y.$d[l]($),y.init(),this.$d=y.set(d,Math.min(this.$D,y.daysInMonth())).$d;}else l&&this.$d[l]($);return this.init(),this},m.set=function(t,e){return this.clone().$set(t,e)},m.get=function(t){return this[b.p(t)]()},m.add=function(r,f){var d,l=this;r=Number(r);var $=b.p(f),y=function(t){var e=O(l);return b.w(e.date(e.date()+Math.round(t*r)),l)};if($===c)return this.set(c,this.$M+r);if($===h)return this.set(h,this.$y+r);if($===a)return y(1);if($===o)return y(7);var M=(d={},d[s]=e,d[u]=n,d[i]=t,d)[$]||1,m=this.$d.getTime()+r*M;return b.w(m,this)},m.subtract=function(t,e){return this.add(-1*t,e)},m.format=function(t){var e=this,n=this.$locale();if(!this.isValid())return n.invalidDate||l;var r=t||"YYYY-MM-DDTHH:mm:ssZ",i=b.z(this),s=this.$H,u=this.$m,a=this.$M,o=n.weekdays,c=n.months,f=n.meridiem,h=function(t,n,i,s){return t&&(t[n]||t(e,r))||i[n].slice(0,s)},d=function(t){return b.s(s%12||12,t,"0")},$=f||function(t,e,n){var r=t<12?"AM":"PM";return n?r.toLowerCase():r};return r.replace(y,(function(t,r){return r||function(t){switch(t){case"YY":return String(e.$y).slice(-2);case"YYYY":return b.s(e.$y,4,"0");case"M":return a+1;case"MM":return b.s(a+1,2,"0");case"MMM":return h(n.monthsShort,a,c,3);case"MMMM":return h(c,a);case"D":return e.$D;case"DD":return b.s(e.$D,2,"0");case"d":return String(e.$W);case"dd":return h(n.weekdaysMin,e.$W,o,2);case"ddd":return h(n.weekdaysShort,e.$W,o,3);case"dddd":return o[e.$W];case"H":return String(s);case"HH":return b.s(s,2,"0");case"h":return d(1);case"hh":return d(2);case"a":return $(s,u,!0);case"A":return $(s,u,!1);case"m":return String(u);case"mm":return b.s(u,2,"0");case"s":return String(e.$s);case"ss":return b.s(e.$s,2,"0");case"SSS":return b.s(e.$ms,3,"0");case"Z":return i}return null}(t)||i.replace(":","")}))},m.utcOffset=function(){return 15*-Math.round(this.$d.getTimezoneOffset()/15)},m.diff=function(r,d,l){var $,y=this,M=b.p(d),m=O(r),v=(m.utcOffset()-this.utcOffset())*e,g=this-m,D=function(){return b.m(y,m)};switch(M){case h:$=D()/12;break;case c:$=D();break;case f:$=D()/3;break;case o:$=(g-v)/6048e5;break;case a:$=(g-v)/864e5;break;case u:$=g/n;break;case s:$=g/e;break;case i:$=g/t;break;default:$=g;}return l?$:b.a($)},m.daysInMonth=function(){return this.endOf(c).$D},m.$locale=function(){return D[this.$L]},m.locale=function(t,e){if(!t)return this.$L;var n=this.clone(),r=w(t,e,!0);return r&&(n.$L=r),n},m.clone=function(){return b.w(this.$d,this)},m.toDate=function(){return new Date(this.valueOf())},m.toJSON=function(){return this.isValid()?this.toISOString():null},m.toISOString=function(){return this.$d.toISOString()},m.toString=function(){return this.$d.toUTCString()},M}(),k=_.prototype;return O.prototype=k,[["$ms",r],["$s",i],["$m",s],["$H",u],["$W",a],["$M",c],["$y",h],["$D",d]].forEach((function(t){k[t[1]]=function(e){return this.$g(e,t[0],t[1])};})),O.extend=function(t,e){return t.$i||(t(e,_,O),t.$i=!0),O},O.locale=w,O.isDayjs=S,O.unix=function(t){return O(1e3*t)},O.en=D[g],O.Ls=D,O.p={},O})); 
+	!function(t,e){module.exports=e();}(commonjsGlobal,(function(){var t=1e3,e=6e4,n=36e5,r="millisecond",i="second",s="minute",u="hour",a="day",o="week",c="month",f="quarter",h="year",d="date",l="Invalid Date",$=/^(\d{4})[-/]?(\d{1,2})?[-/]?(\d{0,2})[Tt\s]*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?[.:]?(\d+)?$/,y=/\[([^\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS/g,M={name:"en",weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_"),ordinal:function(t){var e=["th","st","nd","rd"],n=t%100;return "["+t+(e[(n-20)%10]||e[n]||e[0])+"]"}},m=function(t,e,n){var r=String(t);return !r||r.length>=e?t:""+Array(e+1-r.length).join(n)+t},v={s:m,z:function(t){var e=-t.utcOffset(),n=Math.abs(e),r=Math.floor(n/60),i=n%60;return (e<=0?"+":"-")+m(r,2,"0")+":"+m(i,2,"0")},m:function t(e,n){if(e.date()<n.date())return -t(n,e);var r=12*(n.year()-e.year())+(n.month()-e.month()),i=e.clone().add(r,c),s=n-i<0,u=e.clone().add(r+(s?-1:1),c);return +(-(r+(n-i)/(s?i-u:u-i))||0)},a:function(t){return t<0?Math.ceil(t)||0:Math.floor(t)},p:function(t){return {M:c,y:h,w:o,d:a,D:d,h:u,m:s,s:i,ms:r,Q:f}[t]||String(t||"").toLowerCase().replace(/s$/,"")},u:function(t){return void 0===t}},g="en",D={};D[g]=M;var p="$isDayjsObject",S=function(t){return t instanceof _||!(!t||!t[p])},w=function t(e,n,r){var i;if(!e)return g;if("string"==typeof e){var s=e.toLowerCase();D[s]&&(i=s),n&&(D[s]=n,i=s);var u=e.split("-");if(!i&&u.length>1)return t(u[0])}else {var a=e.name;D[a]=e,i=a;}return !r&&i&&(g=i),i||!r&&g},O=function(t,e){if(S(t))return t.clone();var n="object"==typeof e?e:{};return n.date=t,n.args=arguments,new _(n)},b=v;b.l=w,b.i=S,b.w=function(t,e){return O(t,{locale:e.$L,utc:e.$u,x:e.$x,$offset:e.$offset})};var _=function(){function M(t){this.$L=w(t.locale,null,true),this.parse(t),this.$x=this.$x||t.x||{},this[p]=true;}var m=M.prototype;return m.parse=function(t){this.$d=function(t){var e=t.date,n=t.utc;if(null===e)return new Date(NaN);if(b.u(e))return new Date;if(e instanceof Date)return new Date(e);if("string"==typeof e&&!/Z$/i.test(e)){var r=e.match($);if(r){var i=r[2]-1||0,s=(r[7]||"0").substring(0,3);return n?new Date(Date.UTC(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)):new Date(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)}}return new Date(e)}(t),this.init();},m.init=function(){var t=this.$d;this.$y=t.getFullYear(),this.$M=t.getMonth(),this.$D=t.getDate(),this.$W=t.getDay(),this.$H=t.getHours(),this.$m=t.getMinutes(),this.$s=t.getSeconds(),this.$ms=t.getMilliseconds();},m.$utils=function(){return b},m.isValid=function(){return !(this.$d.toString()===l)},m.isSame=function(t,e){var n=O(t);return this.startOf(e)<=n&&n<=this.endOf(e)},m.isAfter=function(t,e){return O(t)<this.startOf(e)},m.isBefore=function(t,e){return this.endOf(e)<O(t)},m.$g=function(t,e,n){return b.u(t)?this[e]:this.set(n,t)},m.unix=function(){return Math.floor(this.valueOf()/1e3)},m.valueOf=function(){return this.$d.getTime()},m.startOf=function(t,e){var n=this,r=!!b.u(e)||e,f=b.p(t),l=function(t,e){var i=b.w(n.$u?Date.UTC(n.$y,e,t):new Date(n.$y,e,t),n);return r?i:i.endOf(a)},$=function(t,e){return b.w(n.toDate()[t].apply(n.toDate("s"),(r?[0,0,0,0]:[23,59,59,999]).slice(e)),n)},y=this.$W,M=this.$M,m=this.$D,v="set"+(this.$u?"UTC":"");switch(f){case h:return r?l(1,0):l(31,11);case c:return r?l(1,M):l(0,M+1);case o:var g=this.$locale().weekStart||0,D=(y<g?y+7:y)-g;return l(r?m-D:m+(6-D),M);case a:case d:return $(v+"Hours",0);case u:return $(v+"Minutes",1);case s:return $(v+"Seconds",2);case i:return $(v+"Milliseconds",3);default:return this.clone()}},m.endOf=function(t){return this.startOf(t,false)},m.$set=function(t,e){var n,o=b.p(t),f="set"+(this.$u?"UTC":""),l=(n={},n[a]=f+"Date",n[d]=f+"Date",n[c]=f+"Month",n[h]=f+"FullYear",n[u]=f+"Hours",n[s]=f+"Minutes",n[i]=f+"Seconds",n[r]=f+"Milliseconds",n)[o],$=o===a?this.$D+(e-this.$W):e;if(o===c||o===h){var y=this.clone().set(d,1);y.$d[l]($),y.init(),this.$d=y.set(d,Math.min(this.$D,y.daysInMonth())).$d;}else l&&this.$d[l]($);return this.init(),this},m.set=function(t,e){return this.clone().$set(t,e)},m.get=function(t){return this[b.p(t)]()},m.add=function(r,f){var d,l=this;r=Number(r);var $=b.p(f),y=function(t){var e=O(l);return b.w(e.date(e.date()+Math.round(t*r)),l)};if($===c)return this.set(c,this.$M+r);if($===h)return this.set(h,this.$y+r);if($===a)return y(1);if($===o)return y(7);var M=(d={},d[s]=e,d[u]=n,d[i]=t,d)[$]||1,m=this.$d.getTime()+r*M;return b.w(m,this)},m.subtract=function(t,e){return this.add(-1*t,e)},m.format=function(t){var e=this,n=this.$locale();if(!this.isValid())return n.invalidDate||l;var r=t||"YYYY-MM-DDTHH:mm:ssZ",i=b.z(this),s=this.$H,u=this.$m,a=this.$M,o=n.weekdays,c=n.months,f=n.meridiem,h=function(t,n,i,s){return t&&(t[n]||t(e,r))||i[n].slice(0,s)},d=function(t){return b.s(s%12||12,t,"0")},$=f||function(t,e,n){var r=t<12?"AM":"PM";return n?r.toLowerCase():r};return r.replace(y,(function(t,r){return r||function(t){switch(t){case "YY":return String(e.$y).slice(-2);case "YYYY":return b.s(e.$y,4,"0");case "M":return a+1;case "MM":return b.s(a+1,2,"0");case "MMM":return h(n.monthsShort,a,c,3);case "MMMM":return h(c,a);case "D":return e.$D;case "DD":return b.s(e.$D,2,"0");case "d":return String(e.$W);case "dd":return h(n.weekdaysMin,e.$W,o,2);case "ddd":return h(n.weekdaysShort,e.$W,o,3);case "dddd":return o[e.$W];case "H":return String(s);case "HH":return b.s(s,2,"0");case "h":return d(1);case "hh":return d(2);case "a":return $(s,u,true);case "A":return $(s,u,false);case "m":return String(u);case "mm":return b.s(u,2,"0");case "s":return String(e.$s);case "ss":return b.s(e.$s,2,"0");case "SSS":return b.s(e.$ms,3,"0");case "Z":return i}return null}(t)||i.replace(":","")}))},m.utcOffset=function(){return 15*-Math.round(this.$d.getTimezoneOffset()/15)},m.diff=function(r,d,l){var $,y=this,M=b.p(d),m=O(r),v=(m.utcOffset()-this.utcOffset())*e,g=this-m,D=function(){return b.m(y,m)};switch(M){case h:$=D()/12;break;case c:$=D();break;case f:$=D()/3;break;case o:$=(g-v)/6048e5;break;case a:$=(g-v)/864e5;break;case u:$=g/n;break;case s:$=g/e;break;case i:$=g/t;break;default:$=g;}return l?$:b.a($)},m.daysInMonth=function(){return this.endOf(c).$D},m.$locale=function(){return D[this.$L]},m.locale=function(t,e){if(!t)return this.$L;var n=this.clone(),r=w(t,e,true);return r&&(n.$L=r),n},m.clone=function(){return b.w(this.$d,this)},m.toDate=function(){return new Date(this.valueOf())},m.toJSON=function(){return this.isValid()?this.toISOString():null},m.toISOString=function(){return this.$d.toISOString()},m.toString=function(){return this.$d.toUTCString()},M}(),k=_.prototype;return O.prototype=k,[["$ms",r],["$s",i],["$m",s],["$H",u],["$W",a],["$M",c],["$y",h],["$D",d]].forEach((function(t){k[t[1]]=function(e){return this.$g(e,t[0],t[1])};})),O.extend=function(t,e){return t.$i||(t(e,_,O),t.$i=true),O},O.locale=w,O.isDayjs=S,O.unix=function(t){return O(1e3*t)},O.en=D[g],O.Ls=D,O.p={},O})); 
 } (dayjs_min));
 
 var dayjs_minExports = dayjs_min.exports;
@@ -58097,66 +57996,9 @@ function log(message) {
   });
 }
 
-var name = "node-hiprint-transit";
 var version = "0.0.5";
-var description = "A nodejs server for hiprint transit";
-var main = "index.js";
-var type = "module";
-var scripts = {
-	init: "npm install && node ./src/init.js",
-	serve: "node ./index.js",
-	build: "rollup -c",
-	"lint:prettier": "prettier --write \"**/*.{js,json}\""
-};
-var repository = {
-	type: "git",
-	url: "git+https://github.com/Xavier9896/node-hiprint-transit.git"
-};
-var keywords = [
-	"hiprint",
-	"transit",
-	"node"
-];
-var author = "xavier";
-var license = "MIT";
-var bugs = {
-	url: "https://github.com/Xavier9896/node-hiprint-transit/issues"
-};
-var homepage = "https://github.com/Xavier9896/node-hiprint-transit#readme";
-var dependencies = {
-	chalk: "^5.3.0",
-	dayjs: "^1.11.10",
-	i18n: "^0.15.1",
-	inquirer: "^9.2.11",
-	"node-forge": "^1.3.1",
-	punycode: "^2.3.0",
-	"socket.io": "^4.7.2"
-};
-var devDependencies = {
-	"@rollup/plugin-commonjs": "^25.0.8",
-	"@rollup/plugin-json": "^6.1.0",
-	"@rollup/plugin-node-resolve": "^15.2.3",
-	prettier: "^3.4.2",
-	rollup: "^4.18.0",
-	"rollup-plugin-copy": "^3.5.0",
-	"rollup-plugin-delete": "^2.0.0"
-};
 var packageJson = {
-	name: name,
-	version: version,
-	description: description,
-	main: main,
-	type: type,
-	scripts: scripts,
-	repository: repository,
-	keywords: keywords,
-	author: author,
-	license: license,
-	bugs: bugs,
-	homepage: homepage,
-	dependencies: dependencies,
-	devDependencies: devDependencies
-};
+	version: version};
 
 /*
  * @Date: 2023-09-28 19:28:42
@@ -58258,26 +58100,33 @@ readConfig().then((CONFIG) => {
       CLIENT.set(sToken, {});
     }
 
+    const currentClients = Object.keys(CLIENT.get(sToken))?.length || 0;
+
+    const webClients =
+      (Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) => handshake.auth.token === sToken,
+      )?.length || 0) - currentClients;
+
+    const allClients =
+      Array.from(io.sockets.sockets.values()).filter(
+        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
+      )?.length || 0;
+
+    const allWebClients =
+      (Array.from(io.sockets.sockets.values())?.length || 0) - allClients;
+
     // Send server info to client
     const serverInfo = {
       // Server version
       version: packageJson.version,
       // Number of Electron-hiprint clients for the current socket's token
-      currentClients: Object.keys(CLIENT.get(sToken)).length,
+      currentClients,
       // Number of all Electron-hiprint clients
-      allClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
-      )?.length,
+      allClients,
       // Number of web clients for the current socket's token
-      webClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) =>
-          handshake.auth.token === sToken &&
-          handshake.query?.client !== 'electron-hiprint',
-      )?.length,
+      webClients,
       // Number of all web clients
-      allWebClients: Array.from(io.sockets.sockets.values()).filter(
-        ({ handshake }) => handshake.query?.client === 'electron-hiprint',
-      )?.length,
+      allWebClients,
       // Server total memory
       totalmem: totalmem(),
       // Server free memory

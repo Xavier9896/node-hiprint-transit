@@ -13,6 +13,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
+// 读取 package.json
+const packageJson = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+const version = packageJson.version;
+
 /**
  * 主函数：创建自解压的 EXE 安装包
  */
@@ -26,8 +30,8 @@ async function createExe() {
     // 确保 `out` 目录存在
     const outDir = path.join(rootDir, 'out');
     if (!fs.existsSync(outDir)) {
-      console.error('错误：out 目录不存在，请先运行构建命令');
-      process.exit(1);
+      console.log(chalk.yellow('⚠️ out 目录不存在，正在创建...'));
+      fs.mkdirSync(outDir, { recursive: true });
     }
 
     // 创建临时目录用于存放打包文件
@@ -43,7 +47,11 @@ async function createExe() {
     // 使用 7z 压缩
     const sevenZipPath = path.join(rootDir, 'bin', '7za.exe');
     const sfxPath = path.join(rootDir, 'bin', '7z.sfx');
-    const outputExe = path.join(rootDir, 'out', 'hiprint-transit-setup.exe');
+    const outputExe = path.join(
+      rootDir,
+      'out',
+      `transit-setup-${version}.exe`,
+    );
 
     // 直接生成自解压文件
     const Command = `"${sevenZipPath}" a -sfx"${sfxPath}" "${outputExe}" "${tempDir}\\*"`;
@@ -65,7 +73,7 @@ async function createExe() {
         fs.unlinkSync(temp7zFile);
       }
     } catch (cleanupError) {
-      console.warn('清理临时文件时发生警告：', cleanupError);
+      console.warn(chalk.yellow('⚠️ 清理临时文件时发生警告：'), cleanupError);
     }
   }
 }

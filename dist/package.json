@@ -1,6 +1,6 @@
 {
   "name": "node-hiprint-transit",
   "version": "0.0.5",
-  "main": "index.js",
+  "main": "./index.js",
   "type": "module"
 }
