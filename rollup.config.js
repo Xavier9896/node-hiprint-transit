@@ -1,7 +1,7 @@
 /*
  * @Date: 2024-05-23 10:01:00
  * @LastEditors: admin@54xavier.cn
- * @LastEditTime: 2024-12-17 19:22:36
+ * @LastEditTime: 2025-05-09 13:38:22
  * @FilePath: \node-hiprint-transit\rollup.config.js
  */
 import commonjs from '@rollup/plugin-commonjs';
@@ -14,17 +14,26 @@ export default {
   input: {
     index: './index.js',
     init: './init.js',
+    start: './start.js',
     'src/config': './src/config.js',
   },
-  output: {
-    dir: 'dist',
-    format: 'esm',
-    chunkFileNames: '[name]_chunk.js',
-    exports: 'named',
-  },
+  output: [
+    {
+      dir: 'dist',
+      format: 'esm',
+      chunkFileNames: '[name]_chunk.js',
+      exports: 'named',
+    },
+    {
+      dir: 'out',
+      format: 'cjs',
+      chunkFileNames: '[name]_chunk.js',
+      exports: 'named',
+    },
+  ],
   plugins: [
     del({
-      targets: 'dist/*',
+      targets: ['dist/*', 'out/*'],
       runOnce: true,
     }),
     commonjs(),
@@ -61,8 +70,46 @@ export default {
               {
                 name: pkg.name,
                 version: pkg.version,
-                main: pkg.main,
-                type: pkg.type,
+                main: './index.js',
+                type: 'module',
+              },
+              null,
+              2,
+            );
+          },
+        },
+        {
+          src: 'src/locales',
+          dest: 'out/src',
+        },
+        {
+          src: 'src/ssl.key',
+          dest: 'out/src',
+        },
+        {
+          src: 'src/ssl.pem',
+          dest: 'out/src',
+        },
+        {
+          src: './config.json',
+          dest: 'out',
+        },
+        {
+          src: './start.bat',
+          dest: 'out',
+        },
+        {
+          src: 'package.json',
+          dest: 'out',
+          transform: (contents) => {
+            const pkg = JSON.parse(contents.toString());
+            // 只保留必要的字段
+            return JSON.stringify(
+              {
+                name: pkg.name,
+                version: pkg.version,
+                main: './index.js',
+                type: 'commonjs',
               },
               null,
               2,
