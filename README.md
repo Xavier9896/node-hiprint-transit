@@ -4,6 +4,8 @@
 
 `node-hiprint-transit` 是一个基于 Node.js 的中转服务器，用于在 `electron-hiprint` 客户端和 `vue-plugin-hiprint` 库之间充当中转服务，实现这些组件之间的无缝连接和打印操作。
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Xavier9896/node-hiprint-transit)
+
 ![node-hiprint-transit.png](./res/node-hiprint-transit.png)
 
 ## 特点
