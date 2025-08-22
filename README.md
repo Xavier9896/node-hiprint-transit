@@ -22,9 +22,16 @@
 
 ## 免费服务-用爱发电
 
-| 版本    | 服务器信息     | 服务商        | 地域 | 有效期        | 服务器地址                         | Token              |
-|-------| -------------- | ------------- | ---- |------------|-------------------------------| ------------------ |
-| 0.0.5 | 2C2G4M 300G/m  | Tencent Cloud | GZ   | 2026-07-16 | https://v5.printjs.cn:17521   | hiprint\*          |
+| 版本  | 服务器信息    | 服务商        | 地域 | 有效期     | 服务器地址               | Token     |
+| ----- | ------------- | ------------- | ---- | ---------- | ------------------------ | --------- |
+| 0.0.6 | 2C2G4M 300G/m | Tencent Cloud | GZ   | 2026-07-16 | https://printjs.cn:17521 | hiprint\* |
+
+> [!IMPORTANT]
+> Token 使用通配符 `*` 匹配任意字符，在连接免费服务时你可以使用以下格式的 Token：
+>
+> hiprint-xxerp-9898，hiprint-9896_1，hiprint-test666 等
+>
+> !!! ⚠️ 请妥善保管你自己的口令，勿使用弱口令，如 “hiprint-123”，因使用弱口令导致的任何问题，本项目概不负责。
 
 本项目免费开源，承诺不会窃取以上免费服务运行中产生的任何数据，但不能保证服务过程中不会受到黑客攻击而导致数据泄露问题。
 
@@ -32,9 +39,6 @@
 
 > [!IMPORTANT]
 > !!! ⚠️ 在 web 端使用时请做到即用即走，不要长时间连接该服务，为服务器减轻压力。
-
-> [!IMPORTANT]
-> !!! ⚠️ 请勿使用弱口令，如 “hiprint-123”，因使用弱口令导致的任何问题，本项目概不负责。
 
 > [!NOTE]
 >
@@ -62,15 +66,19 @@ cd node-hiprint-transit
 ```
 
 ### 2. 启动服务
+
 ```bash
 docker-compose up -d
 ```
 
 ## Window 系统启动项目
+
 ### 1. 下载打包文件
-[点击下载](https://gitee.com/Xavier9896/node-hiprint-transit/blob/main/out/transit-setup-0.0.5.exe)
+
+[点击下载](https://gitee.com/Xavier9896/node-hiprint-transit/blob/main/out/transit-setup-0.0.6.exe)
 
 ### 2. 指定解压缩路径
+
 ### 3. 运行 `start.bat` 脚本
 
 ## 初始化设置
@@ -354,13 +362,14 @@ hiwebSocket.socket.on('success', () => {
 
 ## 周边生态项目
 
-| 项目名称             | 项目地址                                                                                                                 | 下载地址                                                          | 描述                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| vue-plugin-hiprint   | [github](https://github.com/CcSimple/vue-plugin-hiprint)、[gitee](https://gitee.com/CcSimple/vue-plugin-hiprint)         | [npm](https://www.npmjs.com/package/vue-plugin-hiprint)           | 打印设计器                                                         |
-| electron-hiprint     | [github](https://github.com/CcSimple/electron-hiprint)、[gitee](https://gitee.com/CcSimple/electron-hiprint)             | [releases](https://github.com/CcSimple/electron-hiprint/releases) | 直接打印客户端                                                     |
-| node-hiprint-transit | [github](https://github.com/Xavier9896/node-hiprint-transit)、[gitee](https://gitee.com/Xavier9896/node-hiprint-transit) | -                                                                 | web 与客户端中转服务 Node 实现                                     |
-| hiprint-transit-java | [github](https://github.com/weaponready/hiprint-transit-java)                                                            | -                                                                 | web 与客户端中转服务 Java 实现                                     |
-| uni-app-hiprint      | [github](https://github.com/Xavier9896/uni-app-hiprint)                                                                  | -                                                                 | uni-app 项目通过 webview 使用 vue-plugin-hiprint demo              |
-| node-hiprint-pdf     | [github](https://github.com/CcSimple/node-hiprint-pdf)                                                                   | -                                                                 | 提供通过 node 对 vue-plugin-hiprint 模板生成 矢量 pdf、image、html |
+| 项目名称                 | 项目地址                                                                                                                 | 下载地址                                                          | 描述                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| vue-plugin-hiprint       | [github](https://github.com/CcSimple/vue-plugin-hiprint)、[gitee](https://gitee.com/CcSimple/vue-plugin-hiprint)         | [npm](https://www.npmjs.com/package/vue-plugin-hiprint)           | 打印设计器                                                         |
+| electron-hiprint         | [github](https://github.com/CcSimple/electron-hiprint)、[gitee](https://gitee.com/CcSimple/electron-hiprint)             | [releases](https://github.com/CcSimple/electron-hiprint/releases) | 直接打印客户端                                                     |
+| node-hiprint-transit     | [github](https://github.com/Xavier9896/node-hiprint-transit)、[gitee](https://gitee.com/Xavier9896/node-hiprint-transit) | -                                                                 | web 与客户端中转服务 Node 实现                                     |
+| hiprint-transporter-java | [gitee](https://gitee.com/dut_cc/hiprint-transporter-java.git)                                                           | -                                                                 | web 与客户端中转服务 Java 实现                                     |
+| hiprint-transit-java     | [github](https://github.com/weaponready/hiprint-transit-java)                                                            | -                                                                 | web 与客户端中转服务 Java 实现                                     |
+| uni-app-hiprint          | [github](https://github.com/Xavier9896/uni-app-hiprint)                                                                  | -                                                                 | uni-app 项目通过 webview 使用 vue-plugin-hiprint demo              |
+| node-hiprint-pdf         | [github](https://github.com/CcSimple/node-hiprint-pdf)                                                                   | -                                                                 | 提供通过 node 对 vue-plugin-hiprint 模板生成 矢量 pdf、image、html |
 
 ![赞赏我](./res/WechatAppreciate.jpg)

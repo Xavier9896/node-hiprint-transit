@@ -1,6 +1,6 @@
 {
   "name": "node-hiprint-transit",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A nodejs server for hiprint transit",
   "main": "index.js",
   "type": "module",

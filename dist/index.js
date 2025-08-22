@@ -57996,7 +57996,7 @@ function log(message) {
   });
 }
 
-var version = "0.0.5";
+var version = "0.0.6";
 var packageJson = {
 	version: version};
 
@@ -58152,7 +58152,7 @@ readConfig().then((CONFIG) => {
           ),
         );
         // Join web-client room
-        socket.join(`${token}_web-client`);
+        socket.join(`${sToken}_web-client`);
 
         // Send client list to web client
         socket.emit('clients', CLIENT.get(sToken));
@@ -58394,7 +58394,7 @@ readConfig().then((CONFIG) => {
         if (socket.handshake.query.client === 'electron-hiprint') {
           delete CLIENT.get(sToken)[socket.id];
           // Send client list to web client
-          io.to('web-client').emit('clients', CLIENT.get(sToken));
+          io.to(`${sToken}_web-client`).emit('clients', CLIENT.get(sToken));
         }
       }
     });
