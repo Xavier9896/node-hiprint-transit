@@ -65,7 +65,11 @@ git clone https://github.com/Xavier9896/node-hiprint-transit.git
 cd node-hiprint-transit
 ```
 
-### 2. 启动服务
+### 2. 修改 `docker-compose.yml` 文件
+
+修改文件中 `/to/your/config.json/path/config.json` 和 `/to/your/log/path` 挂载到正确的 `config.json` 设置文件和 `logs` 日志存储文件夹路径。
+
+### 3. 启动服务
 
 ```bash
 docker-compose up -d
