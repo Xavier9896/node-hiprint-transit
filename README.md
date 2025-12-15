@@ -67,7 +67,10 @@ cd node-hiprint-transit
 
 ### 2. 修改 `docker-compose.yml` 文件
 
-修改文件中 `/to/your/config.json/path/config.json` 和 `/to/your/log/path` 挂载到正确的 `config.json` 设置文件和 `logs` 日志存储文件夹路径。
+修改文件中 `/path/to/your/config.json` 和 `/path/to/your/logs` 挂载到正确的 `config.json` 设置文件和 `logs` 日志存储文件夹路径。
+
+> [!NOTE]
+> 在运行 `docker-compose up -d` 之前，请确保您已经在宿主机上创建了 `config.json` 文件和 `logs` 目录。您可以从项目根目录复制 `config.json` 作为模板。
 
 ### 3. 启动服务
 
