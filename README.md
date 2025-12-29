@@ -22,9 +22,9 @@
 
 ## 免费服务-用爱发电
 
-| 版本  | 服务器信息    | 服务商        | 地域 | 有效期     | 服务器地址               | Token     |
-| ----- | ------------- | ------------- | ---- | ---------- | ------------------------ | --------- |
-| 0.0.6 | 2C2G4M 300G/m | Tencent Cloud | GZ   | 2026-07-16 | https://printjs.cn:17521 | hiprint\* |
+| 版本  | 服务器信息 | 服务商    | 地域 | 有效期        | 服务器地址               | Token     |
+| ----- | ---------- |--------| ---- |------------| ------------------------ | --------- |
+| 0.0.6 | 2C2G3M     | AliYun | GZ   | 2026-11-19 | https://printjs.cn:17521 | hiprint\* |
 
 > [!IMPORTANT]
 > Token 使用通配符 `*` 匹配任意字符，在连接免费服务时你可以使用以下格式的 Token：
@@ -39,10 +39,6 @@
 
 > [!IMPORTANT]
 > !!! ⚠️ 在 web 端使用时请做到即用即走，不要长时间连接该服务，为服务器减轻压力。
-
-> [!NOTE]
->
-> > **！本人纯前端，对于服务器、运维、攻防了解较少，请各位大佬高抬贵手，不要对免费开源服务下手**
 
 ## linux 一键安装脚本
 
@@ -67,7 +63,7 @@ cd node-hiprint-transit
 
 ### 2. 修改 `docker-compose.yml` 文件
 
-修改文件中 `/path/to/your/config.json` 和 `/path/to/your/logs` 挂载到正确的 `config.json` 设置文件和 `logs` 日志存储文件夹路径。
+修改文件中 `/var/hiprint/config.json` 和 `/var/hiprint/logs` 挂载到正确的 `config.json` 设置文件和 `logs` 日志存储文件夹路径。
 
 > [!NOTE]
 > 在运行 `docker-compose up -d` 之前，请确保您已经在宿主机上创建了 `config.json` 文件和 `logs` 目录。您可以从项目根目录复制 `config.json` 作为模板。
@@ -130,7 +126,7 @@ node run ./dist/init
 node ./dist/index
 
 服务器正运行在
-https://v5.printjs.cn:17521
+https://printjs.cn:17521
 
 请确保安全组或防火墙已放行端口。
 令牌：hiprint*
@@ -144,7 +140,7 @@ https://v5.printjs.cn:17521
 import { hiprint } from 'vue-plugin-hiprint';
 
 hiprint.init({
-  host: 'https://v5.printjs.cn:17521', // 此处输入服务启动后的地址
+  host: 'https://printjs.cn:17521', // 此处输入服务启动后的地址
   token: 'hiprint-test-1', // 用于鉴权的token
 });
 ```
@@ -184,7 +180,7 @@ hiprint.init({
 ```js
 {
   // 中转服务版本号
-  version: "0.0.5",
+  version: "0.0.6",
   // 当前 TOKEN 连接的客户端数量
   currentClients: 1,
   // 所有连接的客户端数量
@@ -359,9 +355,7 @@ hiwebSocket.socket.on('success', () => {
 
 3. 每 10 分钟中转服务会主动向 `electron-hiprint` 请求一次打印机列表以更新打印机信息；
 
-4. https://printjs.cn:17521 为 0.0.3 演示地址，可以用于快速验证方案可行性，服务器为 1C1G3M 香港服务器，不保证能够提供稳定可靠服务，有需要请自行部署。
-
-5. 为什么选择 Node 开发？因为我纯前端，只能选择 Node 开发；vue-plugin-hiprint 是一个前端插件，多数用户都是前端；杀鸡焉用牛刀？Node 就能轻松实现好吧！
+4. 为什么选择 Node 开发？因为我纯前端，只能选择 Node 开发；vue-plugin-hiprint 是一个前端插件，多数用户都是前端；杀鸡焉用牛刀？Node 就能轻松实现好吧！
 
 <p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
 

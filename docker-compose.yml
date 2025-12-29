@@ -7,11 +7,11 @@ services:
     ports:
       - "17521:17521"
     volumes:
-      - /path/to/your/config.json:/node-hiprint-transit/config.json
-      - /path/to/your/logs:/node-hiprint-transit/logs
+      - /var/hiprint/config.json:/node-hiprint-transit/config.json
+      - /var/hiprint/logs:/node-hiprint-transit/logs
       # 以下两项为可选项，不需配置SSL时可删除
-      # - /to/your/ssl.key/path/ssl.key:/node-hiprint-transit/src/ssl.key
-      # - /to/your/ssl.pem/path/ssl.pem:/node-hiprint-transit/src/ssl.pem
+      # - /var/hiprint/ssl.key:/node-hiprint-transit/src/ssl.key
+      # - /var/hiprint/ssl.pem:/node-hiprint-transit/src/ssl.pem
     environment:
       TZ: Asia/Shanghai
       NODE_ENV: production
