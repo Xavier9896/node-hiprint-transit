@@ -27,6 +27,7 @@ const CONFIG = {
   token: 'vue-plugin-hiprint', // TOKEN
   useSSL: false, // SSL on/off
   lang: 'en', // language
+  maxHttpBufferSize: 1e8, // Maximum message size in bytes
 };
 
 // Setup i18n
@@ -161,11 +162,41 @@ function setSSL() {
   });
 }
 
+/**
+ * @description: Set maximum Socket.IO message size in bytes
+ * @return {Promise}
+ */
+function setMaxHttpBufferSize() {
+  return inquirer
+    .prompt([
+      {
+        name: 'maxHttpBufferSize',
+        type: 'input',
+        message: i18n.__('Set maxHttpBufferSize (bytes):'),
+        default: CONFIG.maxHttpBufferSize,
+        validate: (input) => {
+          if (
+            /^\d+$/.test(String(input)) &&
+            Number.isSafeInteger(Number(input)) &&
+            Number(input) > 0
+          ) {
+            return true;
+          }
+          return i18n.__('maxHttpBufferSize must be a positive safe integer');
+        },
+      },
+    ])
+    .then((answers) => {
+      CONFIG.maxHttpBufferSize = Number(answers.maxHttpBufferSize);
+    });
+}
+
 setLang().then(() => {
   setPort().then(() => {
     setToken().then(() => {
       setSSL().then(() => {
-        writeConfig(CONFIG)
+        setMaxHttpBufferSize()
+          .then(() => writeConfig(CONFIG))
           .then(() => {
             console.log(i18n.__('Configuration file written successfully'));
           })

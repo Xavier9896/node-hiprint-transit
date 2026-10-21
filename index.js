@@ -42,7 +42,7 @@ const CLIENT = new Map();
 
 // Read config first and then start serve
 readConfig().then((CONFIG) => {
-  const { port, token, useSSL, lang } = CONFIG;
+  const { port, token, useSSL, lang, maxHttpBufferSize } = CONFIG;
   var ipAddress = `http://${getIPAddress()}:${port}`;
   i18n.setLocale(lang);
   var server;
@@ -74,6 +74,8 @@ readConfig().then((CONFIG) => {
 
   // Setup socket.io
   const io = new Server(server, {
+    // Use the configured message size limit for PDF print payloads.
+    maxHttpBufferSize,
     cors: {
       origin: '*',
       methods: ['GET', 'POST'],

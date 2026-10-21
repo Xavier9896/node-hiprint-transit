@@ -15,12 +15,15 @@ const __dirname = path.dirname(__filename);
 
 const configPath = path.join(__dirname, '../', 'config.json');
 
+const DEFAULT_MAX_HTTP_BUFFER_SIZE = 1e8; // 100 MB (bytes)
+
 // Default config
 const CONFIG = {
   port: '17521',
   token: 'vue-plugin-hiprint',
   useSSL: false,
   lang: 'en',
+  maxHttpBufferSize: DEFAULT_MAX_HTTP_BUFFER_SIZE,
 };
 
 /**
@@ -34,7 +37,12 @@ export function readConfig() {
         reject(err);
       } else if (data) {
         try {
-          var _CONFIG = Object.assign({}, CONFIG, JSON.parse(data));
+          var _CONFIG = Object.assign(
+            {},
+            CONFIG,
+            { maxHttpBufferSize: DEFAULT_MAX_HTTP_BUFFER_SIZE },
+            JSON.parse(data),
+          );
           // Check config
           // Check port need between 10000 and 65535
           if (_CONFIG.port < 10000 || _CONFIG.port > 65535)
@@ -46,6 +54,11 @@ export function readConfig() {
           }
           CONFIG.token = _CONFIG.token;
           CONFIG.useSSL = _CONFIG.useSSL || false;
+          CONFIG.maxHttpBufferSize =
+            Number.isSafeInteger(_CONFIG.maxHttpBufferSize) &&
+            _CONFIG.maxHttpBufferSize > 0
+              ? _CONFIG.maxHttpBufferSize
+              : DEFAULT_MAX_HTTP_BUFFER_SIZE;
           // Check lang need in ["zh", "en"]
           CONFIG.lang = ['zh', 'en'].includes(_CONFIG.lang)
             ? _CONFIG.lang
@@ -73,6 +86,11 @@ export function writeConfig(_CONFIG) {
     _CONFIG.token = 'vue-plugin-hiprint';
   }
   _CONFIG.useSSL = Boolean(_CONFIG.useSSL) || false;
+  _CONFIG.maxHttpBufferSize =
+    Number.isSafeInteger(_CONFIG.maxHttpBufferSize) &&
+    _CONFIG.maxHttpBufferSize > 0
+      ? _CONFIG.maxHttpBufferSize
+      : DEFAULT_MAX_HTTP_BUFFER_SIZE;
   // Check lang need in ["zh", "en"]
   _CONFIG.lang = ['zh', 'en'].includes(_CONFIG.lang) ? _CONFIG.lang : 'en';
   return new Promise((resolve, reject) => {

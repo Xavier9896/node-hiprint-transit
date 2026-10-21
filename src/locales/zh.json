@@ -19,5 +19,7 @@
   "%s send %s to %s": "%s 发送 %s 指令到 %s",
   "Retrieve the client print list": "获取客户端打印列表",
   "%s client: %s success, templateId: %s": "%s 客户端：%s 成功，模板ID：%s",
-  "%s client: %s error, templateId: %s": "%s 客户端：%s 失败，模板ID：%s"
+  "%s client: %s error, templateId: %s": "%s 客户端：%s 失败，模板ID：%s",
+  "Set maxHttpBufferSize (bytes):": "设置 maxHttpBufferSize（字节）：",
+  "maxHttpBufferSize must be a positive safe integer": "maxHttpBufferSize 必须是正的安全整数"
 }

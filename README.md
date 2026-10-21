@@ -99,6 +99,7 @@ node run ./dist/init
 # ? 设置服务端口号 10000~65535： 17521
 # ? 设置服务 TOKEN （使用通配符(*)匹配任意字符）：hiprint*
 # ? 使用 SSL：(y/N)
+# ? 设置 maxHttpBufferSize（字节）：100000000
 # 配置文件写入成功
 ```
 
@@ -115,6 +116,8 @@ node run ./dist/init
 - **令牌**: 用于身份验证的安全令牌（6 个或更多字符，可使用一个或多个 \* 作为通配符）（默认：hiiprint）。
 
 - **SSL**: 启用或禁用安全连接的 SSL（默认：false）。
+
+- **maxHttpBufferSize**: Socket.IO 单条消息上限，单位为字节，必须为正的安全整数（默认：100000000，即 100 MB）。
 
 <p align="right"><a href="#readme-top">↑ 回到顶部</a></p>
 
