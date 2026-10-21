@@ -19,5 +19,7 @@
   "%s send %s to %s": "%s send %s to %s",
   "Retrieve the client print list": "Retrieve the client print list",
   "%s client: %s success, templateId: %s": "%s client: %s success, templateId: %s",
-  "%s client: %s error, templateId: %s": "%s client: %s error, templateId: %s"
+  "%s client: %s error, templateId: %s": "%s client: %s error, templateId: %s",
+  "Set maxHttpBufferSize (bytes):": "Set maxHttpBufferSize (bytes):",
+  "maxHttpBufferSize must be a positive safe integer": "maxHttpBufferSize must be a positive safe integer"
 }

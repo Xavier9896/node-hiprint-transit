@@ -2,5 +2,6 @@
   "port": 17521,
   "token": "hiprint",
   "useSSL": false,
-  "lang": "en"
+  "lang": "en",
+  "maxHttpBufferSize": 100000000
 }
